@@ -1,7 +1,7 @@
 {
-    "version": "0.1",
-    "name": "aiida_uscf",
-    "url": "www.test.com",
+    "version": "0.1.0",
+    "name": "aiida_quantumespresso_uscf",
+    "url": "https://github.com/sphuber/aiida-quantumespresso-uscf",
     "license": "MIT License",
     "author": "Sebastiaan P. Huber",
     "author_email": "mail@sphuber.net",
@@ -16,10 +16,10 @@
     ],
     "entry_points": {
         "aiida.calculations": [
-            "quantumespresso.uscf = aiida_uscf.calculations.uscf:UscfCalculation"
+            "quantumespresso.uscf = aiida_quantumespresso_uscf.calculations.uscf:UscfCalculation"
         ],
         "aiida.parsers": [
-            "quantumespresso.uscf = aiida_uscf.parsers.uscf:UscfParser"
+            "quantumespresso.uscf = aiida_quantumespresso_uscf.parsers.uscf:UscfParser"
         ]
     }
 }
