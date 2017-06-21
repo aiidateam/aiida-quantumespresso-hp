@@ -3,11 +3,11 @@
 import numpy as np
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
-from aiida.parsers.parser import Parser
 from aiida.orm import CalculationFactory
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.parameter import ParameterData
-from aiida.parsers.plugins.quantumespresso import QEOutputParsingError
+from aiida.parsers.parser import Parser
+from aiida_quantumespresso.parsers import QEOutputParsingError
 
 UscfCalculation = CalculationFactory('quantumespresso.uscf')
 

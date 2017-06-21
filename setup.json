@@ -12,7 +12,8 @@
         "Development Status :: 4 - Beta"
     ],
     "install_requires": [
-        "aiida"
+        "aiida[atomic_tools]",
+        "aiida-quantumespresso"
     ],
     "entry_points": {
         "aiida.calculations": [

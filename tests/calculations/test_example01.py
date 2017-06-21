@@ -7,14 +7,13 @@ import pymatgen
 from aiida.work.run import run
 from aiida.orm.data.upf import UpfData
 from aiida.common.exceptions import NotExistent
+from aiida.orm.data.upf import get_pseudos_from_structure
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
-from aiida.workflows.user.aiida_qe.workflows.util.pseudo import get_pseudos_from_family_name
 from seekpath.aiidawrappers import get_path
-
-PwCalculation = CalculationFactory('quantumespresso.pw')
-UscfCalculation = CalculationFactory('quantumespresso.uscf')
+from aiida_quantumespresso.calculations.pw import PwCalculation
+from aiida_quantumespresso_uscf.calculations.uscf import UscfCalculation
 
 
 def parser_setup():
@@ -81,7 +80,7 @@ def execute(args):
 
     try:
         pseudo_family = UpfData.get_upf_group(args.pseudo_family)
-        pseudo = get_pseudos_from_family_name(structure, args.pseudo_family)
+        pseudo = get_pseudos_from_structure(structure, args.pseudo_family)
     except NotExistent as exception:
         print "Execution failed: could not retrieve the pseudo family group '{}'".format(args.pseudo_family)
         print "Exception report: {}".format(exception)
