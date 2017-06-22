@@ -172,7 +172,7 @@ def run_uscf(code_uscf, parent_calculation, options):
     Run the self-consistent Hubbard calculation with QE's Uscf.x
     """
     qpoints = KpointsData()
-    qpoints.set_kpoints_mesh([2, 2, 2])
+    qpoints.set_kpoints_mesh([1, 1, 1])
 
     parameters = {
         'INPUTUSCF': {

@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import os
 import numpy as np
+from collections import namedtuple
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
+from aiida.parsers.exceptions import OutputParsingError
 from aiida.orm import CalculationFactory
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.parameter import ParameterData
 from aiida.parsers.parser import Parser
 from aiida_quantumespresso.parsers import QEOutputParsingError
-
-UscfCalculation = CalculationFactory('quantumespresso.uscf')
+from aiida_quantumespresso_uscf.calculations.uscf import UscfCalculation
 
 class UscfParser(Parser):
     """
@@ -43,6 +45,12 @@ class UscfParser(Parser):
         Returns the name of the link to the output matrices ArrayData
         """
         return 'output_matrices'
+
+    def get_linkname_chi(self):
+        """
+        Returns the name of the link to the output chi ArrayData
+        """
+        return 'output_chi'
         
     def parse_with_retrieved(self, retrieved):
         """
@@ -74,21 +82,27 @@ class UscfParser(Parser):
 
         result_stdout, dict_stdout = self.parse_stdout(filepath_stdout)
         dict_hubbard = self.parse_hubbard(filepath_hubbard)
+        dict_chi = self.parse_chi(filepath_chi)
 
         output_matrices = ArrayData()
-        output_matrices.set_array('chi0', np.matrix(dict_hubbard['matrix_chi0']))
-        output_matrices.set_array('chi1', np.matrix(dict_hubbard['matrix_chi1']))
-        output_matrices.set_array('chi0_inv', np.matrix(dict_hubbard['matrix_chi0_inv']))
-        output_matrices.set_array('chi1_inv', np.matrix(dict_hubbard['matrix_chi1_inv']))
-        output_matrices.set_array('hubbard', np.matrix(dict_hubbard['matrix_hubbard']))
+        output_matrices.set_array('chi0', dict_hubbard['chi0'])
+        output_matrices.set_array('chi1', dict_hubbard['chi1'])
+        output_matrices.set_array('chi0_inv', dict_hubbard['chi0_inv'])
+        output_matrices.set_array('chi1_inv', dict_hubbard['chi1_inv'])
+        output_matrices.set_array('hubbard', dict_hubbard['hubbard'])
+
+        output_chi = ArrayData()
+        output_chi.set_array('chi0', dict_hubbard['chi0'])
+        output_chi.set_array('chi1', dict_hubbard['chi1'])
 
         output_params = ParameterData(dict=dict_stdout)
         output_hubbard = ParameterData(dict=dict_hubbard['hubbard_U'])
 
         output_nodes = [
             (self.get_linkname_outparams(), output_params),
+            (self.get_linkname_matrices(), output_matrices),
             (self.get_linkname_hubbard(), output_hubbard),
-            (self.get_linkname_matrices(), output_matrices)
+            (self.get_linkname_chi(), output_chi)
         ]
         
         return is_success, output_nodes
@@ -139,24 +153,37 @@ class UscfParser(Parser):
         :param filepath: absolute filepath to the chi.dat output file
         :returns: dictionary with parsed contents
         """
-        result = {
-            'chi0': [],
-            'chi1': []
-        }
+        try:
+            with open(filepath, 'r') as handle:
+                data = handle.readlines()
+        except IOError as exception:
+            raise OutputParsingError("could not read the '{}' output file".format(os.path.basename(filepath)))
 
-        with open(filepath, 'r') as handle:
-            data = handle.readlines()
+        result = {}
+        blocks = {
+            'chi0': [None, None],
+            'chi1': [None, None],
+        }
 
         for line_number, line in enumerate(data):
             if 'chi0' in line:
-                offset = line_number + 1
-                for i in range(8):
-                    result['chi0'].append(float(data[offset + i]))
+                blocks['chi0'][0] = line_number + 1
 
             if 'chi1' in line:
-                offset = line_number + 1
-                for i in range(8):
-                    result['chi0'].append(float(data[offset + i]))
+                blocks['chi0'][1] = line_number
+                blocks['chi1'][0] = line_number + 1
+                blocks['chi1'][1] = len(data)
+                break
+
+        if not all(sum(blocks.values(), [])):
+            raise OutputParsingError("could not determine beginning and end of all blocks in '{}'"
+                .format(os.path.basename(filepath)))
+
+        for matrix_name in ('chi0', 'chi1'):
+            matrix_block = blocks[matrix_name]
+            matrix_data = data[matrix_block[0]:matrix_block[1]]
+            matrix = np.matrix(self.parse_hubbard_matrix(matrix_data))
+            result[matrix_name] = matrix
 
         return result
 
@@ -167,12 +194,20 @@ class UscfParser(Parser):
         :param filepath: absolute filepath to the Hubbard_U.dat output file
         :returns: dictionary with parsed contents
         """
-        result = {
-            'hubbard_U': {}
-        }
+        try:
+            with open(filepath, 'r') as handle:
+                data = handle.readlines()
+        except IOError as exception:
+            raise OutputParsingError("could not read the '{}' output file".format(os.path.basename(filepath)))
 
-        with open(filepath, 'r') as handle:
-            data = handle.readlines()
+        result = {'hubbard_U': {}}
+        blocks = {
+            'chi0':     [None, None],
+            'chi1':     [None, None],
+            'chi0_inv': [None, None],
+            'chi1_inv': [None, None],
+            'hubbard':  [None, None],
+        }
 
         for line_number, line in enumerate(data):
 
@@ -190,41 +225,65 @@ class UscfParser(Parser):
                         parsed = True
 
             if 'chi0 matrix' in line:
-                offset = line_number + 1
-                result['matrix_chi0'] = self.parse_hubbard_matrix(data, offset)
+                blocks['chi0'][0]     = line_number + 1
 
             if 'chi1 matrix' in line:
-                offset = line_number + 1
-                result['matrix_chi1'] = self.parse_hubbard_matrix(data, offset)
+                blocks['chi0'][1]     = line_number
+                blocks['chi1'][0]     = line_number + 1
 
             if 'chi0^{-1} matrix' in line:
-                offset = line_number + 1
-                result['matrix_chi0_inv'] = self.parse_hubbard_matrix(data, offset)
+                blocks['chi1'][1]     = line_number
+                blocks['chi0_inv'][0] = line_number + 1
 
             if 'chi1^{-1} matrix' in line:
-                offset = line_number + 1
-                result['matrix_chi1_inv'] = self.parse_hubbard_matrix(data, offset)
+                blocks['chi0_inv'][1] = line_number
+                blocks['chi1_inv'][0] = line_number + 1
 
             if 'U matrix' in line:
-                offset = line_number + 1
-                result['matrix_hubbard'] = self.parse_hubbard_matrix(data, offset)
+                blocks['chi1_inv'][1] = line_number
+                blocks['hubbard'][0]  = line_number + 1
+                blocks['hubbard'][1]  = len(data)
+                break
+
+        if not all(sum(blocks.values(), [])):
+            raise OutputParsingError("could not determine beginning and end of all matrix blocks in '{}'"
+                .format(os.path.basename(filepath)))
+
+        for matrix_name in ('chi0', 'chi1', 'chi0_inv', 'chi1_inv', 'hubbard'):
+            matrix_block = blocks[matrix_name]
+            matrix_data = data[matrix_block[0]:matrix_block[1]]
+            matrix = self.parse_hubbard_matrix(matrix_data)
+
+            if len(set(matrix.shape)) != 1:
+                raise OutputParsingError("the matrix '{}' in '{}'' is not square but has shape {}"
+                    .format(matrix_name, os.path.basename(filepath), matrix.shape))
+
+            result[matrix_name] = matrix
 
         return result
 
-    def parse_hubbard_matrix(self, data, offset):
+    def parse_hubbard_matrix(self, data):
         """
         Utility function to parse one of the matrices that are written to the {prefix}.Hubbard_U.dat
-        file by a UscfCalculation. The matrices typically have size 8x8 and have empty white lines
-        in between them.
+        file by a UscfCalculation. Each matrix should be square of size N, which is given by the product
+        of the number of q-points and the number of Hubbard species
+        Each matrix row is printed with a maximum number of 8 elements per line and each line is followed
+        by an empty line. In the parsing of the data, we will use the empty line to detect the end of
+        the current matrix row
 
-        :param data: a list of of strings representing each line in the Hubbar_U.dat file
-        :param offset: integer indicating the linenumber offset at which to start reading the matrix
+        :param data: a list of strings representing lines in the Hubbard_U.dat file of a certain matrix
+        :returns: square numpy matrix of floats representing the parsed matrix
         """
         matrix = []
+        row = []
 
-        for i in range(8):
-            offset_row = i * 2
-            matrix_row = data[offset + offset_row]
-            matrix.append([float(f) for f in matrix_row.split()])
+        for line in data:
+            if line.strip():
+                for f in line.split():
+                    row.append(float(f))
+            else:
+                if row:
+                    matrix.append(row)
+                row = []
 
-        return matrix
+        return np.matrix(matrix)
