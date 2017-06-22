@@ -92,8 +92,8 @@ class UscfParser(Parser):
         output_matrices.set_array('hubbard', dict_hubbard['hubbard'])
 
         output_chi = ArrayData()
-        output_chi.set_array('chi0', dict_hubbard['chi0'])
-        output_chi.set_array('chi1', dict_hubbard['chi1'])
+        output_chi.set_array('chi0', dict_chi['chi0'])
+        output_chi.set_array('chi1', dict_chi['chi1'])
 
         output_params = ParameterData(dict=dict_stdout)
         output_hubbard = ParameterData(dict=dict_hubbard['hubbard_U'])
