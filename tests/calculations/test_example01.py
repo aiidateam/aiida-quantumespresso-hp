@@ -22,8 +22,12 @@ def parser_setup():
     execution body to allow tests to effectively mock the setup of the parser and the command line arguments
     """
     parser = argparse.ArgumentParser(
-        description="""Example calculation of the Uscf module for Quantum ESPRESSO.
-        Computes Hubbard U self-consistenly for a simple LiCoO2 system""",
+        description=
+            """
+            Example calculation of the Uscf module for Quantum ESPRESSO.
+            Computes Hubbard U self-consistenly for a simple LiCoO2 system if not structure
+            node pk is specified as an option
+            """,
     )
     parser.add_argument(
         '-p', type=str, required=True, dest='pseudo_family',
@@ -42,6 +46,10 @@ def parser_setup():
         help='the pk of the parent PwCalculation if it was already completed and you want to skip it'
     )
     parser.add_argument(
+        '-s', type=int, default=construct_structure(), dest='structure',
+        help='the node id of the structure'
+    )
+    parser.add_argument(
         '-t', type=int, default=1800, dest='max_wallclock_seconds',
         help='the maximum wallclock time in seconds to set for the calculations. (default: %(default)d)'
     )
@@ -54,7 +62,15 @@ def execute(args):
     The main execution of the script, which will run some preliminary checks on the command
     line arguments before passing them to the workchain and running it
     """
-    structure = construct_structure()
+    if isinstance(args.structure, StructureData):
+        structure = args.structure
+    else:
+        try:
+            structure = load_node(args.structure, parent_class=StructureData)
+        except NotExistent as exception:
+            print "Execution failed: could not load the structure node with pk '{}'".format(args.structure)
+            print "Exception report: {}".format(exception)
+            return
 
     options = {
         'resources': {
