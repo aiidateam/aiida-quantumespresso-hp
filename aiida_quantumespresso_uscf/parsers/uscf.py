@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
+import glob
 import numpy as np
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
 from aiida.parsers.exceptions import OutputParsingError
@@ -58,52 +60,68 @@ class UscfParser(Parser):
 
         :param retrieved: dictionary of retrieved nodes
         """
+        calc = self._calc
         is_success = True
+        output_nodes = []
 
         # Only allow parsing if calculation is in PARSING state
-        state = self._calc.get_state()
+        state = calc.get_state()
         if state != calc_states.PARSING:
             raise InvalidOperation("calculation not in '{}' state".format(calc_states.PARSING))
 
         try:
-            output_folder = retrieved[self._calc._get_linkname_retrieved()]
+            output_folder = retrieved[calc._get_linkname_retrieved()]
         except KeyError:
             self.logger.error("no retrieved folder found")
             return False, ()
 
-        filepath_stdout = output_folder.get_abs_path(self._calc._OUTPUT_FILE_NAME)
-        filepath_chi = output_folder.get_abs_path(self._calc._PREFIX + self._calc._OUTPUT_CHI_SUFFIX)
-        filepath_hubbard = output_folder.get_abs_path(self._calc._PREFIX + self._calc._OUTPUT_HUBBARD_SUFFIX)
+        # Verify the standard output file is present, parse it and attach as output parameters
+        filepath_stdout = output_folder.get_abs_path(calc._OUTPUT_FILE_NAME)
 
-        for filepath in [filepath_stdout, filepath_chi, filepath_hubbard]:
+        for filepath in [filepath_stdout]:
             if not filepath in [output_folder.get_abs_path(f) for f in output_folder.get_folder_list()]:
                 self.logger.error("expected output file '{}' was not found".format(filepath))
                 return False, ()
 
         result_stdout, dict_stdout = self.parse_stdout(filepath_stdout)
-        dict_hubbard = self.parse_hubbard(filepath_hubbard)
-        dict_chi = self.parse_chi(filepath_chi)
-
-        output_matrices = ArrayData()
-        output_matrices.set_array('chi0', dict_hubbard['chi0'])
-        output_matrices.set_array('chi1', dict_hubbard['chi1'])
-        output_matrices.set_array('chi0_inv', dict_hubbard['chi0_inv'])
-        output_matrices.set_array('chi1_inv', dict_hubbard['chi1_inv'])
-        output_matrices.set_array('hubbard', dict_hubbard['hubbard'])
-
-        output_chi = ArrayData()
-        output_chi.set_array('chi0', dict_chi['chi0'])
-        output_chi.set_array('chi1', dict_chi['chi1'])
-
         output_params = ParameterData(dict=dict_stdout)
-        output_hubbard = ParameterData(dict=dict_hubbard['hubbard_U'])
+        output_nodes.append((self.get_linkname_outparams(), output_params))
 
-        output_nodes = [
-            (self.get_linkname_outparams(), output_params),
-            (self.get_linkname_matrices(), output_matrices),
-            (self.get_linkname_hubbard(), output_hubbard),
-            (self.get_linkname_chi(), output_chi)
-        ]
+        # When a Uscf calculation is parallelized over atoms or q-points, the final Hubbard and chi matrices are
+        # not calculated and therefore the chi and hubbard output files will not be present, so we don't parse them
+        complete_calculation = True
+
+        # We cannot use get_abs_path of the output_folder, since that will check for file existence and will throw
+        output_path = output_folder.get_abs_path('.')
+        file_prefix = calc._PREFIX
+        filepath_chi = os.path.join(output_path, file_prefix + calc._OUTPUT_CHI_SUFFIX)
+        filepath_hubbard = os.path.join(output_path, file_prefix + calc._OUTPUT_HUBBARD_SUFFIX)
+
+        for filepath in [filepath_chi, filepath_hubbard]:
+            if not os.path.isfile(filepath):
+                complete_calculation = False
+                self.logger.info("output file '{}' was not found, assuming partial calculation".format(filepath))
+
+        if complete_calculation:
+            dict_hubbard = self.parse_hubbard(filepath_hubbard)
+            dict_chi = self.parse_chi(filepath_chi)
+
+            output_matrices = ArrayData()
+            output_matrices.set_array('chi0', dict_hubbard['chi0'])
+            output_matrices.set_array('chi1', dict_hubbard['chi1'])
+            output_matrices.set_array('chi0_inv', dict_hubbard['chi0_inv'])
+            output_matrices.set_array('chi1_inv', dict_hubbard['chi1_inv'])
+            output_matrices.set_array('hubbard', dict_hubbard['hubbard'])
+
+            output_chi = ArrayData()
+            output_chi.set_array('chi0', dict_chi['chi0'])
+            output_chi.set_array('chi1', dict_chi['chi1'])
+
+            output_hubbard = ParameterData(dict=dict_hubbard['hubbard_U'])
+
+            output_nodes.append((self.get_linkname_matrices(), output_matrices))
+            output_nodes.append((self.get_linkname_hubbard(), output_hubbard))
+            output_nodes.append((self.get_linkname_chi(), output_chi))
         
         return is_success, output_nodes
 
@@ -118,6 +136,7 @@ class UscfParser(Parser):
         """
         is_success = True
         is_finished_run = False
+        result = {}
 
         parser_version = '0.1'
         parser_info = {}
@@ -139,12 +158,43 @@ class UscfParser(Parser):
                 is_finished_run = True
                 break
 
+        # Parse the output line by line by creating an iterator of the lines
+        it = iter(output)
+        for line in it:
+
+            # Determine the atomic sites that will be perturbed, or that the calculation expects
+            # to have been calculated when post-processing the final matrices
+            match = re.search('.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
+            if match:
+                hubbard_sites = OrderedDict()
+                number_of_perturbed_atoms = int(match.group(1))
+                blank_line = next(it)
+                for i in range(number_of_perturbed_atoms):
+                    values = next(it).split()
+                    index = values[0]
+                    kind = values[1]
+                    hubbard_sites[index] = kind
+                result['hubbard_sites'] = hubbard_sites
+
+            # A calculation that will only perturb a single atom will only print one line
+            match = re.search('.*Atom which will be perturbed.*', line)
+            if match:
+                hubbard_sites = OrderedDict()
+                number_of_perturbed_atoms = 1
+                blank_line = next(it)
+                for i in range(number_of_perturbed_atoms):
+                    values = next(it).split()
+                    index = values[0]
+                    kind = values[1]
+                    hubbard_sites[index] = kind
+                result['hubbard_sites'] = hubbard_sites
+
         if not is_finished_run:
             warning = 'the Uscf calculation did not reach the end of execution'
             parser_info['parser_warnings'].append(warning)        
             is_success = False
 
-        return is_success, {'test_result': 5}
+        return is_success, result
 
     def parse_chi(self, filepath):
         """
@@ -200,7 +250,11 @@ class UscfParser(Parser):
         except IOError as exception:
             raise OutputParsingError("could not read the '{}' output file".format(os.path.basename(filepath)))
 
-        result = {'hubbard_U': {}}
+        result = {
+            'hubbard_U': {
+                'sites': []
+            }
+        }
         blocks = {
             'chi0':     [None, None],
             'chi1':     [None, None],
@@ -219,20 +273,23 @@ class UscfParser(Parser):
                     if subline:
                         subline_number += 1
                         subdata = subline.split()
-                        key = 'Hubbard_U({})'.format(subdata[0])
-                        result['hubbard_U'][key] = subdata[2]
+                        result['hubbard_U']['sites'].append({
+                            'index': subdata[0],
+                            'kind':  subdata[1],
+                            'value': subdata[2],
+                        })
                     else:
                         parsed = True
 
             if 'chi0 matrix' in line:
-                blocks['chi0'][0]     = line_number + 1
+                blocks['chi0'][0] = line_number + 1
 
             if 'chi1 matrix' in line:
-                blocks['chi0'][1]     = line_number
-                blocks['chi1'][0]     = line_number + 1
+                blocks['chi0'][1] = line_number
+                blocks['chi1'][0] = line_number + 1
 
             if 'chi0^{-1} matrix' in line:
-                blocks['chi1'][1]     = line_number
+                blocks['chi1'][1] = line_number
                 blocks['chi0_inv'][0] = line_number + 1
 
             if 'chi1^{-1} matrix' in line:
@@ -241,8 +298,8 @@ class UscfParser(Parser):
 
             if 'U matrix' in line:
                 blocks['chi1_inv'][1] = line_number
-                blocks['hubbard'][0]  = line_number + 1
-                blocks['hubbard'][1]  = len(data)
+                blocks['hubbard'][0] = line_number + 1
+                blocks['hubbard'][1] = len(data)
                 break
 
         if not all(sum(blocks.values(), [])):

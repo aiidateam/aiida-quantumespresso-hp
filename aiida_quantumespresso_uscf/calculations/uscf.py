@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import os
+from aiida.orm import CalculationFactory
 from aiida.common.utils import classproperty
 from aiida.common.exceptions import InputValidationError, ValidationError, UniquenessError, NotExistent
 from aiida.common.datastructures import CalcInfo, CodeInfo
+from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.calculation.job import JobCalculation
 from aiida_quantumespresso.calculations import get_input_data_text, _lowercase_dict, _uppercase_dict
-from aiida_quantumespresso.calculations.pw import PwCalculation
+
+PwCalculation = CalculationFactory('quantumespresso.pw')
 
 class UscfCalculation(JobCalculation):
     """
@@ -43,6 +46,10 @@ class UscfCalculation(JobCalculation):
         return './out/'
 
     @classproperty
+    def _FOLDER_PH0(cls):
+        return os.path.join(cls._OUTPUT_SUBFOLDER, '_ph0')
+
+    @classproperty
     def _use_methods(cls):
         """
         Additional use_* methods for the Uscf calculation class
@@ -62,10 +69,10 @@ class UscfCalculation(JobCalculation):
                 'docstring': ('Use a node that specifies the input parameters for the namelists'),
             },
             'parent_folder': {
-                'valid_types': RemoteData,
+                'valid_types': (RemoteData, FolderData),
                 'additional_parameter': None,
                 'linkname': 'parent_calc_folder',
-                'docstring': ('Use a remote folder as parent folder (for restarts and similar'),
+                'docstring': ('Use a local or remote folder as parent folder (for restarts and similar'),
             },
             'qpoints': {
                 'valid_types': KpointsData,
@@ -104,45 +111,17 @@ class UscfCalculation(JobCalculation):
             raise InputValidationError("qpoints is not of type KpointsData")
 
         try:
-            parent_calc_folder = inputdict.pop(self.get_linkname('parent_folder'))
+            parent_folder = inputdict.pop(self.get_linkname('parent_folder'))
         except KeyError:
             raise InputValidationError("No parent_folder specified for this calculation")
-        if not isinstance(parent_calc_folder, RemoteData):
-            raise InputValidationError("parent_folder is not of type RemoteData")
+        if not (isinstance(parent_folder, RemoteData) or isinstance(parent_folder, FolderData)):
+            raise InputValidationError("parent_folder is not of type FolderData or RemoteData")
 
         # Settings can be undefined, and defaults to an empty dictionary.
         settings = inputdict.pop(self.get_linkname('settings'), ParameterData(dict={}))
         if not isinstance(settings, ParameterData):
             raise InputValidationError("settings must be of type ParameterData")
         settings_dict = _uppercase_dict(settings.get_dict(), dict_name='settings')
-
-        # Validate the parent_folder input node
-        parents = parent_calc_folder.get_inputs(node_type=JobCalculation)
-        if len(parents) != 1:
-            raise UniquenessError("input 'parent_folder'<{}> has more than one parents"
-                .format(parent_calc_folder.pk))
-        parent_calc = parents[0]
-
-        if not isinstance(parent_calc, PwCalculation):
-            raise ValueError("parent calculation must be a PwCalculation")
-
-        # Parent calculation must be on the same computer
-        comp_current = self.get_computer()
-        comp_parent = parent_calc.get_computer()
-        if not comp_current.uuid == comp_parent.uuid:
-            raise InputValidationError("calculation has to be run on the same computer"
-                " as that of the parent calculation: {}".format(comp_parent.get_name()))
-
-        # Determine the path of the output folder of the parent calculation
-        try:
-            default_parent_output_folder = parent_calc._OUTPUT_SUBFOLDER
-        except AttributeError:
-            try:
-                default_parent_output_folder = parent_calc._get_output_folder()
-            except AttributeError:
-                raise InputValidationError("parent calculation does not have a default output subfolder")
-
-        parent_calc_out_subfolder = settings_dict.pop('PARENT_CALC_OUT_SUBFOLDER', default_parent_output_folder)      
 
         # Any remaining input nodes are not recognized
         if inputdict:
@@ -195,9 +174,48 @@ class UscfCalculation(JobCalculation):
                 .format(','.join(input_params.keys())))
 
 
+        # A UscfCalculation always has to have a parent folder to restart from, whether it be starting
+        # from the result of a PwCalculation, a restart of a previous UscfCalculation or a 
+        # post-processing matrix collection calculation from a set of parallelized UscfCalculations
+        # In any case, whether the parent folder is local or remote, we have to copy the contents over
+        # during the submission preparation
+        retrieve_list = []
+        local_copy_list = []
+        remote_copy_list = []
+
+        if isinstance(parent_folder, RemoteData):
+            computer_uuid = parent_folder.get_computer().uuid
+            folder_src = os.path.join(parent_folder.get_remote_path(), self._OUTPUT_SUBFOLDER)
+            folder_dst = self._OUTPUT_SUBFOLDER
+            remote_copy = (computer_uuid, folder_src, folder_dst)
+            remote_copy_list.append(remote_copy)
+
+        elif isinstance(parent_folder, FolderData):
+            folder_src = parent_folder.get_abs_path(self._OUTPUT_SUBFOLDER)
+            folder_dst = self._OUTPUT_SUBFOLDER
+            local_copy = (folder_src, folder_dst)
+            local_copy_list.append(local_copy)
+
+        # Build the list of files to retrieve by default
+        # TODO: currently retrieve entire .save folder, because needed for matrix collecting
+        # restart calculations, but if of course a lot of data to be transferred. The Uscf code
+        # should be reworked to only need the bare minimum required information for the post-processing step
+        output_path = os.path.join(self._OUTPUT_SUBFOLDER, self._PREFIX + '.save')
+        retrieve_list.append([output_path, output_path, 0])
+        retrieve_list.append(self._OUTPUT_FILE_NAME)
+        retrieve_list.append(self._PREFIX + self._OUTPUT_CHI_SUFFIX)
+        retrieve_list.append(self._PREFIX + self._OUTPUT_HUBBARD_SUFFIX)
+
+        occup_file = os.path.join(self._OUTPUT_SUBFOLDER, self._PREFIX + '.occup')
+        retrieve_list.append([occup_file, occup_file, 0])
+
+        # When parallelized over atoms, the code writes partial results in "out/_ph0/$PREFIX.chi.pert_$i.dat"
+        src_perturbation_files = os.path.join(self._FOLDER_PH0, '{}.chi.pert_*.dat'.format(self._PREFIX))
+        dst_perturbation_files = '.'
+        retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
+
         # Empty command line by default
         cmdline_params = settings_dict.pop('CMDLINE', [])
-        uuid_computer = parent_calc_folder.get_computer().uuid
 
         codeinfo = CodeInfo()
         codeinfo.cmdline_params = (list(cmdline_params) + ["-in", self._INPUT_FILE_NAME])
@@ -207,19 +225,9 @@ class UscfCalculation(JobCalculation):
         calcinfo = CalcInfo()
         calcinfo.uuid = self.uuid
         calcinfo.codes_info = [codeinfo]
-        calcinfo.retrieve_list = []
-        calcinfo.local_copy_list = []
-        calcinfo.remote_copy_list = []
-
-        # Retrieve by default the output file
-        calcinfo.retrieve_list.append(self._OUTPUT_FILE_NAME)
-        calcinfo.retrieve_list.append(self._PREFIX + self._OUTPUT_CHI_SUFFIX)
-        calcinfo.retrieve_list.append(self._PREFIX + self._OUTPUT_HUBBARD_SUFFIX)
-
-        # Output folder of parent calculation
-        path_src = os.path.join(parent_calc_folder.get_remote_path(), parent_calc_out_subfolder)
-        path_dst = self._OUTPUT_SUBFOLDER
-        calcinfo.remote_copy_list.append((uuid_computer, path_src, path_dst))
+        calcinfo.retrieve_list = retrieve_list
+        calcinfo.local_copy_list = local_copy_list
+        calcinfo.remote_copy_list = remote_copy_list
 
         if settings_dict:
             raise InputValidationError('the following specified keys in the settings node are invalid {}'
