@@ -4,7 +4,6 @@ from aiida.orm.data.base import Int
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.common.datastructures import calc_states
 from aiida.work.workchain import WorkChain, ToContext, while_, append_
@@ -29,7 +28,7 @@ class UscfBaseWorkChain(WorkChain):
         spec.input('parameters', valid_type=ParameterData)
         spec.input('settings', valid_type=ParameterData)
         spec.input('options', valid_type=ParameterData)
-        spec.input('max_iterations', valid_type=Int, default=Int(10))
+        spec.input('max_iterations', valid_type=Int, default=Int(4))
         spec.outline(
             cls.validate_inputs,
             cls.setup,
@@ -91,8 +90,7 @@ class UscfBaseWorkChain(WorkChain):
 
     def run_uscf(self):
         """
-        Run a UscfCalculation either starting from a previous PwCalculation or restarting from a
-        previous UscfCalculation run in this workchain
+        Run the next UscfCalculation
         """
         self.ctx.iteration += 1
 
@@ -125,7 +123,7 @@ class UscfBaseWorkChain(WorkChain):
 
         # Abort: exceeded maximum number of retries
         elif self.ctx.iteration >= self.ctx.max_iterations:
-            self.report('reached the max number of iterations {}'.format(self.ctx.max_iterations))
+            self.report('reached the maximum number of iterations {}'.format(self.ctx.max_iterations))
             self.abort_nowait('last ran UscfCalculation<{}>'.format(calculation.pk))
 
         # Abort: unexpected state of last calculation
@@ -173,33 +171,29 @@ class UscfBaseWorkChain(WorkChain):
     def _handle_calculation_failure(self, calculation):
         """
         The calculation has failed so we try to analyze the reason and change the inputs accordingly
-        for the next calculation. If the calculation failed, but did so cleanly, we set its remote folder
-        as the new parent_folder, in all other cases we do not replace the parent_folder
         """
-        if any(['namelist' in w for w in calculation.res.warnings]):
+        if 'not_converged' in calculation.res.parser_warnings:
             self.ctx.has_calculation_failed = False
-            warnings = '||'.join([w.strip() for w in calculation.res.warnings])
-            self.report('UscfCalculation<{}> failed due to incorrect input file'.format(calculation.pk))
-            self.report('list of warnings: {}'.format(warnings))
-            self.abort_nowait('workchain failed after {} iterations'.format(self.ctx.iteration))
-
-        elif 'Maximum CPU time exceeded' in calculation.res.warnings:
-            self.ctx.has_calculation_failed = False
-            self.ctx.parent_folder = calculation.out.remote_folder
-            self.report('UscfCalculation<{}> terminated because maximum walltime was exceeded, '
-                'restarting'.format(calculation.pk))
+            params = self.ctx.raw_inputs['parameters'].get_dict()
+            params['INPUTUSCF']['niter_ph'] = 100
+            self.ctx.raw_inputs['parameters'] = ParameterData(dict=params)
+            self.report('UscfCalculation<{}> did not converge, restarting'.format(calculation.pk))
 
         else:
+            self._handle_unexpected_calculation_failure(calculation)
 
-            # If has_calculation_failed is set, second unexpected failure in a row, so we abort
-            if self.ctx.has_calculation_failed:
-                warnings = '||'.join([w.strip() for w in calculation.res.warnings])
-                parser_warnings = '||'.join([w.strip() for w in calculation.res.parser_warnings])
-                self.report('UscfCalculation<{}> failed unexpectedly'.format(calculation.pk))
-                self.report('list of warnings: {}'.format(warnings))
-                self.report('list of parser warnings: {}'.format(parser_warnings))
-                self.abort_nowait('second unexpected failure in a row'.format(calculation.pk))
-            else:
-                self.ctx.has_calculation_failed = True
-                self.report('UscfCalculation<{}> failed unexpectedly, '
-                    'restarting only once more'.format(calculation.pk))
+    def _handle_unexpected_calculation_failure(self, calculation):
+        """
+        The calculation has failed unexpectedly. If it was the first time, simply try to restart.
+        If it was the second unexpected failure, report the warnings and parser warnings and abort
+        """
+        if self.ctx.has_calculation_failed:
+            warnings = '\n'.join([w.strip() for w in calculation.res.warnings])
+            parser_warnings = '\n'.join([w.strip() for w in calculation.res.parser_warnings])
+            self.report('UscfCalculation<{}> failed unexpectedly'.format(calculation.pk))
+            self.report('list of warnings: {}'.format(warnings))
+            self.report('list of parser warnings: {}'.format(parser_warnings))
+            self.abort_nowait('second unexpected failure in a row'.format(calculation.pk))
+        else:
+            self.ctx.has_calculation_failed = True
+            self.report('UscfCalculation<{}> failed unexpectedly, restarting once more'.format(calculation.pk))

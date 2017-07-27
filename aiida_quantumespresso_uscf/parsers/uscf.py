@@ -52,7 +52,8 @@ class UscfParser(Parser):
         """
         return {
             'parser_info': '{} v{}'.format(self._parser_name, self._parser_version),
-            'parser_warnings': []
+            'parser_warnings': [],
+            'warnings': []
         }
         
     def parse_with_retrieved(self, retrieved):
@@ -82,7 +83,7 @@ class UscfParser(Parser):
             self.logger.error("expected output file '{}' was not found".format(filepath))
             return False, ()
 
-        result_stdout, dict_stdout = self.parse_stdout(filepath_stdout)
+        is_success, dict_stdout = self.parse_stdout(filepath_stdout)
         output_nodes.append((self.get_linkname_outparams(), ParameterData(dict=dict_stdout)))
 
         # The final chi and hubbard files are only written by a serial or post-processing calculation

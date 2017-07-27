@@ -78,6 +78,7 @@ def execute(args):
 
     parameters = {
         'INPUTUSCF': {
+            'niter_ph': 2,
         }
     }
     settings = {}
