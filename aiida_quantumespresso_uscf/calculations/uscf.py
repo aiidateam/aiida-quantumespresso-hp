@@ -16,7 +16,7 @@ PwCalculation = CalculationFactory('quantumespresso.pw')
 
 class UscfCalculation(JobCalculation):
     """
-    Uscf (HUBBARD) calculation for Quantum ESPRESSO
+    Quantum ESPRESSO Uscf calculations
     """
     def _init_internal_params(self):
         super(UscfCalculation, self)._init_internal_params()
@@ -60,7 +60,7 @@ class UscfCalculation(JobCalculation):
                 'valid_types': ParameterData,
                 'additional_parameter': None,
                 'linkname': 'settings',
-                'docstring': 'Use an additional node for special settings',
+                'docstring': ('Use an additional node for special settings'),
             },
             'parameters': {
                 'valid_types': ParameterData,
@@ -71,7 +71,7 @@ class UscfCalculation(JobCalculation):
             'parent_folder': {
                 'valid_types': (RemoteData, FolderData),
                 'additional_parameter': None,
-                'linkname': 'parent_calc_folder',
+                'linkname': 'parent_folder',
                 'docstring': ('Use a local or remote folder as parent folder (for restarts and similar'),
             },
             'qpoints': {
@@ -234,35 +234,3 @@ class UscfCalculation(JobCalculation):
                 ','.join(settings_dict.keys()))
 
         return calcinfo
-    
-    def use_parent_calculation(self, calculation):
-        """
-        Set the parent calculation from which it will inherit the output subfolder.
-        A link will be created from this calculation to the parent RemoteData
-        """
-        if not isinstance(calculation, PwCalculation):
-            raise ValueError("parent calculation must be a PwCalculation")
-        
-        remotedata = calculation.get_outputs(type=RemoteData)
-
-        if not remotedata:
-            raise NotExistent("no output RemoteData found for parent calculation")
-
-        if len(remotedata) != 1:
-            raise UniquenessError("more than one output RemoteData found for parent calculation")
-
-        self._set_parent_remotedata(remotedata[0])
-
-    def _set_parent_remotedata(self, remotedata):
-        """
-        Sets the remote folder pointing to the parent PwCalculation
-        """
-        if not isinstance(remotedata, RemoteData):
-            raise ValueError('remotedata must be of type RemoteData')
-        
-        # Input RemoteData has to be unique
-        input_remote = self.get_inputs(node_type=RemoteData)
-        if input_remote:
-            raise ValidationError('a RemoteData link was already set for this calculation')
-
-        self.use_parent_folder(remotedata)

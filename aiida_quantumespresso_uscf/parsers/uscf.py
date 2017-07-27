@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
 
-import os
-import re
-import glob
-import numpy as np
-from collections import namedtuple, OrderedDict
+import glob, os, re, numpy
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
-from aiida.parsers.exceptions import OutputParsingError
-from aiida.orm import CalculationFactory
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.parameter import ParameterData
 from aiida.parsers.parser import Parser
+from aiida.parsers.exceptions import OutputParsingError
 from aiida_quantumespresso.parsers import QEOutputParsingError
 from aiida_quantumespresso_uscf.calculations.uscf import UscfCalculation
 
 class UscfParser(Parser):
     """
-    Parser implementation for Uscf (HUBBARD) calculations for Quantum ESPRESSO
+    Parser implementation for Quantum ESPRESSO Uscf calculations 
     """
 
     def __init__(self, calculation):
         """
-        Initialize the instance of PhParser
+        Initialize the instance of UscfParser
         """
         if not isinstance(calculation, UscfCalculation):
             raise QEOutputParsingError("input calculation must be a UscfCalculation")
@@ -166,7 +161,7 @@ class UscfParser(Parser):
             # to have been calculated when post-processing the final matrices
             match = re.search('.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
             if match:
-                hubbard_sites = OrderedDict()
+                hubbard_sites = {}
                 number_of_perturbed_atoms = int(match.group(1))
                 blank_line = next(it)
                 for i in range(number_of_perturbed_atoms):
@@ -179,7 +174,7 @@ class UscfParser(Parser):
             # A calculation that will only perturb a single atom will only print one line
             match = re.search('.*Atom which will be perturbed.*', line)
             if match:
-                hubbard_sites = OrderedDict()
+                hubbard_sites = {}
                 number_of_perturbed_atoms = 1
                 blank_line = next(it)
                 for i in range(number_of_perturbed_atoms):
@@ -232,7 +227,7 @@ class UscfParser(Parser):
         for matrix_name in ('chi0', 'chi1'):
             matrix_block = blocks[matrix_name]
             matrix_data = data[matrix_block[0]:matrix_block[1]]
-            matrix = np.matrix(self.parse_hubbard_matrix(matrix_data))
+            matrix = numpy.matrix(self.parse_hubbard_matrix(matrix_data))
             result[matrix_name] = matrix
 
         return result
@@ -343,4 +338,4 @@ class UscfParser(Parser):
                     matrix.append(row)
                 row = []
 
-        return np.matrix(matrix)
+        return numpy.matrix(matrix)
