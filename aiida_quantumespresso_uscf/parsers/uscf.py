@@ -14,6 +14,8 @@ class UscfParser(Parser):
     """
     Parser implementation for Quantum ESPRESSO Uscf calculations 
     """
+    _parser_version = '0.1'
+    _parser_name = 'AiiDA Quantum ESPRESSO USCF parser'
 
     def __init__(self, calculation):
         """
@@ -22,12 +24,7 @@ class UscfParser(Parser):
         if not isinstance(calculation, UscfCalculation):
             raise QEOutputParsingError("input calculation must be a UscfCalculation")
 
-        self._calc = calculation
-        self._OUTPUT_MATRIX_CHI0 = 'output_matrix_chi0'
-        self._OUTPUT_MATRIX_CHI1 = 'output_matrix_chi1'
-        self._OUTPUT_MATRIX_CHI0_INV = 'output_matrix_chi0_inv'
-        self._OUTPUT_MATRIX_CHI1_INV = 'output_matrix_chi1_inv'
-        self._OUTPUT_MATRIX_HUBBARD = 'output_matrix_hubbard'
+        self.calculation = calculation
 
         super(UscfParser, self).__init__(calculation)
 
@@ -48,6 +45,15 @@ class UscfParser(Parser):
         Returns the name of the link to the output chi ArrayData
         """
         return 'output_chi'
+
+    def parse_result_template(self):
+        """
+        Returns a dictionary 
+        """
+        return {
+            'parser_info': '{} v{}'.format(self._parser_name, self._parser_version),
+            'parser_warnings': []
+        }
         
     def parse_with_retrieved(self, retrieved):
         """
@@ -55,42 +61,37 @@ class UscfParser(Parser):
 
         :param retrieved: dictionary of retrieved nodes
         """
-        calc = self._calc
         is_success = True
         output_nodes = []
 
         # Only allow parsing if calculation is in PARSING state
-        state = calc.get_state()
+        state = self.calculation.get_state()
         if state != calc_states.PARSING:
             raise InvalidOperation("calculation not in '{}' state".format(calc_states.PARSING))
 
         try:
-            output_folder = retrieved[calc._get_linkname_retrieved()]
+            output_folder = retrieved[self.calculation._get_linkname_retrieved()]
         except KeyError:
             self.logger.error("no retrieved folder found")
             return False, ()
 
         # Verify the standard output file is present, parse it and attach as output parameters
-        filepath_stdout = output_folder.get_abs_path(calc._OUTPUT_FILE_NAME)
-
-        for filepath in [filepath_stdout]:
-            if not filepath in [output_folder.get_abs_path(f) for f in output_folder.get_folder_list()]:
-                self.logger.error("expected output file '{}' was not found".format(filepath))
-                return False, ()
+        try:
+            filepath_stdout = output_folder.get_abs_path(self.calculation._OUTPUT_FILE_NAME)
+        except OSError as exception:
+            self.logger.error("expected output file '{}' was not found".format(filepath))
+            return False, ()
 
         result_stdout, dict_stdout = self.parse_stdout(filepath_stdout)
-        output_params = ParameterData(dict=dict_stdout)
-        output_nodes.append((self.get_linkname_outparams(), output_params))
+        output_nodes.append((self.get_linkname_outparams(), ParameterData(dict=dict_stdout)))
 
-        # When a Uscf calculation is parallelized over atoms or q-points, the final Hubbard and chi matrices are
-        # not calculated and therefore the chi and hubbard output files will not be present, so we don't parse them
+        # The final chi and hubbard files are only written by a serial or post-processing calculation
         complete_calculation = True
 
         # We cannot use get_abs_path of the output_folder, since that will check for file existence and will throw
         output_path = output_folder.get_abs_path('.')
-        file_prefix = calc._PREFIX
-        filepath_chi = os.path.join(output_path, file_prefix + calc._OUTPUT_CHI_SUFFIX)
-        filepath_hubbard = os.path.join(output_path, file_prefix + calc._OUTPUT_HUBBARD_SUFFIX)
+        filepath_chi = os.path.join(output_path, self.calculation._PREFIX + self.calculation._OUTPUT_CHI_SUFFIX)
+        filepath_hubbard = os.path.join(output_path, self.calculation._PREFIX + self.calculation._OUTPUT_HUBBARD_SUFFIX)
 
         for filepath in [filepath_chi, filepath_hubbard]:
             if not os.path.isfile(filepath):
@@ -129,14 +130,9 @@ class UscfParser(Parser):
         :returns: boolean representing success status of parsing, True equals parsing was successful
         :returns: dictionary with the parsed parameters
         """
-        is_success = True
-        is_finished_run = False
-        result = {}
-
-        parser_version = '0.1'
-        parser_info = {}
-        parser_info['parser_warnings'] = []
-        parser_info['parser_info'] = 'AiiDA QE-USCF parser v{}'.format(parser_version)
+        is_successful = True
+        is_terminated = True
+        result = self.parse_result_template()
 
         try:
             with open(filepath, 'r') as handle:
@@ -144,18 +140,25 @@ class UscfParser(Parser):
         except IOError:
             raise QEOutputParsingError("failed to read file: {}.".format(filepath))
 
+        # Empty output can be considered as a problem
         if not output:
-            is_success = False
-
-        # Check if the job reached the end (does not guarantee successful execution)
-        for line in output[::-1]:
-            if 'JOB DONE' in line:
-                is_finished_run = True
-                break
+            result['parser_warnings'].append('no_output')
+            is_successful = False
+            return is_successful, result
 
         # Parse the output line by line by creating an iterator of the lines
         it = iter(output)
         for line in it:
+
+            # If the output does not contain the line with 'JOB DONE' the program was prematurely terminated
+            if 'JOB DONE' in line:
+                is_terminated = False
+
+            # If the run did not convergence we expect to find the following string
+            match = re.search('.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
+            if match:
+                result['parser_warnings'].append('not_converged')
+                is_successful = False
 
             # Determine the atomic sites that will be perturbed, or that the calculation expects
             # to have been calculated when post-processing the final matrices
@@ -184,12 +187,11 @@ class UscfParser(Parser):
                     hubbard_sites[index] = kind
                 result['hubbard_sites'] = hubbard_sites
 
-        if not is_finished_run:
-            warning = 'the Uscf calculation did not reach the end of execution'
-            parser_info['parser_warnings'].append(warning)        
-            is_success = False
+        if is_terminated:
+            result['parser_warnings'].append('terminated')
+            is_successful = False
 
-        return is_success, result
+        return is_successful, result
 
     def parse_chi(self, filepath):
         """
