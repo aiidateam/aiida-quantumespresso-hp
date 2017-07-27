@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Bool, Int, Str
-from aiida.orm.data.upf import UpfData, get_pseudos_from_structure
+from aiida.orm.data.base import Int
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.common.datastructures import calc_states
-from aiida.work.run import submit
 from aiida.work.workchain import WorkChain, ToContext, while_, append_
+from aiida.work.run import submit
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 UscfCalculation = CalculationFactory('quantumespresso.uscf')
@@ -23,7 +22,7 @@ class UscfBaseWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(UscfBaseWorkChain, cls).define(spec)
-        spec.input('codename', valid_type=Str)
+        spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation, required=False)
         spec.input('parent_folder', valid_type=(FolderData, RemoteData), required=False)
         spec.input('qpoints', valid_type=KpointsData)
@@ -72,7 +71,7 @@ class UscfBaseWorkChain(WorkChain):
 
         # Define convenience dictionary of inputs for UscfCalculation
         self.ctx.raw_inputs = {
-            'code': Code.get_from_string(self.inputs.codename.value),
+            'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters,
             'parent_folder': self.ctx.parent_folder,

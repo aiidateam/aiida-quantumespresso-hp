@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from aiida.work.run import submit
-from aiida.orm import CalculationFactory
+from aiida.orm import Code, CalculationFactory
 from aiida.orm.data.base import Bool, Int, Str
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
@@ -22,7 +22,7 @@ class UscfWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(UscfWorkChain, cls).define(spec)
-        spec.input('codename', valid_type=Str)
+        spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation)
         spec.input('qpoints', valid_type=KpointsData)
         spec.input('parameters', valid_type=ParameterData)
@@ -41,7 +41,7 @@ class UscfWorkChain(WorkChain):
         If parallelize_atoms is true, run the UscfParallelizeAtomsWorkChain, otherwise run UscfBaseWorkChain
         """
         inputs = {
-            'codename': self.inputs.codename,
+            'code': self.inputs.code,
             'parent_calculation': self.inputs.parent_calculation,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters,

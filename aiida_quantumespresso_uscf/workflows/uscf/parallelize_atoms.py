@@ -8,9 +8,8 @@ from aiida.orm.data.folder import FolderData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
-from aiida.common.datastructures import calc_states
 from aiida.work.run import submit
-from aiida.work.workchain import WorkChain, ToContext, while_, append_
+from aiida.work.workchain import WorkChain, ToContext, append_
 from aiida.work.workfunction import workfunction
 from aiida_quantumespresso_uscf.workflows.uscf.base import UscfBaseWorkChain
 
@@ -26,7 +25,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(UscfParallelizeAtomsWorkChain, cls).define(spec)
-        spec.input('codename', valid_type=Str)
+        spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation)
         spec.input('qpoints', valid_type=KpointsData)
         spec.input('parameters', valid_type=ParameterData)
@@ -51,7 +50,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         self.ctx.hubbard_atoms = parameters.get_dict()['SYSTEM']['hubbard_u']
 
         self.ctx.raw_inputs = {
-            'codename': self.inputs.codename,
+            'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters.get_dict(),
             'parent_folder': self.inputs.parent_calculation.out.remote_folder,
@@ -67,7 +66,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         be used to determine exactly how many UscfBaseWorkChains have to be launched
         """
         inputs = {
-            'code': Code.get_from_string(self.inputs.codename.value),
+            'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters.get_dict(),
             'parent_folder': self.inputs.parent_calculation.out.remote_folder,
