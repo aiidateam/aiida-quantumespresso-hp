@@ -12,7 +12,7 @@
         "Development Status :: 4 - Beta"
     ],
     "install_requires": [
-        "aiida[atomic_tools]",
+        "aiida",
         "aiida-quantumespresso"
     ],
     "entry_points": {
@@ -21,6 +21,11 @@
         ],
         "aiida.parsers": [
             "quantumespresso.uscf = aiida_quantumespresso_uscf.parsers.uscf:UscfParser"
+        ],
+        "aiida.workflows": [
+            "quantumespresso.uscf.main = aiida_quantumespresso_uscf.workflows.uscf.main:UscfWorkChain",
+            "quantumespresso.uscf.main = aiida_quantumespresso_uscf.workflows.uscf.parallelize_atoms:UscfParallelizeAtomsWorkChain",
+            "quantumespresso.uscf.base = aiida_quantumespresso_uscf.workflows.uscf.base:UscfBaseWorkChain"
         ]
     }
 }
