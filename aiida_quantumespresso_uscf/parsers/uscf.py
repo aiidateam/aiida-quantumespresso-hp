@@ -28,23 +28,29 @@ class UscfParser(Parser):
 
         super(UscfParser, self).__init__(calculation)
 
+    def get_linkname_outparams(self):
+        """
+        Returns the name of the link to the standard output ParameterData
+        """
+        return 'parameters'
+
     def get_linkname_hubbard(self):
         """
         Returns the name of the link to the Hubbard output ParameterData
         """
-        return 'output_hubbard'
+        return 'hubbard'
 
     def get_linkname_matrices(self):
         """
         Returns the name of the link to the output matrices ArrayData
         """
-        return 'output_matrices'
+        return 'matrices'
 
     def get_linkname_chi(self):
         """
         Returns the name of the link to the output chi ArrayData
         """
-        return 'output_chi'
+        return 'chi'
 
     def parse_result_template(self):
         """

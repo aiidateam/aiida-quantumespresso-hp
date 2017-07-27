@@ -149,8 +149,8 @@ class UscfBaseWorkChain(WorkChain):
         """
         calculation = self.ctx.calculations[-1]
 
-        # Only non-parallelized or matrix collecting calculations will have all output_links
-        for link in ['retrieved', 'output_parameters', 'output_chi', 'output_hubbard', 'output_matrices']:
+        # Only non-parallelized or matrix collecting calculations will have all output links
+        for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
             if link in calculation.out:
                 self.out(link, calculation.out[link])
 
