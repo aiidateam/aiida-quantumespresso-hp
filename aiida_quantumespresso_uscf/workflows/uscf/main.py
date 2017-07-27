@@ -6,6 +6,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.work.workchain import WorkChain, ToContext
 from aiida_quantumespresso_uscf.workflows.uscf.base import UscfBaseWorkChain
+from aiida_quantumespresso_uscf.workflows.uscf.parallelize_atoms import UscfParallelizeAtomsWorkChain
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 
