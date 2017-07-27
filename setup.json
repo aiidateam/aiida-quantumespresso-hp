@@ -24,7 +24,7 @@
         ],
         "aiida.workflows": [
             "quantumespresso.uscf.main = aiida_quantumespresso_uscf.workflows.uscf.main:UscfWorkChain",
-            "quantumespresso.uscf.main = aiida_quantumespresso_uscf.workflows.uscf.parallelize_atoms:UscfParallelizeAtomsWorkChain",
+            "quantumespresso.uscf.parallelize_atoms = aiida_quantumespresso_uscf.workflows.uscf.parallelize_atoms:UscfParallelizeAtomsWorkChain",
             "quantumespresso.uscf.base = aiida_quantumespresso_uscf.workflows.uscf.base:UscfBaseWorkChain"
         ]
     }
