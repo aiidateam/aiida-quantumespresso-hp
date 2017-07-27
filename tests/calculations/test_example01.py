@@ -12,9 +12,9 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from seekpath.aiidawrappers import get_path
-from aiida_quantumespresso.calculations.pw import PwCalculation
-from aiida_quantumespresso_uscf.calculations.uscf import UscfCalculation
 
+PwCalculation = CalculationFactory('quantumespresso.pw')
+UscfCalculation = CalculationFactory('quantumespresso.uscf')
 
 def parser_setup():
     """
@@ -183,8 +183,8 @@ def run_uscf(code_uscf, parent_calculation, options):
         'code': code_uscf,
         'qpoints': qpoints,
         'parameters': ParameterData(dict=parameters),
+        'parent_calculation': parent_calculation,
         '_options': options,
-        'parent_folder': parent_calculation.out.remote_folder,
     }
 
     process = UscfCalculation.process()
