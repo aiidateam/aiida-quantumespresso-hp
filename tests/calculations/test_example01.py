@@ -115,14 +115,14 @@ def execute(args):
         parent = load_node(pk)
         print "Successfully completed the parent calculation {}<{}>".format(type(parent), parent.pk)
 
-    result, pk = run_uscf(code_uscf, parent, options)
+    result, pk = run_uscf(code_uscf, parent.out.remote_folder, options)
     
     try:
-        output_hubbard = result['output_hubbard']
+        output_hubbard = result['hubbard']
         print "UscfCalculation finished with the following Hubbard U parameters:"
         print output_hubbard.get_dict()
     except KeyError as exception:
-        print "UscfCalculation did not return an 'output_hubbard' node, it probably failed"
+        print "UscfCalculation did not return a 'hubbard' output node, it probably failed"
 
 
 def run_pw(code_pw, structure, pseudo, options):
@@ -167,7 +167,7 @@ def run_pw(code_pw, structure, pseudo, options):
     return result, pk
 
 
-def run_uscf(code_uscf, parent_calculation, options):
+def run_uscf(code_uscf, parent_folder, options):
     """
     Run the self-consistent Hubbard calculation with QE's Uscf.x
     """
@@ -183,7 +183,7 @@ def run_uscf(code_uscf, parent_calculation, options):
         'code': code_uscf,
         'qpoints': qpoints,
         'parameters': ParameterData(dict=parameters),
-        'parent_calculation': parent_calculation,
+        'parent_folder': parent_folder,
         '_options': options,
     }
 

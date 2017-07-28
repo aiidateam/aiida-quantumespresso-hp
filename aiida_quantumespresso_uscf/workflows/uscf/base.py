@@ -69,7 +69,7 @@ class UscfBaseWorkChain(WorkChain):
         self.ctx.iteration = 0
 
         # Define convenience dictionary of inputs for UscfCalculation
-        self.ctx.raw_inputs = {
+        self.ctx.inputs = {
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters,
@@ -95,7 +95,7 @@ class UscfBaseWorkChain(WorkChain):
         self.ctx.iteration += 1
 
         process = UscfCalculation.process()
-        running = submit(process, **self.ctx.raw_inputs)
+        running = submit(process, **self.ctx.inputs)
 
         self.report('launching UscfCalculation<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
 
@@ -174,9 +174,9 @@ class UscfBaseWorkChain(WorkChain):
         """
         if 'not_converged' in calculation.res.parser_warnings:
             self.ctx.has_calculation_failed = False
-            params = self.ctx.raw_inputs['parameters'].get_dict()
+            params = self.ctx.inputs['parameters'].get_dict()
             params['INPUTUSCF']['niter_ph'] = 100
-            self.ctx.raw_inputs['parameters'] = ParameterData(dict=params)
+            self.ctx.inputs['parameters'] = ParameterData(dict=params)
             self.report('UscfCalculation<{}> did not converge, restarting'.format(calculation.pk))
 
         else:
