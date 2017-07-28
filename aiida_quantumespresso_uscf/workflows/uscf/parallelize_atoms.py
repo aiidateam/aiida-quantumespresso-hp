@@ -88,7 +88,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         """
         Run a separate UscfBaseWorkChain for each of the defined Hubbard atoms
         """
-        output_params = self.ctx.initialization.out.output_parameters.get_dict()
+        output_params = self.ctx.initialization.out.parameters.get_dict()
         hubbard_sites = output_params['hubbard_sites']
 
         for site_index, site_kind in hubbard_sites.iteritems():
@@ -113,7 +113,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
         for workchain in self.ctx.workchains:
             retrieved = workchain.out.retrieved
-            output_params = workchain.out.output_parameters
+            output_params = workchain.out.parameters
             atomic_site_index = output_params.get_dict()['hubbard_sites'].keys()[0]
             retrieved_folders[atomic_site_index] = retrieved
 
@@ -141,7 +141,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
         # We expect the last workchain, which was a matrix collecting calculation, to
         # have all the output links. If not something must have gone wrong
-        for link in ['retrieved', 'output_chi', 'output_hubbard', 'output_matrices']:
+        for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
             if not link in workchains.out:
                 self.abort_nowait("final collecting workchain is missing expected output link '{}'".format(link))
             else:

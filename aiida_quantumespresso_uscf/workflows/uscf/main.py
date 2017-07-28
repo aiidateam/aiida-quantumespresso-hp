@@ -66,7 +66,7 @@ class UscfWorkChain(WorkChain):
         """
         Documentation string
         """
-        output_hubbard = self.ctx.workchain.out.output_hubbard
+        output_hubbard = self.ctx.workchain.out.hubbard
         self.out('output_hubbard', output_hubbard)
 
         self.report('workchain completed, output in {}<{}>'.format(type(output_hubbard), output_hubbard.pk))
