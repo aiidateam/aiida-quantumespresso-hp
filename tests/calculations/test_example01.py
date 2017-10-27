@@ -74,8 +74,7 @@ def execute(args):
 
     options = {
         'resources': {
-            'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
+            'num_machines': 1
         },
         'max_wallclock_seconds': args.max_wallclock_seconds,
     }
