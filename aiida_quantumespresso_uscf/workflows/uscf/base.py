@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 from aiida.orm import Code, CalculationFactory
 from aiida.orm.data.base import Bool, Int
 from aiida.orm.data.array import ArrayData
@@ -6,6 +7,7 @@ from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
+from aiida.common.extendeddicts import AttributeDict
 from aiida.common.datastructures import calc_states
 from aiida.work.workchain import WorkChain, ToContext, while_, append_
 from aiida.work.run import submit
@@ -71,17 +73,17 @@ class UscfBaseWorkChain(WorkChain):
         self.ctx.iteration = 0
 
         # Define convenience dictionary of inputs for UscfCalculation
-        self.ctx.inputs = {
+        self.ctx.inputs = AttributeDict({
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
-            'parameters': self.inputs.parameters,
             'parent_folder': self.ctx.parent_folder,
-            'settings': self.inputs.settings,
+            'parameters': self.inputs.parameters.get_dict(),
+            'settings': self.inputs.settings.get_dict(),
             '_options': self.inputs.options.get_dict(),
-        }
+        })
 
         if self.inputs.only_initialization.value:
-            self.ctx.inputs['parameters']['INPUTHP']['determine_num_pert_only'] = True
+            self.ctx.inputs.parameters['INPUTHP']['determine_num_pert_only'] = True
 
         return
 
@@ -99,8 +101,11 @@ class UscfBaseWorkChain(WorkChain):
         """
         self.ctx.iteration += 1
 
+        inputs = copy.deepcopy(self.ctx.inputs)
+        inputs = self._prepare_process_inputs(inputs)
+
         process = UscfCalculation.process()
-        running = submit(process, **self.ctx.inputs)
+        running = submit(process, **inputs)
 
         self.report('launching UscfCalculation<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
 
@@ -161,6 +166,23 @@ class UscfBaseWorkChain(WorkChain):
 
         self.report('workchain completed after {} iterations'.format(self.ctx.iteration))
 
+    def _prepare_process_inputs(self, inputs):
+        """
+        Prepare the inputs dictionary for a UscfCalculation process. Any remaining bare dictionaries in the inputs
+        dictionary will be wrapped in a ParameterData data node except for the '_options' key which should remain
+        a standard dictionary
+        """
+        prepared_inputs = AttributeDict()
+
+        # Wrap all the bare dictionaries in a ParameterData
+        for key, value in inputs.iteritems():
+            if key != '_options' and isinstance(value, dict):
+                prepared_inputs[key] = ParameterData(dict=value)
+            else:
+                prepared_inputs[key] = value
+
+        return prepared_inputs
+
     def _handle_submission_failure(self, calculation):
         """
         The submission of the calculation has failed, if it was the second consecutive failure we
@@ -179,9 +201,7 @@ class UscfBaseWorkChain(WorkChain):
         """
         if 'not_converged' in calculation.res.parser_warnings:
             self.ctx.has_calculation_failed = False
-            params = self.ctx.inputs['parameters'].get_dict()
-            params['INPUTHP']['niter_ph'] = 100
-            self.ctx.inputs['parameters'] = ParameterData(dict=params)
+            self.ctx.inputs.parameters['INPUTHP']['niter_ph'] = 100
             self.report('UscfCalculation<{}> did not converge, restarting'.format(calculation.pk))
 
         else:
