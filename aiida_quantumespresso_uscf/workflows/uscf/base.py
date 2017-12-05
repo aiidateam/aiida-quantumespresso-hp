@@ -175,7 +175,7 @@ class UscfBaseWorkChain(WorkChain):
         if 'not_converged' in calculation.res.parser_warnings:
             self.ctx.has_calculation_failed = False
             params = self.ctx.inputs['parameters'].get_dict()
-            params['INPUTUSCF']['niter_ph'] = 100
+            params['INPUTHP']['niter_ph'] = 100
             self.ctx.inputs['parameters'] = ParameterData(dict=params)
             self.report('UscfCalculation<{}> did not converge, restarting'.format(calculation.pk))
 

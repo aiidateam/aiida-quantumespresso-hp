@@ -175,7 +175,7 @@ def run_uscf(code_uscf, parent_folder, options):
     qpoints.set_kpoints_mesh([1, 1, 1])
 
     parameters = {
-        'INPUTUSCF': {
+        'INPUTHP': {
         }
     }
 

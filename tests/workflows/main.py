@@ -81,7 +81,7 @@ def execute(args):
         return
 
     parameters = {
-        'INPUTUSCF': {
+        'INPUTHP': {
         }
     }
     settings = {}

@@ -29,18 +29,18 @@ class UscfCalculation(JobCalculation):
         self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_U.dat'
 
         self._default_parser = 'quantumespresso.uscf'
-        self._compulsory_namelists = ['INPUTUSCF']
+        self._compulsory_namelists = ['INPUTHP']
         self._optional_inputs = ['settings']
         self._required_inputs = ['code', 'parameters', 'parent_folder', 'qpoints']
 
         # Keywords that cannot be set manually, only by the plugin
         self._blocked_keywords = [
-            ('INPUTUSCF', 'iverbosity'),
-            ('INPUTUSCF', 'prefix'),
-            ('INPUTUSCF', 'outdir'),
-            ('INPUTUSCF', 'nq1'),
-            ('INPUTUSCF', 'nq2'),
-            ('INPUTUSCF', 'nq3'),
+            ('INPUTHP', 'iverbosity'),
+            ('INPUTHP', 'prefix'),
+            ('INPUTHP', 'outdir'),
+            ('INPUTHP', 'nq1'),
+            ('INPUTHP', 'nq2'),
+            ('INPUTHP', 'nq3'),
         ]
 
     @classproperty
@@ -49,7 +49,7 @@ class UscfCalculation(JobCalculation):
 
     @classproperty
     def _FOLDER_PH0(cls):
-        return os.path.join(cls._OUTPUT_SUBFOLDER, '_ph0')
+        return os.path.join(cls._OUTPUT_SUBFOLDER, 'HP')
 
     @classproperty
     def _use_methods(cls):
@@ -270,7 +270,7 @@ class UscfCalculation(JobCalculation):
         # Check that required namelists are present
         for namelist in self._compulsory_namelists:
             if not namelist in input_parameters:
-                raise InputValidationError("the required namelist '{}' was not defined").format(namelist)
+                raise InputValidationError("the required namelist '{}' was not defined".format(namelist))
 
         # Check for presence of blocked keywords
         for namelist, flag in self._blocked_keywords:
@@ -287,12 +287,12 @@ class UscfCalculation(JobCalculation):
         if any([i != 0. for i in offset]):
             raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')
 
-        input_parameters['INPUTUSCF']['iverbosity'] = 2
-        input_parameters['INPUTUSCF']['outdir'] = self._OUTPUT_SUBFOLDER
-        input_parameters['INPUTUSCF']['prefix'] = self._PREFIX
-        input_parameters['INPUTUSCF']['nq1'] = mesh[0]
-        input_parameters['INPUTUSCF']['nq2'] = mesh[1]
-        input_parameters['INPUTUSCF']['nq3'] = mesh[2]
+        input_parameters['INPUTHP']['iverbosity'] = 2
+        input_parameters['INPUTHP']['outdir'] = self._OUTPUT_SUBFOLDER
+        input_parameters['INPUTHP']['prefix'] = self._PREFIX
+        input_parameters['INPUTHP']['nq1'] = mesh[0]
+        input_parameters['INPUTHP']['nq2'] = mesh[1]
+        input_parameters['INPUTHP']['nq3'] = mesh[2]
 
         return input_parameters
 

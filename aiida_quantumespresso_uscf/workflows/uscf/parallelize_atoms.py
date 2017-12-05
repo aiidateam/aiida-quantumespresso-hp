@@ -74,7 +74,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
             '_options': self.inputs.options.get_dict(),
         }
 
-        inputs['parameters']['INPUTUSCF']['determine_num_pert_only'] = True
+        inputs['parameters']['INPUTHP']['determine_num_pert_only'] = True
         inputs['parameters'] = ParameterData(dict=inputs['parameters'])
 
         process = UscfCalculation.process()
@@ -96,7 +96,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
             do_only_key = 'do_one_only({})'.format(site_index)
 
             inputs = copy.deepcopy(self.ctx.raw_inputs)
-            inputs['parameters']['INPUTUSCF'][do_only_key] = True
+            inputs['parameters']['INPUTHP'][do_only_key] = True
             inputs['parameters'] = ParameterData(dict=inputs['parameters'])
 
             running = submit(UscfBaseWorkChain, **inputs)
@@ -125,7 +125,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         """
         inputs = copy.deepcopy(self.ctx.raw_inputs)
         inputs['parent_folder'] = self.ctx.merged_retrieved
-        inputs['parameters']['INPUTUSCF']['collect_chi'] = True
+        inputs['parameters']['INPUTHP']['collect_chi'] = True
         inputs['parameters'] = ParameterData(dict=inputs['parameters'])
 
         running = submit(UscfBaseWorkChain, **inputs)
