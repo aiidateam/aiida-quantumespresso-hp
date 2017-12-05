@@ -12,8 +12,8 @@
         "Development Status :: 4 - Beta"
     ],
     "install_requires": [
-        "aiida",
-        "aiida-quantumespresso"
+        "aiida>=0.10.0rc1",
+        "aiida-quantumespresso>=1.0.0"
     ],
     "entry_points": {
         "aiida.calculations": [
