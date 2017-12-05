@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from aiida.orm import Code, CalculationFactory
 from aiida.orm.data.base import Int
+from aiida.orm.data.array import ArrayData
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
@@ -38,7 +39,11 @@ class UscfBaseWorkChain(WorkChain):
             ),
             cls.run_results,
         )
-        spec.dynamic_output()
+        spec.output('parameters', valid_type=ParameterData)
+        spec.output('retrieved', valid_type=FolderData)
+        spec.output('matrices', valid_type=ArrayData, required=False)
+        spec.output('hubbard', valid_type=ParameterData, required=False)
+        spec.output('chi', valid_type=ArrayData, required=False)
 
     def validate_inputs(self):
         """
