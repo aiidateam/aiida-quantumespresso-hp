@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Int
+from aiida.orm.data.base import Bool, Int
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
@@ -14,10 +14,6 @@ PwCalculation = CalculationFactory('quantumespresso.pw')
 UscfCalculation = CalculationFactory('quantumespresso.uscf')
 
 class UscfBaseWorkChain(WorkChain):
-    """
-    """
-    def __init__(self, *args, **kwargs):
-        super(UscfBaseWorkChain, self).__init__(*args, **kwargs)
 
     @classmethod
     def define(cls, spec):
@@ -29,6 +25,7 @@ class UscfBaseWorkChain(WorkChain):
         spec.input('parameters', valid_type=ParameterData)
         spec.input('settings', valid_type=ParameterData)
         spec.input('options', valid_type=ParameterData)
+        spec.input('only_initialization', valid_type=Bool, default=Bool(False))
         spec.input('max_iterations', valid_type=Int, default=Int(4))
         spec.outline(
             cls.validate_inputs,
@@ -82,6 +79,9 @@ class UscfBaseWorkChain(WorkChain):
             'settings': self.inputs.settings,
             '_options': self.inputs.options.get_dict(),
         }
+
+        if self.inputs.only_initialization.value:
+            self.ctx.inputs['parameters']['INPUTHP']['determine_num_pert_only'] = True
 
         return
 
