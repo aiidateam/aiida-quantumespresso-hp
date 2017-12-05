@@ -48,7 +48,7 @@ class UscfCalculation(JobCalculation):
         return './out/'
 
     @classproperty
-    def _FOLDER_PH0(cls):
+    def _FOLDER_RAW(cls):
         return os.path.join(cls._OUTPUT_SUBFOLDER, 'HP')
 
     @classproperty
@@ -146,7 +146,7 @@ class UscfCalculation(JobCalculation):
         final post-processing calculation will have to be performed to compute the final matrices
         The current version of Uscf.x requires the following folders and files:
 
-            * Perturbation files: by default in _FOLDER_PH0/_PREFIX.chi.pert_*.dat
+            * Perturbation files: by default in _FOLDER_RAW/_PREFIX.chi.pert_*.dat
             * QE save directory: by default in _OUTPUT_SUBFOLDER/_PREFIX.save
             * The occupations file: by default in _OUTPUT_SUBFOLDER/_PREFIX.occup
 
@@ -167,7 +167,7 @@ class UscfCalculation(JobCalculation):
         retrieve_list.append([path_save_directory, path_save_directory, 0])
         retrieve_list.append([path_occup_file, path_occup_file, 0])
 
-        src_perturbation_files = os.path.join(self._FOLDER_PH0, '{}.chi.pert_*.dat'.format(self._PREFIX))
+        src_perturbation_files = os.path.join(self._FOLDER_RAW, '{}.chi.pert_*.dat'.format(self._PREFIX))
         dst_perturbation_files = '.'
         retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 

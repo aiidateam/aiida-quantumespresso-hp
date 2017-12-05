@@ -165,13 +165,13 @@ def recollect_atomic_calculations(**kwargs):
     import errno
 
     output_folder_sub = UscfCalculation._OUTPUT_SUBFOLDER
-    output_folder_ph0 = UscfCalculation._FOLDER_PH0
+    output_folder_raw = UscfCalculation._FOLDER_RAW
     output_prefix = UscfCalculation()._PREFIX
 
     # Initialize the merged folder, by creating the subdirectory for the perturbation files
     merged_folder = FolderData()
     folder_path = os.path.normpath(merged_folder.get_abs_path('.'))
-    output_path = os.path.join(folder_path, output_folder_ph0)
+    output_path = os.path.join(folder_path, output_folder_raw)
 
     try:
         os.makedirs(output_path)
@@ -182,7 +182,7 @@ def recollect_atomic_calculations(**kwargs):
             raise
 
     for atomic_site_index, retrieved_folder in kwargs.iteritems():
-        filepath = os.path.join(output_folder_ph0, '{}.chi.pert_{}.dat'.format(output_prefix, atomic_site_index))
+        filepath = os.path.join(output_folder_raw, '{}.chi.pert_{}.dat'.format(output_prefix, atomic_site_index))
         filepath_src = retrieved_folder.get_abs_path(filepath)
         filepath_dst = filepath
         merged_folder.add_path(filepath_src, filepath_dst)
