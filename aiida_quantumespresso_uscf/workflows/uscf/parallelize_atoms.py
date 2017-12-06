@@ -8,6 +8,7 @@ from aiida.orm.data.folder import FolderData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
+from aiida.common.extendeddicts import AttributeDict
 from aiida.work.run import submit
 from aiida.work.workchain import WorkChain, ToContext, append_
 from aiida.work.workfunction import workfunction
@@ -44,12 +45,9 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
     def setup(self):
         """
-        Determine the set of Hubbard U atoms and the raw inputs dictionary
+        Define convenience dictionary of inputs for UscfBaseWorkChain
         """
-        parameters = self.inputs.parent_calculation.inp.parameters
-        self.ctx.hubbard_atoms = parameters.get_dict()['SYSTEM']['hubbard_u']
-
-        self.ctx.raw_inputs = {
+        self.ctx.inputs = AttributeDict({
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
             'parameters': self.inputs.parameters.get_dict(),
@@ -57,7 +55,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
             'settings': self.inputs.settings,
             'options': self.inputs.options,
             'max_iterations': self.inputs.max_iterations,
-        }
+        })
 
     def run_init(self):
         """
@@ -65,22 +63,14 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         and determine which kinds are to be perturbed. This information is parsed and can
         be used to determine exactly how many UscfBaseWorkChains have to be launched
         """
-        inputs = {
-            'code': self.inputs.code,
-            'qpoints': self.inputs.qpoints,
-            'parameters': self.inputs.parameters.get_dict(),
-            'parent_folder': self.inputs.parent_calculation.out.remote_folder,
-            'settings': self.inputs.settings,
-            '_options': self.inputs.options.get_dict(),
-        }
+        inputs = copy.deepcopy(self.ctx.inputs)
 
-        inputs['parameters']['INPUTHP']['determine_num_pert_only'] = True
-        inputs['parameters'] = ParameterData(dict=inputs['parameters'])
+        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs['only_initialization'] = Bool(True)
 
-        process = UscfCalculation.process()
-        running = submit(process, **inputs)
+        running = submit(UscfBaseWorkChain, **inputs)
 
-        self.report('launching initialization UscfCalculation<{}>'.format(running.pid))
+        self.report('launching initialization UscfBaseWorkChain<{}>'.format(running.pid))
 
         return ToContext(initialization=running)
 
@@ -95,9 +85,9 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
             do_only_key = 'do_one_only({})'.format(site_index)
 
-            inputs = copy.deepcopy(self.ctx.raw_inputs)
-            inputs['parameters']['INPUTHP'][do_only_key] = True
-            inputs['parameters'] = ParameterData(dict=inputs['parameters'])
+            inputs = copy.deepcopy(self.ctx.inputs)
+            inputs.parameters['INPUTHP'][do_only_key] = True
+            inputs.parameters = ParameterData(dict=inputs.parameters)
 
             running = submit(UscfBaseWorkChain, **inputs)
 
@@ -123,10 +113,10 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
         """
         Perform the final UscfCalculation to collect the various components of the chi matrices
         """
-        inputs = copy.deepcopy(self.ctx.raw_inputs)
-        inputs['parent_folder'] = self.ctx.merged_retrieved
-        inputs['parameters']['INPUTHP']['collect_chi'] = True
-        inputs['parameters'] = ParameterData(dict=inputs['parameters'])
+        inputs = copy.deepcopy(self.ctx.inputs)
+        inputs.parent_folder = self.ctx.merged_retrieved
+        inputs.parameters['INPUTHP']['collect_chi'] = True
+        inputs.parameters = ParameterData(dict=inputs.parameters)
 
         running = submit(UscfBaseWorkChain, **inputs)
 
