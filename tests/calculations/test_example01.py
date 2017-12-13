@@ -14,7 +14,7 @@ from aiida.orm.data.array.kpoints import KpointsData
 from seekpath.aiidawrappers import get_path
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
-UscfCalculation = CalculationFactory('quantumespresso.uscf')
+HpCalculation = CalculationFactory('quantumespresso.hp')
 
 def parser_setup():
     """
@@ -24,7 +24,7 @@ def parser_setup():
     parser = argparse.ArgumentParser(
         description=
             """
-            Example calculation of the Uscf module for Quantum ESPRESSO.
+            Example calculation of the Hp module for Quantum ESPRESSO.
             Computes Hubbard U self-consistenly for a simple LiCoO2 system if not structure
             node pk is specified as an option
             """,
@@ -34,8 +34,8 @@ def parser_setup():
         help='the name of pseudo family to use'
     )
     parser.add_argument(
-        '-u', type=str, required=True, dest='codename_uscf',
-        help='the label of the AiiDA code that references Uscf.x'
+        '-u', type=str, required=True, dest='codename_hp',
+        help='the label of the AiiDA code that references Hp.x'
     )
     parser.add_argument(
         '-w', type=str, required=True, dest='codename_pw',
@@ -87,9 +87,9 @@ def execute(args):
         return
 
     try:
-        code_uscf = Code.get_from_string(args.codename_uscf)
+        code_hp = Code.get_from_string(args.codename_hp)
     except NotExistent as exception:
-        print "Execution failed: could not retrieve the code '{}'".format(args.codename_uscf)
+        print "Execution failed: could not retrieve the code '{}'".format(args.codename_hp)
         print "Exception report: {}".format(exception)
         return
 
@@ -114,14 +114,14 @@ def execute(args):
         parent = load_node(pk)
         print "Successfully completed the parent calculation {}<{}>".format(type(parent), parent.pk)
 
-    result, pk = run_uscf(code_uscf, parent.out.remote_folder, options)
+    result, pk = run_hp(code_hp, parent.out.remote_folder, options)
     
     try:
         output_hubbard = result['hubbard']
-        print "UscfCalculation finished with the following Hubbard U parameters:"
+        print "HpCalculation finished with the following Hubbard U parameters:"
         print output_hubbard.get_dict()
     except KeyError as exception:
-        print "UscfCalculation did not return a 'hubbard' output node, it probably failed"
+        print "HpCalculation did not return a 'hubbard' output node, it probably failed"
 
 
 def run_pw(code_pw, structure, pseudo, options):
@@ -166,9 +166,9 @@ def run_pw(code_pw, structure, pseudo, options):
     return result, pk
 
 
-def run_uscf(code_uscf, parent_folder, options):
+def run_hp(code_hp, parent_folder, options):
     """
-    Run the self-consistent Hubbard calculation with QE's Uscf.x
+    Run the self-consistent Hubbard calculation with QE's hp.x
     """
     qpoints = KpointsData()
     qpoints.set_kpoints_mesh([1, 1, 1])
@@ -179,14 +179,14 @@ def run_uscf(code_uscf, parent_folder, options):
     }
 
     inputs = {
-        'code': code_uscf,
+        'code': code_hp,
         'qpoints': qpoints,
         'parameters': ParameterData(dict=parameters),
         'parent_folder': parent_folder,
         '_options': options,
     }
 
-    process = UscfCalculation.process()
+    process = HpCalculation.process()
     result, pk = run(process, _return_pid=True, **inputs)
 
     return result, pk

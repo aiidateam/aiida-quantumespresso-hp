@@ -12,20 +12,20 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.work.run import submit
 from aiida.work.workchain import WorkChain, ToContext, append_
 from aiida.work.workfunction import workfunction
-from aiida_quantumespresso_uscf.workflows.uscf.base import UscfBaseWorkChain
+from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
-UscfCalculation = CalculationFactory('quantumespresso.uscf')
+HpCalculation = CalculationFactory('quantumespresso.hp')
 
-class UscfParallelizeAtomsWorkChain(WorkChain):
+class HpParallelizeAtomsWorkChain(WorkChain):
     """
     """
     def __init__(self, *args, **kwargs):
-        super(UscfParallelizeAtomsWorkChain, self).__init__(*args, **kwargs)
+        super(HpParallelizeAtomsWorkChain, self).__init__(*args, **kwargs)
 
     @classmethod
     def define(cls, spec):
-        super(UscfParallelizeAtomsWorkChain, cls).define(spec)
+        super(HpParallelizeAtomsWorkChain, cls).define(spec)
         spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation)
         spec.input('qpoints', valid_type=KpointsData)
@@ -45,7 +45,7 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
     def setup(self):
         """
-        Define convenience dictionary of inputs for UscfBaseWorkChain
+        Define convenience dictionary of inputs for HpBaseWorkChain
         """
         self.ctx.inputs = AttributeDict({
             'code': self.inputs.code,
@@ -59,24 +59,24 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
     def run_init(self):
         """
-        Run an initialization UscfCalculatio that will only perform the symmetry analysis
+        Run an initialization HpCalculatio that will only perform the symmetry analysis
         and determine which kinds are to be perturbed. This information is parsed and can
-        be used to determine exactly how many UscfBaseWorkChains have to be launched
+        be used to determine exactly how many HpBaseWorkChains have to be launched
         """
         inputs = copy.deepcopy(self.ctx.inputs)
 
         inputs.parameters = ParameterData(dict=inputs.parameters)
         inputs['only_initialization'] = Bool(True)
 
-        running = submit(UscfBaseWorkChain, **inputs)
+        running = submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching initialization UscfBaseWorkChain<{}>'.format(running.pid))
+        self.report('launching initialization HpBaseWorkChain<{}>'.format(running.pid))
 
         return ToContext(initialization=running)
 
     def run_atoms(self):
         """
-        Run a separate UscfBaseWorkChain for each of the defined Hubbard atoms
+        Run a separate HpBaseWorkChain for each of the defined Hubbard atoms
         """
         output_params = self.ctx.initialization.out.parameters.get_dict()
         hubbard_sites = output_params['hubbard_sites']
@@ -89,15 +89,15 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
             inputs.parameters['INPUTHP'][do_only_key] = True
             inputs.parameters = ParameterData(dict=inputs.parameters)
 
-            running = submit(UscfBaseWorkChain, **inputs)
+            running = submit(HpBaseWorkChain, **inputs)
 
-            self.report('launching UscfBaseWorkChain<{}> for atomic site {} of kind {}'.format(running.pid, site_index, site_kind))
+            self.report('launching HpBaseWorkChain<{}> for atomic site {} of kind {}'.format(running.pid, site_index, site_kind))
             self.to_context(workchains=append_(running))
 
     def run_collect(self):
         """
-        Collect all the retrieved folders of the launched UscfBaseWorkChain and merge them into
-        a single FolderData object that will be used for the final UscfCalculation
+        Collect all the retrieved folders of the launched HpBaseWorkChain and merge them into
+        a single FolderData object that will be used for the final HpCalculation
         """
         retrieved_folders = {}
 
@@ -111,16 +111,16 @@ class UscfParallelizeAtomsWorkChain(WorkChain):
 
     def run_final(self):
         """
-        Perform the final UscfCalculation to collect the various components of the chi matrices
+        Perform the final HpCalculation to collect the various components of the chi matrices
         """
         inputs = copy.deepcopy(self.ctx.inputs)
         inputs.parent_folder = self.ctx.merged_retrieved
         inputs.parameters['INPUTHP']['collect_chi'] = True
         inputs.parameters = ParameterData(dict=inputs.parameters)
 
-        running = submit(UscfBaseWorkChain, **inputs)
+        running = submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching UscfBaseWorkChain<{}> to collect matrices'.format(running.pid))
+        self.report('launching HpBaseWorkChain<{}> to collect matrices'.format(running.pid))
         self.to_context(workchains=append_(running))
 
     def run_results(self):
@@ -149,14 +149,14 @@ def recollect_atomic_calculations(**kwargs):
     
     :param kwargs: keys are the string representation of the hubbard atom index and the value is the 
         corresponding retrieved folder object.
-    :return: FolderData object containing the perturbation files of the computed UscfBaseWorkChain
+    :return: FolderData object containing the perturbation files of the computed HpBaseWorkChain
     """
     import os
     import errno
 
-    output_folder_sub = UscfCalculation._OUTPUT_SUBFOLDER
-    output_folder_raw = UscfCalculation._FOLDER_RAW
-    output_prefix = UscfCalculation()._PREFIX
+    output_folder_sub = HpCalculation._OUTPUT_SUBFOLDER
+    output_folder_raw = HpCalculation._FOLDER_RAW
+    output_prefix = HpCalculation()._PREFIX
 
     # Initialize the merged folder, by creating the subdirectory for the perturbation files
     merged_folder = FolderData()
@@ -177,7 +177,7 @@ def recollect_atomic_calculations(**kwargs):
         filepath_dst = filepath
         merged_folder.add_path(filepath_src, filepath_dst)
 
-    # TODO: currently the Uscf code requires the .save folder that is written by the original
+    # TODO: currently the Hp code requires the .save folder that is written by the original
     # PwCalculation, for the final post-processing matrix collection step. It doesn't really need all
     # the information contained in that folder, and requiring it means, copying it from remote to a
     # local folder and then reuploading it to remote folder. This is unnecessarily heavy

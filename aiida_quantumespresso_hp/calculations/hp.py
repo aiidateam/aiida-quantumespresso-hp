@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import os
 from aiida.orm import CalculationFactory
 from aiida.common.utils import classproperty
@@ -14,13 +13,13 @@ from aiida_quantumespresso.calculations import get_input_data_text, _lowercase_d
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 
-class UscfCalculation(JobCalculation):
+class HpCalculation(JobCalculation):
     """
-    Quantum ESPRESSO Uscf calculations
+    Quantum ESPRESSO Hp calculations
     """
 
     def _init_internal_params(self):
-        super(UscfCalculation, self)._init_internal_params()
+        super(HpCalculation, self)._init_internal_params()
 
         self._PREFIX = 'aiida'
         self._INPUT_FILE_NAME = 'aiida.in'
@@ -28,7 +27,7 @@ class UscfCalculation(JobCalculation):
         self._OUTPUT_CHI_SUFFIX = '.chi.dat'
         self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_U.dat'
 
-        self._default_parser = 'quantumespresso.uscf'
+        self._default_parser = 'quantumespresso.hp'
         self._compulsory_namelists = ['INPUTHP']
         self._optional_inputs = ['settings']
         self._required_inputs = ['code', 'parameters', 'parent_folder', 'qpoints']
@@ -54,7 +53,7 @@ class UscfCalculation(JobCalculation):
     @classproperty
     def _use_methods(cls):
         """
-        Additional use_* methods for the Uscf calculation class
+        Additional use_* methods for the Hp calculation class
         """
         retdict = JobCalculation._use_methods
         retdict.update({
@@ -142,9 +141,9 @@ class UscfCalculation(JobCalculation):
         Build the list of files that are to be retrieved upon calculation completion so that they can
         be passed to the parser.
 
-        A UscfCalculation can be parallelized over atoms by running individual calculations, but a
+        A HpCalculation can be parallelized over atoms by running individual calculations, but a
         final post-processing calculation will have to be performed to compute the final matrices
-        The current version of Uscf.x requires the following folders and files:
+        The current version of hp.x requires the following folders and files:
 
             * Perturbation files: by default in _FOLDER_RAW/_PREFIX.chi.pert_*.dat
             * QE save directory: by default in _OUTPUT_SUBFOLDER/_PREFIX.save
@@ -155,7 +154,7 @@ class UscfCalculation(JobCalculation):
         """
         retrieve_list = []
 
-        # Default output files that are written after a completed or post-processing UscfCalculation
+        # Default output files that are written after a completed or post-processing HpCalculation
         retrieve_list.append(self._OUTPUT_FILE_NAME)
         retrieve_list.append(self._PREFIX + self._OUTPUT_CHI_SUFFIX)
         retrieve_list.append(self._PREFIX + self._OUTPUT_HUBBARD_SUFFIX)
