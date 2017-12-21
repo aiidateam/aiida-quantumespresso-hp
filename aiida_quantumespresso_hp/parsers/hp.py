@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import glob, os, re, numpy
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
@@ -8,25 +7,25 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.parsers.parser import Parser
 from aiida.parsers.exceptions import OutputParsingError
 from aiida_quantumespresso.parsers import QEOutputParsingError
-from aiida_quantumespresso_uscf.calculations.uscf import UscfCalculation
+from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 
-class UscfParser(Parser):
+class HpParser(Parser):
     """
-    Parser implementation for Quantum ESPRESSO Uscf calculations 
+    Parser implementation for Quantum ESPRESSO Hp calculations 
     """
     _parser_version = '0.1'
     _parser_name = 'AiiDA Quantum ESPRESSO USCF parser'
 
     def __init__(self, calculation):
         """
-        Initialize the instance of UscfParser
+        Initialize the instance of HpParser
         """
-        if not isinstance(calculation, UscfCalculation):
-            raise QEOutputParsingError("input calculation must be a UscfCalculation")
+        if not isinstance(calculation, HpCalculation):
+            raise QEOutputParsingError("input calculation must be a HpCalculation")
 
         self.calculation = calculation
 
-        super(UscfParser, self).__init__(calculation)
+        super(HpParser, self).__init__(calculation)
 
     def get_linkname_outparams(self):
         """
@@ -130,7 +129,7 @@ class UscfParser(Parser):
 
     def parse_stdout(self, filepath):
         """
-        Parse the output parameters from the output of a Uscf calculation
+        Parse the output parameters from the output of a Hp calculation
         written to standard out
 
         :param filepath: path to file containing output written to stdout
@@ -202,7 +201,7 @@ class UscfParser(Parser):
 
     def parse_chi(self, filepath):
         """
-        Parse the contents of the file {prefix}.chi.dat as written by a UscfCalculation
+        Parse the contents of the file {prefix}.chi.dat as written by a HpCalculation
 
         :param filepath: absolute filepath to the chi.dat output file
         :returns: dictionary with parsed contents
@@ -243,7 +242,7 @@ class UscfParser(Parser):
 
     def parse_hubbard(self, filepath):
         """
-        Parse the contents of the file {prefix}.Hubbard_U.dat as written by a UscfCalculation
+        Parse the contents of the file {prefix}.Hubbard_U.dat as written by a HpCalculation
 
         :param filepath: absolute filepath to the Hubbard_U.dat output file
         :returns: dictionary with parsed contents
@@ -326,7 +325,7 @@ class UscfParser(Parser):
     def parse_hubbard_matrix(self, data):
         """
         Utility function to parse one of the matrices that are written to the {prefix}.Hubbard_U.dat
-        file by a UscfCalculation. Each matrix should be square of size N, which is given by the product
+        file by a HpCalculation. Each matrix should be square of size N, which is given by the product
         of the number of q-points and the number of Hubbard species
         Each matrix row is printed with a maximum number of 8 elements per line and each line is followed
         by an empty line. In the parsing of the data, we will use the empty line to detect the end of

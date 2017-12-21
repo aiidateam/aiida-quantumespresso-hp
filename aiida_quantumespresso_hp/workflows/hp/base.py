@@ -13,13 +13,13 @@ from aiida.work.workchain import WorkChain, ToContext, while_, append_
 from aiida.work.run import submit
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
-UscfCalculation = CalculationFactory('quantumespresso.uscf')
+HpCalculation = CalculationFactory('quantumespresso.hp')
 
-class UscfBaseWorkChain(WorkChain):
+class HpBaseWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(UscfBaseWorkChain, cls).define(spec)
+        super(HpBaseWorkChain, cls).define(spec)
         spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation, required=False)
         spec.input('parent_folder', valid_type=(FolderData, RemoteData), required=False)
@@ -32,9 +32,9 @@ class UscfBaseWorkChain(WorkChain):
         spec.outline(
             cls.validate_inputs,
             cls.setup,
-            while_(cls.should_run_uscf)(
-                cls.run_uscf,
-                cls.inspect_uscf,
+            while_(cls.should_run_hp)(
+                cls.run_hp,
+                cls.inspect_hp,
             ),
             cls.run_results,
         )
@@ -46,8 +46,8 @@ class UscfBaseWorkChain(WorkChain):
 
     def validate_inputs(self):
         """
-        A UscfCalculation can be continued either from a completed PwCalculation in which case
-        the parent_calculation input should be set, or it can be a restart from a previous UscfCalculation
+        A HpCalculation can be continued either from a completed PwCalculation in which case
+        the parent_calculation input should be set, or it can be a restart from a previous HpCalculation
         as for example the final post-processing calculation when parallelizing over atoms and
         or q-points, in which case the parent_folder should be set. In either case, at least one
         of the two inputs has to be defined properly
@@ -72,7 +72,7 @@ class UscfBaseWorkChain(WorkChain):
         self.ctx.is_finished = False
         self.ctx.iteration = 0
 
-        # Define convenience dictionary of inputs for UscfCalculation
+        # Define convenience dictionary of inputs for HpCalculation
         self.ctx.inputs = AttributeDict({
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
@@ -87,7 +87,7 @@ class UscfBaseWorkChain(WorkChain):
 
         return
 
-    def should_run_uscf(self):
+    def should_run_hp(self):
         """
         Return whether a restart calculation should be run, which is the case as long as the last
         calculation was not converged successfully and the maximum number of restarts has not yet
@@ -95,32 +95,32 @@ class UscfBaseWorkChain(WorkChain):
         """
         return not self.ctx.is_finished and self.ctx.iteration < self.ctx.max_iterations
 
-    def run_uscf(self):
+    def run_hp(self):
         """
-        Run the next UscfCalculation
+        Run the next HpCalculation
         """
         self.ctx.iteration += 1
 
         inputs = copy.deepcopy(self.ctx.inputs)
         inputs = self._prepare_process_inputs(inputs)
 
-        process = UscfCalculation.process()
+        process = HpCalculation.process()
         running = submit(process, **inputs)
 
-        self.report('launching UscfCalculation<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
+        self.report('launching HpCalculation<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
 
         return ToContext(calculations=append_(running))
 
-    def inspect_uscf(self):
+    def inspect_hp(self):
         """
-        Analyse the results of the previous UscfCalculation, checking whether it finished successfully
+        Analyse the results of the previous HpCalculation, checking whether it finished successfully
         or if not troubleshoot the cause and adapt the input parameters accordingly before
         restarting, or abort if unrecoverable error was found
         """
         try:
             calculation = self.ctx.calculations[-1]
         except Exception:
-            self.abort_nowait('the first iteration finished without returning a UscfCalculation')
+            self.abort_nowait('the first iteration finished without returning a HpCalculation')
             return
 
         expected_states = [calc_states.FINISHED, calc_states.FAILED, calc_states.SUBMISSIONFAILED]
@@ -134,11 +134,11 @@ class UscfBaseWorkChain(WorkChain):
         # Abort: exceeded maximum number of retries
         elif self.ctx.iteration >= self.ctx.max_iterations:
             self.report('reached the maximum number of iterations {}'.format(self.ctx.max_iterations))
-            self.abort_nowait('last ran UscfCalculation<{}>'.format(calculation.pk))
+            self.abort_nowait('last ran HpCalculation<{}>'.format(calculation.pk))
 
         # Abort: unexpected state of last calculation
         elif calculation.get_state() not in expected_states:
-            self.abort_nowait('unexpected state ({}) of UscfCalculation<{}>'.format(
+            self.abort_nowait('unexpected state ({}) of HpCalculation<{}>'.format(
                 calculation.get_state(), calculation.pk))
 
         # Retry: submission failed, try to restart or abort
@@ -168,7 +168,7 @@ class UscfBaseWorkChain(WorkChain):
 
     def _prepare_process_inputs(self, inputs):
         """
-        Prepare the inputs dictionary for a UscfCalculation process. Any remaining bare dictionaries in the inputs
+        Prepare the inputs dictionary for a HpCalculation process. Any remaining bare dictionaries in the inputs
         dictionary will be wrapped in a ParameterData data node except for the '_options' key which should remain
         a standard dictionary
         """
@@ -189,10 +189,10 @@ class UscfBaseWorkChain(WorkChain):
         abort the workchain, else we set the has_submission_failed flag and try again
         """
         if self.ctx.has_submission_failed:
-            self.abort_nowait('submission for UscfCalculation<{}> failed for the second time'.format(
+            self.abort_nowait('submission for HpCalculation<{}> failed for the second time'.format(
                 calculation.pk))
         else:
-            self.report('submission for UscfCalculation<{}> failed, retrying once more'.format(
+            self.report('submission for HpCalculation<{}> failed, retrying once more'.format(
                 calculation.pk))
 
     def _handle_calculation_failure(self, calculation):
@@ -202,7 +202,7 @@ class UscfBaseWorkChain(WorkChain):
         if 'not_converged' in calculation.res.parser_warnings:
             self.ctx.has_calculation_failed = False
             self.ctx.inputs.parameters['INPUTHP']['niter_ph'] = 100
-            self.report('UscfCalculation<{}> did not converge, restarting'.format(calculation.pk))
+            self.report('HpCalculation<{}> did not converge, restarting'.format(calculation.pk))
 
         else:
             self._handle_unexpected_calculation_failure(calculation)
@@ -215,10 +215,10 @@ class UscfBaseWorkChain(WorkChain):
         if self.ctx.has_calculation_failed:
             warnings = '\n'.join([w.strip() for w in calculation.res.warnings])
             parser_warnings = '\n'.join([w.strip() for w in calculation.res.parser_warnings])
-            self.report('UscfCalculation<{}> failed unexpectedly'.format(calculation.pk))
+            self.report('HpCalculation<{}> failed unexpectedly'.format(calculation.pk))
             self.report('list of warnings: {}'.format(warnings))
             self.report('list of parser warnings: {}'.format(parser_warnings))
             self.abort_nowait('second unexpected failure in a row'.format(calculation.pk))
         else:
             self.ctx.has_calculation_failed = True
-            self.report('UscfCalculation<{}> failed unexpectedly, restarting once more'.format(calculation.pk))
+            self.report('HpCalculation<{}> failed unexpectedly, restarting once more'.format(calculation.pk))

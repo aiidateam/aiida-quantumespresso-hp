@@ -5,24 +5,24 @@ from aiida.orm.data.base import Bool, Int, Str
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.work.workchain import WorkChain, ToContext
-from aiida_quantumespresso_uscf.workflows.uscf.base import UscfBaseWorkChain
-from aiida_quantumespresso_uscf.workflows.uscf.parallelize_atoms import UscfParallelizeAtomsWorkChain
+from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
+from aiida_quantumespresso_hp.workflows.hp.parallelize_atoms import HpParallelizeAtomsWorkChain
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 
-class UscfWorkChain(WorkChain):
+class HpWorkChain(WorkChain):
     """
-    Workchain that will run a Quantum Espresso Uscf.x calculation based on a previously completed
+    Workchain that will run a Quantum Espresso Hp.x calculation based on a previously completed
     PwCalculation. If specified through the 'parallelize_atoms' boolean input parameter, the
-    calculation will be parallelized over the Hubbard atoms by running the UscfParallelizeAtomsWorkChain.
-    Otherwise a single UscfBaseWorkChain will be launched that will compute every Hubbard atom serially.
+    calculation will be parallelized over the Hubbard atoms by running the HpParallelizeAtomsWorkChain.
+    Otherwise a single HpBaseWorkChain will be launched that will compute every Hubbard atom serially.
     """
     def __init__(self, *args, **kwargs):
-        super(UscfWorkChain, self).__init__(*args, **kwargs)
+        super(HpWorkChain, self).__init__(*args, **kwargs)
 
     @classmethod
     def define(cls, spec):
-        super(UscfWorkChain, cls).define(spec)
+        super(HpWorkChain, cls).define(spec)
         spec.input('code', valid_type=Code)
         spec.input('parent_calculation', valid_type=PwCalculation)
         spec.input('qpoints', valid_type=KpointsData)
@@ -39,7 +39,7 @@ class UscfWorkChain(WorkChain):
 
     def run_workchain(self):
         """
-        If parallelize_atoms is true, run the UscfParallelizeAtomsWorkChain, otherwise run UscfBaseWorkChain
+        If parallelize_atoms is true, run the HpParallelizeAtomsWorkChain, otherwise run HpBaseWorkChain
         """
         inputs = {
             'code': self.inputs.code,
@@ -52,14 +52,14 @@ class UscfWorkChain(WorkChain):
         }
 
         if self.inputs.parallelize_atoms:
-            running = submit(UscfParallelizeAtomsWorkChain, **inputs)
+            running = submit(HpParallelizeAtomsWorkChain, **inputs)
 
-            self.report('running in parallel, launching UscfParallelizeAtomsWorkChain<{}>'.format(running.pid))
+            self.report('running in parallel, launching HpParallelizeAtomsWorkChain<{}>'.format(running.pid))
             return ToContext(workchain=running)
         else:
-            running = submit(UscfBaseWorkChain, **inputs)
+            running = submit(HpBaseWorkChain, **inputs)
 
-            self.report('running in serial, launching UscfBaseWorkChain<{}>'.format(running.pid))
+            self.report('running in serial, launching HpBaseWorkChain<{}>'.format(running.pid))
             return ToContext(workchain=running)
 
     def run_results(self):
