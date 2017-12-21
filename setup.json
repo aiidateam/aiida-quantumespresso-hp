@@ -26,7 +26,7 @@
             "quantumespresso.hp.main = aiida_quantumespresso_hp.workflows.hp.main:HpWorkChain",
             "quantumespresso.hp.parallelize_atoms = aiida_quantumespresso_hp.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain",
             "quantumespresso.hp.base = aiida_quantumespresso_hp.workflows.hp.base:HpBaseWorkChain",
-            "quantumespresso.hubbard = aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain"
+            "quantumespresso.hp.hubbard = aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain"
         ]
     }
 }
