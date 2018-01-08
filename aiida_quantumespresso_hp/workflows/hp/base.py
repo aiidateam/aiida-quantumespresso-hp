@@ -10,6 +10,7 @@ from aiida.orm.data.array.kpoints import KpointsData
 from aiida.common.extendeddicts import AttributeDict
 from aiida.work.workchain import while_
 from aiida.work.run import submit
+from aiida_quantumespresso.utils.resources import get_default_options
 from aiida_quantumespresso.workflows import BaseRestartWorkChain
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
@@ -19,7 +20,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
     """
     Base workchain to launch a Quantum Espresso hp.x calculation
     """
-    _verbose = True
+    _verbose = False
     _calculation_class = HpCalculation
 
     @classmethod
@@ -27,11 +28,11 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         super(HpBaseWorkChain, cls).define(spec)
         spec.input('code', valid_type=Code)
         spec.input('qpoints', valid_type=KpointsData)
-        spec.input('parameters', valid_type=ParameterData)
         spec.input('parent_calculation', valid_type=PwCalculation, required=False)
         spec.input('parent_folder', valid_type=(FolderData, RemoteData), required=False)
-        spec.input('settings', valid_type=ParameterData)
-        spec.input('options', valid_type=ParameterData)
+        spec.input('parameters', valid_type=ParameterData, required=False)
+        spec.input('settings', valid_type=ParameterData, required=False)
+        spec.input('options', valid_type=ParameterData, required=False)
         spec.input('only_initialization', valid_type=Bool, default=Bool(False))
         spec.outline(
             cls.setup,
@@ -59,9 +60,6 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         self.ctx.inputs_raw = AttributeDict({
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
-            'parameters': self.inputs.parameters.get_dict(),
-            'settings': self.inputs.settings.get_dict(),
-            '_options': self.inputs.options.get_dict(),
         })
 
         if not ('parent_calculation' in self.inputs or 'parent_folder' in self.inputs):
@@ -71,6 +69,21 @@ class HpBaseWorkChain(BaseRestartWorkChain):
             self.ctx.inputs_raw.parent_folder = self.inputs.parent_calculation.out.remote_folder
         except AttributeError:
             self.ctx.inputs_raw.parent_folder = self.inputs.parent_folder
+
+        if 'parameters' in self.inputs:
+            self.ctx.inputs_raw.parameters = self.inputs.parameters.get_dict()
+        else:
+            self.ctx.inputs_raw.parameters = {}
+
+        if 'settings' in self.inputs:
+            self.ctx.inputs_raw.settings = self.inputs.settings.get_dict()
+        else:
+            self.ctx.inputs_raw.settings = {}
+
+        if 'options' in self.inputs:
+            self.ctx.inputs_raw._options = self.inputs.options.get_dict()
+        else:
+            self.ctx.inputs_raw._options = get_default_options()
 
         if 'INPUTHP'not in self.ctx.inputs_raw.parameters:
             self.ctx.inputs_raw.parameters['INPUTHP'] = {}
