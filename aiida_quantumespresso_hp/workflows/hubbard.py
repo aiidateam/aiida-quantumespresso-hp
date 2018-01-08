@@ -2,7 +2,7 @@
 from copy import deepcopy
 from aiida.common.extendeddicts import AttributeDict
 from aiida.orm import Code
-from aiida.orm.data.base import Bool, Int, Str
+from aiida.orm.data.base import Bool, Float, Int, Str
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
@@ -60,6 +60,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         super(SelfConsistentHubbardWorkChain, cls).define(spec)
         spec.input('structure', valid_type=StructureData)
         spec.input('hubbard_u', valid_type=ParameterData)
+        spec.input('tolerance', valid_type=Float, default=Float(0.1))
         spec.input('is_insulator', valid_type=Bool, required=False)
         spec.input_group('hp')
         spec.input_group('relax')
@@ -363,7 +364,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         for kind in curr_hubbard_u.keys():
             prev_value = prev_hubbard_u[kind]
             curr_value = curr_hubbard_u[kind]
-            if abs(curr_value - prev_value) > 0.3:
+            if abs(curr_value - prev_value) > self.inputs.tolerance.value:
                 converged = False
 
         self.ctx.current_hubbard_u = curr_hubbard_u
