@@ -11,7 +11,7 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.work.workchain import while_
 from aiida.work.run import submit
 from aiida_quantumespresso.utils.resources import get_default_options
-from aiida_quantumespresso.workflows import BaseRestartWorkChain
+from aiida_quantumespresso.common.workchain.base.restart import BaseRestartWorkChain
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
