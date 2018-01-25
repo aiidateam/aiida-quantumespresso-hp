@@ -61,6 +61,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         spec.input('structure', valid_type=StructureData)
         spec.input('hubbard_u', valid_type=ParameterData)
         spec.input('tolerance', valid_type=Float, default=Float(0.1))
+        spec.input('max_iterations', valid_type=Int, default=Int(5))
         spec.input('is_insulator', valid_type=Bool, required=False)
         spec.input_group('hp')
         spec.input_group('relax')
@@ -71,7 +72,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 cls.run_recon,
                 cls.inspect_recon,
             ),
-            while_(cls.is_not_converged)(
+            while_(cls.should_run_iteration)(
                 cls.run_relax,
                 cls.inspect_relax,
                 if_(cls.is_metal)(
@@ -94,6 +95,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         """
         self.ctx.current_structure = self.inputs.structure
         self.ctx.current_hubbard_u = self.inputs.hubbard_u.get_dict()
+        self.ctx.max_iterations = self.inputs.max_iterations.value
         self.ctx.is_converged = False
         self.ctx.is_magnetic = None
         self.ctx.is_metal = None
@@ -182,11 +184,12 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             self.report('system is determined to be a metal')
             self.ctx.is_metal = True
 
-    def is_not_converged(self):
+    def should_run_iteration(self):
         """
-        Return whether the current Hubbard U parameters are converged which is stored directly in the context
+        Return whether another iteration of the self-consistent cycle should be run, which is the case as long as
+        the Hubbard parameters are not yet converged and the maximum number of iterations has not been exceeded
         """
-        return not self.ctx.is_converged
+        return not self.ctx.is_converged and self.ctx.iteration < self.ctx.max_iterations
 
     def is_metal(self):
         """
