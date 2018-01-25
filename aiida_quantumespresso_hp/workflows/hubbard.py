@@ -63,6 +63,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         spec.input('tolerance', valid_type=Float, default=Float(0.1))
         spec.input('max_iterations', valid_type=Int, default=Int(5))
         spec.input('is_insulator', valid_type=Bool, required=False)
+        spec.input('skip_relax', valid_type=Bool, default=Bool(True))
         spec.input_group('hp')
         spec.input_group('relax')
         spec.outline(
@@ -73,8 +74,10 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 cls.inspect_recon,
             ),
             while_(cls.should_run_iteration)(
-                cls.run_relax,
-                cls.inspect_relax,
+                if_(cls.should_run_relax)(
+                    cls.run_relax,
+                    cls.inspect_relax,
+                ),
                 if_(cls.is_metal)(
                     cls.run_scf_smearing
                 ).elif_(cls.is_magnetic)(
@@ -133,6 +136,13 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         whether the system is metallic or insulating
         """
         return self.ctx.is_metal is None
+
+    def should_run_relax(self):
+        """
+        Returns whether the structure should be relaxed before every Hubbard iteration, If the input skip_relax
+        has been set to True, the relax part is skipped and the input structure of the workchain is used
+        """
+        return not self.inputs.skip_relax.value
 
     def run_recon(self):
         """
