@@ -55,6 +55,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             'qe': qe_defaults,
             'smearing_method': 'marzari-vanderbilt',
             'smearing_degauss': 0.001,
+            'conv_thr_preconverge': 1E-10,
+            'conv_thr_strictfinal': 1E-15,
         })
 
     @classmethod
@@ -291,6 +293,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['occupations'] = 'fixed'
         inputs.parameters['SYSTEM'].pop('degauss', None)
         inputs.parameters['SYSTEM'].pop('smearing', None)
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
@@ -312,6 +315,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
         inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
         inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_method)
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_preconverge)
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
@@ -340,6 +344,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM'].pop('smearing', None)
         inputs.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
         inputs.parameters['SYSTEM']['total_magnetization'] = previous_parameters.get_dict()['total_magnetization']
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
