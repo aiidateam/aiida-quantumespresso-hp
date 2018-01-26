@@ -57,6 +57,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             'smearing_degauss': 0.001,
             'conv_thr_preconverge': 1E-10,
             'conv_thr_strictfinal': 1E-15,
+            'u_projection_type_relax': 'atomic',
+            'u_projection_type_scf': 'ortho-atomic',
         })
 
     @classmethod
@@ -250,6 +252,14 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         """
         inputs = deepcopy(self.ctx.inputs_raw)
 
+        u_projection_type_relax = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_relax)
+
+        if u_projection_type_relax != self.defaults.u_projection_type_relax:
+            self.report("warning: you specified 'u_projection_type = {}' in the input parameters, but this will crash "
+                "pw.x, changing it to '{}'".format(u_projection_type_relax, self.defaults.u_projection_type_relax))
+
+        inputs.parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
+
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
         })
@@ -293,6 +303,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['occupations'] = 'fixed'
         inputs.parameters['SYSTEM'].pop('degauss', None)
         inputs.parameters['SYSTEM'].pop('smearing', None)
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
         inputs.update({
@@ -315,6 +326,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
         inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
         inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_method)
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_preconverge)
 
         inputs.update({
@@ -344,6 +356,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM'].pop('smearing', None)
         inputs.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
         inputs.parameters['SYSTEM']['total_magnetization'] = previous_parameters.get_dict()['total_magnetization']
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
         inputs.update({
