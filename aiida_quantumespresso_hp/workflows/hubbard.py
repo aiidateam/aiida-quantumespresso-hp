@@ -53,6 +53,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         # Default values
         self.defaults = AttributeDict({
             'qe': qe_defaults,
+            'smearing_method': 'marzari-vanderbilt',
+            'smearing_degauss': 0.001,
         })
 
     @classmethod
@@ -185,8 +187,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['ELECTRONS']['scf_must_converge'] = False
         inputs.parameters['ELECTRONS']['electron_maxstep'] = 1
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
-        inputs.parameters['SYSTEM']['smearing'] = 'marzari-vanderbilt'
-        inputs.parameters['SYSTEM']['degauss'] = 0.001
+        inputs.parameters['SYSTEM']['smearing'] = self.defaults.smearing_method
+        inputs.parameters['SYSTEM']['degauss'] = self.defaults.smearing_degauss
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters),
@@ -308,8 +310,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.parameters['CONTROL']['calculation'] = 'scf'
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
-        inputs.parameters['SYSTEM']['smearing'] = 'marzari-vanderbilt'
-        inputs.parameters['SYSTEM']['degauss'] = 0.001
+        inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
+        inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_method)
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
@@ -332,11 +334,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         previous_parameters = previous_workchain.out.output_parameters
 
         inputs.parameters['CONTROL']['calculation'] = 'scf'
-        inputs.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
-        inputs.parameters['SYSTEM']['total_magnetization'] = previous_parameters.get_dict()['total_magnetization']
         inputs.parameters['SYSTEM']['occupations'] = 'fixed'
         inputs.parameters['SYSTEM'].pop('degauss', None)
         inputs.parameters['SYSTEM'].pop('smearing', None)
+        inputs.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
+        inputs.parameters['SYSTEM']['total_magnetization'] = previous_parameters.get_dict()['total_magnetization']
 
         inputs.update({
             'parameters': ParameterData(dict=inputs.parameters)
