@@ -334,6 +334,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         previous_parameters = previous_workchain.out.output_parameters
 
         inputs.parameters['CONTROL']['calculation'] = 'scf'
+        inputs.parameters['CONTROL']['restart_mode'] = 'restart'
         inputs.parameters['SYSTEM']['occupations'] = 'fixed'
         inputs.parameters['SYSTEM'].pop('degauss', None)
         inputs.parameters['SYSTEM'].pop('smearing', None)
