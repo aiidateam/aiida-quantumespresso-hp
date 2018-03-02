@@ -28,7 +28,7 @@ class HpCalculation(JobCalculation):
         self._INPUT_FILE_NAME = 'aiida.in'
         self._OUTPUT_FILE_NAME = 'aiida.out'
         self._OUTPUT_CHI_SUFFIX = '.chi.dat'
-        self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_U.dat'
+        self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_parameters.dat'
 
         self._default_parser = 'quantumespresso.hp'
         self._compulsory_namelists = ['INPUTHP']

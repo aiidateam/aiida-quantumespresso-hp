@@ -14,14 +14,14 @@ class HpParser(Parser):
     Parser implementation for Quantum ESPRESSO Hp calculations 
     """
     _parser_version = '0.1'
-    _parser_name = 'AiiDA Quantum ESPRESSO USCF parser'
+    _parser_name = 'AiiDA Quantum ESPRESSO HP parser'
 
     def __init__(self, calculation):
         """
         Initialize the instance of HpParser
         """
         if not isinstance(calculation, HpCalculation):
-            raise QEOutputParsingError("input calculation must be a HpCalculation")
+            raise QEOutputParsingError('input calculation must be a HpCalculation')
 
         self.calculation = calculation
 
@@ -70,15 +70,10 @@ class HpParser(Parser):
         is_success = True
         output_nodes = []
 
-        # Only allow parsing if calculation is in PARSING state
-        state = self.calculation.get_state()
-        if state != calc_states.PARSING:
-            raise InvalidOperation("calculation not in '{}' state".format(calc_states.PARSING))
-
         try:
             output_folder = retrieved[self.calculation._get_linkname_retrieved()]
         except KeyError:
-            self.logger.error("no retrieved folder found")
+            self.logger.error('no retrieved folder found')
             return False, ()
 
         # Verify the standard output file is present, parse it and attach as output parameters
@@ -278,8 +273,12 @@ class HpParser(Parser):
                         subdata = subline.split()
                         result['hubbard_U']['sites'].append({
                             'index': subdata[0],
-                            'kind':  subdata[1],
-                            'value': subdata[2],
+                            'kind': subdata[1],
+                            'label': subdata[2],
+                            'spin': subdata[3],
+                            'new_kind': subdata[4],
+                            'new_label': subdata[5],
+                            'value': subdata[6],
                         })
                     else:
                         parsed = True
@@ -299,7 +298,7 @@ class HpParser(Parser):
                 blocks['chi0_inv'][1] = line_number
                 blocks['chi1_inv'][0] = line_number + 1
 
-            if 'U matrix' in line:
+            if 'Hubbard matrix' in line:
                 blocks['chi1_inv'][1] = line_number
                 blocks['hubbard'][0] = line_number + 1
                 blocks['hubbard'][1] = len(data)
