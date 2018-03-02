@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 from aiida.orm import CalculationFactory
-from aiida.common.utils import classproperty
-from aiida.common.exceptions import InputValidationError, ValidationError, UniquenessError, NotExistent
 from aiida.common.datastructures import CalcInfo, CodeInfo
+from aiida.common.exceptions import InputValidationError, ValidationError, UniquenessError, NotExistent
+from aiida.common.links import LinkType
+from aiida.common.utils import classproperty
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
@@ -11,7 +12,9 @@ from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.calculation.job import JobCalculation
 from aiida_quantumespresso.calculations import get_input_data_text, _lowercase_dict, _uppercase_dict
 
+
 PwCalculation = CalculationFactory('quantumespresso.pw')
+
 
 class HpCalculation(JobCalculation):
     """
@@ -57,29 +60,29 @@ class HpCalculation(JobCalculation):
         """
         retdict = JobCalculation._use_methods
         retdict.update({
-            'settings': {
-                'valid_types': (ParameterData),
-                'additional_parameter': None,
-                'linkname': 'settings',
-                'docstring': ('Use an additional node for special settings'),
-            },
             'parameters': {
                 'valid_types': (ParameterData),
                 'additional_parameter': None,
                 'linkname': 'parameters',
-                'docstring': ('Use a node that specifies the input parameters for the namelists'),
+                'docstring': ('A node that specifies the input parameters for the namelists'),
             },
             'parent_folder': {
-                'valid_types': (RemoteData, FolderData),
+                'valid_types': (RemoteData),
                 'additional_parameter': None,
                 'linkname': 'parent_folder',
-                'docstring': ('Use a local or remote folder as parent folder (for restarts and similar'),
+                'docstring': ('The remote folder of a completed PwCalculation with lda_plus_u switch turned on'),
             },
             'qpoints': {
                 'valid_types': (KpointsData),
                 'additional_parameter': None,
                 'linkname': 'qpoints',
-                'docstring': ('Specify the Qpoints on which to compute phonons'),
+                'docstring': ('Specify the q-point grid on which to perform the perturbative calculation'),
+            },
+            'settings': {
+                'valid_types': (ParameterData),
+                'additional_parameter': None,
+                'linkname': 'settings',
+                'docstring': ('An optional node for special settings'),
             },
         })
         return retdict
@@ -108,6 +111,7 @@ class HpCalculation(JobCalculation):
         :returns: CalcInfo instance
         """
         input_nodes = self.validate_input_nodes(input_nodes_raw)
+        input_parent_folder = self.validate_input_parent_folder(input_nodes)
         input_parameters = self.validate_input_parameters(input_nodes)
         input_settings = input_nodes[self.get_linkname('settings')].get_dict()
         input_code = input_nodes[self.get_linkname('code')]
@@ -249,6 +253,43 @@ class HpCalculation(JobCalculation):
             raise InputValidationError('the following input nodes were not recognized: {}'.format(input_nodes_raw.keys()))
 
         return input_nodes
+
+
+    def validate_input_parent_folder(self, input_nodes):
+        """
+        Validate the parent_folder node from the verified input_nodes, making sure that it belongs to a PwCalculation
+        that was run with the 'lda_plus_u' switch turned on
+
+        :param input_nodes: dictionary of sanitized and validated input nodes
+        :returns: the parent_folder input node if valid
+        :raises: if the parent_folder does not correspond to PwCalculation with 'lda_plus_u'
+        """
+        parent_folder_link = self.get_linkname('parent_folder')
+        parent_folder_node = input_nodes[parent_folder_link]
+
+        parent_calculation = parent_folder_node.get_inputs(link_type=LinkType.CREATE)
+
+        if len(parent_calculation) != 1:
+            raise ValueError('could not determine the parent calculation of the parent_folder input node')
+
+        parent_calculation = parent_calculation[0]
+
+        if not isinstance(parent_calculation, PwCalculation):
+            raise ValueError('the parent calculation of the parent folder input node is not a {}'
+                .format(PwCalculation.__name__))
+
+        try:
+            input_parameters = parent_calculation.inp.parameters
+        except KeyError:
+            raise ValueError('could not retrieve the input parameters node from the parent calculation')
+
+        lda_plus_u = input_parameters.get_dict().get('SYSTEM', {}).get('lda_plus_u', False)
+
+        if not lda_plus_u:
+            raise ValueError("the input parameters<{}> of the parent calculation did not specify 'lda_plus_u: True'"
+                .format(input_parameters.pk))
+
+        return parent_folder_node
 
 
     def validate_input_parameters(self, input_nodes):
