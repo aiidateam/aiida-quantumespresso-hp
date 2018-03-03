@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import glob, os, re, numpy
+import glob, os, re, numpy, enum
 from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
 from aiida.orm.data.array import ArrayData
@@ -15,6 +15,14 @@ class HpParser(Parser):
     """
     _parser_version = '0.1'
     _parser_name = 'AiiDA Quantum ESPRESSO HP parser'
+
+
+    class ExitStatus(enum.Enum):
+        ERROR_NO_OUTPUT = 1
+        ERROR_PREMATURE_TERMINATION = 2
+        ERROR_CONVERGENCE_NOT_REACHED = 3
+        ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
+
 
     def __init__(self, calculation):
         """
@@ -131,7 +139,7 @@ class HpParser(Parser):
         :returns: boolean representing success status of parsing, True equals parsing was successful
         :returns: dictionary with the parsed parameters
         """
-        is_successful = True
+        exit_status = 0
         is_terminated = True
         result = self.parse_result_template()
 
@@ -139,13 +147,12 @@ class HpParser(Parser):
             with open(filepath, 'r') as handle:
                 output = handle.readlines()
         except IOError:
-            raise QEOutputParsingError("failed to read file: {}.".format(filepath))
+            raise QEOutputParsingError('failed to read file: {}.'.format(filepath))
 
         # Empty output can be considered as a problem
         if not output:
-            result['parser_warnings'].append('no_output')
-            is_successful = False
-            return is_successful, result
+            exit_status = self.ExitStatus.ERROR_NO_OUTPUT
+            return exit_status, result
 
         # Parse the output line by line by creating an iterator of the lines
         it = iter(output)
@@ -155,11 +162,16 @@ class HpParser(Parser):
             if 'JOB DONE' in line:
                 is_terminated = False
 
+            # If the atoms were not ordered correctlin the parent calculation
+            if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
+                exit_status = self.ExitStatus.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS
+                return exit_status, result
+
             # If the run did not convergence we expect to find the following string
             match = re.search('.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
             if match:
-                result['parser_warnings'].append('not_converged')
-                is_successful = False
+                exit_status = self.ExitStatus.ERROR_CONVERGENCE_NOT_REACHED
+                return exit_status, result
 
             # Determine the atomic sites that will be perturbed, or that the calculation expects
             # to have been calculated when post-processing the final matrices
@@ -189,10 +201,9 @@ class HpParser(Parser):
                 result['hubbard_sites'] = hubbard_sites
 
         if is_terminated:
-            result['parser_warnings'].append('terminated')
-            is_successful = False
+            exit_status = self.ExitStatus.ERROR_PREMATURE_TERMINATION
 
-        return is_successful, result
+        return exit_status, result
 
     def parse_chi(self, filepath):
         """
