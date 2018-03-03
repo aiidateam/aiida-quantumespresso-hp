@@ -12,7 +12,7 @@
         "Development Status :: 4 - Beta"
     ],
     "install_requires": [
-        "aiida>=0.10.0",
+        "aiida>=0.11.0",
         "aiida-quantumespresso>=1.0.0"
     ],
     "entry_points": {
@@ -27,6 +27,9 @@
             "quantumespresso.hp.parallelize_atoms = aiida_quantumespresso_hp.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain",
             "quantumespresso.hp.base = aiida_quantumespresso_hp.workflows.hp.base:HpBaseWorkChain",
             "quantumespresso.hp.hubbard = aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain"
+        ],
+        "console_scripts": [
+            "launch_calculation_hp = aiida_quantumespresso_hp.cli.calculations.hp:launch"
         ]
     }
 }
