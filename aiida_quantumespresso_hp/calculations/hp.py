@@ -10,6 +10,7 @@ from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.calculation.job import JobCalculation
+from aiida.orm.calculation.function import FunctionCalculation
 from aiida_quantumespresso.calculations import get_input_data_text, _lowercase_dict, _uppercase_dict
 
 
@@ -67,7 +68,7 @@ class HpCalculation(JobCalculation):
                 'docstring': ('A node that specifies the input parameters for the namelists'),
             },
             'parent_folder': {
-                'valid_types': (RemoteData),
+                'valid_types': (FolderData, RemoteData),
                 'additional_parameter': None,
                 'linkname': 'parent_folder',
                 'docstring': ('The remote folder of a completed PwCalculation with lda_plus_u switch turned on'),
@@ -257,8 +258,11 @@ class HpCalculation(JobCalculation):
 
     def validate_input_parent_folder(self, input_nodes):
         """
-        Validate the parent_folder node from the verified input_nodes, making sure that it belongs to a PwCalculation
-        that was run with the 'lda_plus_u' switch turned on
+        Validate the parent_folder node from the verified input_nodes, making sure that it belongs to either a
+
+            * PwCalculation that was run with the 'lda_plus_u' switch turned on
+            * HpCalculation indicating a restart from unconverged calculation
+            * FunctionCalculation which may be used in workchains for collecting chi matrix calculations
 
         :param input_nodes: dictionary of sanitized and validated input nodes
         :returns: the parent_folder input node if valid
@@ -274,9 +278,12 @@ class HpCalculation(JobCalculation):
 
         parent_calculation = parent_calculation[0]
 
-        if not isinstance(parent_calculation, PwCalculation):
-            raise ValueError('the parent calculation of the parent folder input node is not a {}'
-                .format(PwCalculation.__name__))
+        if not isinstance(parent_calculation, (PwCalculation, HpCalculation, FunctionCalculation)):
+            raise ValueError('the parent calculation of the parent folder input node is not a {}, {} or {}'
+                .format(PwCalculation.__name__, HpCalculation.__name__, FunctionCalculation))
+
+        if isinstance(parent_calculation, (HpCalculation, FunctionCalculation)):
+            return parent_folder_node
 
         try:
             input_parameters = parent_calculation.inp.parameters
