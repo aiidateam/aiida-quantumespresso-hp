@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
+from aiida.common.extendeddicts import AttributeDict
 from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Bool, Int
+from aiida.orm.data.base import Bool
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
-from aiida.common.extendeddicts import AttributeDict
 from aiida.work.workchain import while_
-from aiida.work.run import submit
 from aiida_quantumespresso.utils.resources import get_default_options
 from aiida_quantumespresso.common.workchain.base.restart import BaseRestartWorkChain
 
+
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
+
 
 class HpBaseWorkChain(BaseRestartWorkChain):
     """
@@ -81,9 +82,9 @@ class HpBaseWorkChain(BaseRestartWorkChain):
             self.ctx.inputs_raw.settings = {}
 
         if 'options' in self.inputs:
-            self.ctx.inputs_raw._options = self.inputs.options.get_dict()
+            self.ctx.inputs_raw.options = self.inputs.options.get_dict()
         else:
-            self.ctx.inputs_raw._options = get_default_options()
+            self.ctx.inputs_raw.options = get_default_options()
 
         if 'INPUTHP'not in self.ctx.inputs_raw.parameters:
             self.ctx.inputs_raw.parameters['INPUTHP'] = {}

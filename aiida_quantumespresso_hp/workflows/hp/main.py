@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
-from aiida.work.run import submit
-from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Bool, Int, Str
+from aiida.orm import Code, CalculationFactory, WorkflowFactory
+from aiida.orm.data.base import Bool, Int
+from aiida.orm.data.array import ArrayData
+from aiida.orm.data.folder import FolderData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.work.workchain import WorkChain, ToContext
-from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
-from aiida_quantumespresso_hp.workflows.hp.parallelize_atoms import HpParallelizeAtomsWorkChain
+
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
+HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
+HpParallelizeAtomsWorkChain = WorkflowFactory('quantumespresso.hp.parallelize_atoms')
+
 
 class HpWorkChain(WorkChain):
     """
-    Workchain that will run a Quantum Espresso Hp.x calculation based on a previously completed
+    Workchain that will run a Quantum Espresso hp.x calculation based on a previously completed
     PwCalculation. If specified through the 'parallelize_atoms' boolean input parameter, the
     calculation will be parallelized over the Hubbard atoms by running the HpParallelizeAtomsWorkChain.
     Otherwise a single HpBaseWorkChain will be launched that will compute every Hubbard atom serially.
     """
-    def __init__(self, *args, **kwargs):
-        super(HpWorkChain, self).__init__(*args, **kwargs)
 
     @classmethod
     def define(cls, spec):
@@ -35,7 +36,11 @@ class HpWorkChain(WorkChain):
             cls.run_workchain,
             cls.run_results,
         )
-        spec.dynamic_output()
+        spec.output('parameters', valid_type=ParameterData)
+        spec.output('retrieved', valid_type=FolderData)
+        spec.output('matrices', valid_type=ArrayData)
+        spec.output('hubbard', valid_type=ParameterData)
+        spec.output('chi', valid_type=ArrayData)
 
     def run_workchain(self):
         """
@@ -52,23 +57,26 @@ class HpWorkChain(WorkChain):
         }
 
         if self.inputs.parallelize_atoms:
-            running = submit(HpParallelizeAtomsWorkChain, **inputs)
+            running = self.submit(HpParallelizeAtomsWorkChain, **inputs)
 
-            self.report('running in parallel, launching HpParallelizeAtomsWorkChain<{}>'.format(running.pid))
+            self.report('running in parallel, launching HpParallelizeAtomsWorkChain<{}>'.format(running.pk))
             return ToContext(workchain=running)
         else:
-            running = submit(HpBaseWorkChain, **inputs)
+            running = self.submit(HpBaseWorkChain, **inputs)
 
-            self.report('running in serial, launching HpBaseWorkChain<{}>'.format(running.pid))
+            self.report('running in serial, launching HpBaseWorkChain<{}>'.format(running.pk))
             return ToContext(workchain=running)
 
     def run_results(self):
         """
-        Documentation string
+        Retrieve the results from the completed sub workchain
         """
-        output_hubbard = self.ctx.workchain.out.hubbard
-        self.out('output_hubbard', output_hubbard)
+        workchain = self.ctx.workchain
 
-        self.report('workchain completed, output in {}<{}>'.format(type(output_hubbard), output_hubbard.pk))
+        for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
+            if not link in workchain.out:
+                self.abort_nowait("the sub workchain is missing expected output link '{}'".format(link))
+            else:
+                self.out(link, workchain.out[link])
 
-        return
+        self.report('workchain completed successfully')

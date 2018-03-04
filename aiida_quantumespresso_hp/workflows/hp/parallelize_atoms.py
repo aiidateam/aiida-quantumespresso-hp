@@ -1,27 +1,26 @@
 # -*- coding: utf-8 -*-
-import copy
-from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Bool, Int, Str
-from aiida.orm.data.upf import UpfData, get_pseudos_from_structure
-from aiida.orm.data.remote import RemoteData
+from copy import deepcopy
+from aiida.common.extendeddicts import AttributeDict
+from aiida.orm import Code, CalculationFactory, WorkflowFactory
+from aiida.orm.data.base import Bool, Int
+from aiida.orm.data.array import ArrayData
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
-from aiida.common.extendeddicts import AttributeDict
-from aiida.work.run import submit
 from aiida.work.workchain import WorkChain, ToContext, append_
-from aiida.work.workfunction import workfunction
-from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
+from aiida.work.workfunctions import workfunction
+
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
+HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
+
 
 class HpParallelizeAtomsWorkChain(WorkChain):
     """
+    Workchain to launch a Quantum Espresso hp.x calculation for a completed PwCalculation
+    while parallelizing the calculation over the Hubbard atoms
     """
-    def __init__(self, *args, **kwargs):
-        super(HpParallelizeAtomsWorkChain, self).__init__(*args, **kwargs)
 
     @classmethod
     def define(cls, spec):
@@ -41,7 +40,11 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             cls.run_final,
             cls.run_results
         )
-        spec.dynamic_output()
+        spec.output('parameters', valid_type=ParameterData)
+        spec.output('retrieved', valid_type=FolderData)
+        spec.output('matrices', valid_type=ArrayData)
+        spec.output('hubbard', valid_type=ParameterData)
+        spec.output('chi', valid_type=ArrayData)
 
     def setup(self):
         """
@@ -63,14 +66,14 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         and determine which kinds are to be perturbed. This information is parsed and can
         be used to determine exactly how many HpBaseWorkChains have to be launched
         """
-        inputs = copy.deepcopy(self.ctx.inputs)
+        inputs = deepcopy(self.ctx.inputs)
 
         inputs.parameters = ParameterData(dict=inputs.parameters)
         inputs['only_initialization'] = Bool(True)
 
-        running = submit(HpBaseWorkChain, **inputs)
+        running = self.submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching initialization HpBaseWorkChain<{}>'.format(running.pid))
+        self.report('launching initialization HpBaseWorkChain<{}>'.format(running.pk))
 
         return ToContext(initialization=running)
 
@@ -85,13 +88,13 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
             do_only_key = 'do_one_only({})'.format(site_index)
 
-            inputs = copy.deepcopy(self.ctx.inputs)
+            inputs = deepcopy(self.ctx.inputs)
             inputs.parameters['INPUTHP'][do_only_key] = True
             inputs.parameters = ParameterData(dict=inputs.parameters)
 
-            running = submit(HpBaseWorkChain, **inputs)
+            running = self.submit(HpBaseWorkChain, **inputs)
 
-            self.report('launching HpBaseWorkChain<{}> for atomic site {} of kind {}'.format(running.pid, site_index, site_kind))
+            self.report('launching HpBaseWorkChain<{}> for atomic site {} of kind {}'.format(running.pk, site_index, site_kind))
             self.to_context(workchains=append_(running))
 
     def run_collect(self):
@@ -113,29 +116,29 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         """
         Perform the final HpCalculation to collect the various components of the chi matrices
         """
-        inputs = copy.deepcopy(self.ctx.inputs)
+        inputs = deepcopy(self.ctx.inputs)
         inputs.parent_folder = self.ctx.merged_retrieved
         inputs.parameters['INPUTHP']['collect_chi'] = True
         inputs.parameters = ParameterData(dict=inputs.parameters)
 
-        running = submit(HpBaseWorkChain, **inputs)
+        running = self.submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching HpBaseWorkChain<{}> to collect matrices'.format(running.pid))
+        self.report('launching HpBaseWorkChain<{}> to collect matrices'.format(running.pk))
         self.to_context(workchains=append_(running))
 
     def run_results(self):
         """
         Retrieve the results from the final matrix collection calculation
         """
-        workchains = self.ctx.workchains[-1]
+        workchain = self.ctx.workchains[-1]
 
         # We expect the last workchain, which was a matrix collecting calculation, to
         # have all the output links. If not something must have gone wrong
         for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
-            if not link in workchains.out:
+            if not link in workchain.out:
                 self.abort_nowait("final collecting workchain is missing expected output link '{}'".format(link))
             else:
-                self.out(link, workchains.out[link])
+                self.out(link, workchain.out[link])
 
         self.report('workchain completed successfully')
 
