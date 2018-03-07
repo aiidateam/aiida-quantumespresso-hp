@@ -284,11 +284,11 @@ class HpParser(Parser):
                         subdata = subline.split()
                         result['hubbard_U']['sites'].append({
                             'index': subdata[0],
-                            'kind': subdata[1],
-                            'label': subdata[2],
+                            'type': subdata[1],
+                            'kind': subdata[2],
                             'spin': subdata[3],
-                            'new_kind': subdata[4],
-                            'new_label': subdata[5],
+                            'new_type': subdata[4],
+                            'new_kind': subdata[5],
                             'value': subdata[6],
                         })
                     else:

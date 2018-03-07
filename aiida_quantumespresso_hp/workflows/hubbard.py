@@ -5,17 +5,17 @@ from aiida.orm import Code
 from aiida.orm.data.base import Bool, Float, Int, Str
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
-from aiida.orm.data.array.kpoints import KpointsData
-from aiida.orm.utils import CalculationFactory, WorkflowFactory
 from aiida.orm.data.array.bands import find_bandgap
-from aiida.work.run import submit
+from aiida.orm.utils import CalculationFactory, WorkflowFactory
 from aiida.work.workchain import WorkChain, ToContext, while_, if_, append_
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
+
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 PwBaseWorkChain = WorkflowFactory('quantumespresso.pw.base')
 PwRelaxWorkChain = WorkflowFactory('quantumespresso.pw.relax')
 HpWorkChain = WorkflowFactory('quantumespresso.hp.main')
+
 
 class SelfConsistentHubbardWorkChain(WorkChain):
     """
@@ -47,19 +47,15 @@ class SelfConsistentHubbardWorkChain(WorkChain):
     Hubbard U parameters.
     """
 
-    def __init__(self, *args, **kwargs):
-        super(SelfConsistentHubbardWorkChain, self).__init__(*args, **kwargs)
-
-        # Default values
-        self.defaults = AttributeDict({
-            'qe': qe_defaults,
-            'smearing_method': 'marzari-vanderbilt',
-            'smearing_degauss': 0.001,
-            'conv_thr_preconverge': 1E-10,
-            'conv_thr_strictfinal': 1E-15,
-            'u_projection_type_relax': 'atomic',
-            'u_projection_type_scf': 'ortho-atomic',
-        })
+    defaults = AttributeDict({
+        'qe': qe_defaults,
+        'smearing_method': 'marzari-vanderbilt',
+        'smearing_degauss': 0.001,
+        'conv_thr_preconverge': 1E-10,
+        'conv_thr_strictfinal': 1E-15,
+        'u_projection_type_relax': 'atomic',
+        'u_projection_type_scf': 'ortho-atomic',
+    })
 
     @classmethod
     def define(cls, spec):
@@ -69,9 +65,9 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         spec.input('tolerance', valid_type=Float, default=Float(0.1))
         spec.input('max_iterations', valid_type=Int, default=Int(5))
         spec.input('is_insulator', valid_type=Bool, required=False)
-        spec.input_group('scf', required=False)
-        spec.input_group('relax', required=False)
-        spec.input_group('hp')
+        spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('structure'))
+        spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('structure'))
+        spec.expose_inputs(HpWorkChain, namespace='hp', exclude=('parent_calculation'))
         spec.outline(
             cls.setup,
             cls.validate_inputs,
@@ -194,13 +190,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['smearing'] = self.defaults.smearing_method
         inputs.parameters['SYSTEM']['degauss'] = self.defaults.smearing_degauss
 
-        inputs.update({
-            'parameters': ParameterData(dict=inputs.parameters),
-        })
+        inputs.parameters = ParameterData(dict=inputs.parameters)
 
-        running = submit(PwBaseWorkChain, **inputs)
+        running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> reconnaissance'.format(running.pid))
+        self.report('launching PwBaseWorkChain<{}> reconnaissance'.format(running.pk))
 
         return ToContext(workchain_recon=running)
 
@@ -260,13 +254,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
 
-        inputs.update({
-            'parameters': ParameterData(dict=inputs.parameters)
-        })
+        inputs.parameters = ParameterData(dict=inputs.parameters)
 
-        running = submit(PwRelaxWorkChain, **inputs)
+        running = self.submit(PwRelaxWorkChain, **inputs)
 
-        self.report('launching PwRelaxWorkChain<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
+        self.report('launching PwRelaxWorkChain<{}> iteration #{}'.format(running.pk, self.ctx.iteration))
 
         return ToContext(workchains_relax=append_(running))
 
@@ -306,13 +298,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
-        inputs.update({
-            'parameters': ParameterData(dict=inputs.parameters)
-        })
+        inputs.parameters= ParameterData(dict=inputs.parameters)
 
-        running = submit(PwBaseWorkChain, **inputs)
+        running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with fixed occupations'.format(running.pid))
+        self.report('launching PwBaseWorkChain<{}> with fixed occupations'.format(running.pk))
 
         return ToContext(workchains_scf=append_(running))
 
@@ -325,17 +315,15 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['CONTROL']['calculation'] = 'scf'
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
         inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
-        inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_method)
+        inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_degauss)
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_preconverge)
 
-        inputs.update({
-            'parameters': ParameterData(dict=inputs.parameters)
-        })
+        inputs.parameters= ParameterData(dict=inputs.parameters)
 
-        running = submit(PwBaseWorkChain, **inputs)
+        running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with smeared occupations'.format(running.pid))
+        self.report('launching PwBaseWorkChain<{}> with smeared occupations'.format(running.pk))
 
         return ToContext(workchains_scf=append_(running))
 
@@ -359,13 +347,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
-        inputs.update({
-            'parameters': ParameterData(dict=inputs.parameters)
-        })
+        inputs.parameters= ParameterData(dict=inputs.parameters)
 
-        running = submit(PwBaseWorkChain, **inputs)
+        running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with fixed occupations, bands and total magnetization'.format(running.pid))
+        self.report('launching PwBaseWorkChain<{}> with fixed occupations, bands and total magnetization'.format(running.pk))
 
         return ToContext(workchains_scf=append_(running))
 
@@ -376,14 +362,12 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_scf[-1]
         parent_calculation = workchain.out.output_parameters.get_inputs(node_type=PwCalculation)[0]
 
-        inputs = self.inputs.hp
-        inputs.update({
-            'parent_calculation': parent_calculation
-        })
+        inputs = self.exposed_inputs(HpWorkChain, namespace='hp')
+        inputs['parent_calculation'] = parent_calculation
 
-        running = submit(HpWorkChain, **inputs)
+        running = self.submit(HpWorkChain, **inputs)
 
-        self.report('launching HpWorkChain<{}> iteration #{}'.format(running.pid, self.ctx.iteration))
+        self.report('launching HpWorkChain<{}> iteration #{}'.format(running.pk, self.ctx.iteration))
 
         return ToContext(workchains_hp=append_(running))
 
@@ -400,9 +384,9 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             return
 
         try:
-            hubbard = workchain.out.output_hubbard
+            hubbard = workchain.out.hubbard
         except AttributeError as exception:
-            self.abort_nowait('the Hp workchain did not have a output_hubbard node and probably failed')
+            self.abort_nowait("the Hp workchain did not have a 'hubbard' output node and probably failed")
             return
 
         prev_hubbard_u = self.ctx.current_hubbard_u
