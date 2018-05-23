@@ -21,6 +21,7 @@ class HpParser(Parser):
     ERROR_PREMATURE_TERMINATION = 2
     ERROR_CONVERGENCE_NOT_REACHED = 3
     ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
+    ERROR_MISSING_PERTURBATION_FILE = 5
 
     def __init__(self, calculation):
         """
@@ -159,20 +160,25 @@ class HpParser(Parser):
             if 'JOB DONE' in line:
                 is_terminated = False
 
-            # If the atoms were not ordered correctlin the parent calculation
+            # If the atoms were not ordered correctly in the parent calculation
             if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
                 exit_status = self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS
                 return exit_status, result
 
+            # If not all expected perturbation files were found for a chi_collect calculation
+            if 'Error in routine hub_read_chi (1)' in line:
+                exit_status = self.ERROR_MISSING_PERTURBATION_FILE
+                return exit_status, result
+
             # If the run did not convergence we expect to find the following string
-            match = re.search('.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
+            match = re.search(r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
             if match:
                 exit_status = self.ERROR_CONVERGENCE_NOT_REACHED
                 return exit_status, result
 
             # Determine the atomic sites that will be perturbed, or that the calculation expects
             # to have been calculated when post-processing the final matrices
-            match = re.search('.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
+            match = re.search(r'.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
             if match:
                 hubbard_sites = {}
                 number_of_perturbed_atoms = int(match.group(1))
@@ -185,7 +191,7 @@ class HpParser(Parser):
                 result['hubbard_sites'] = hubbard_sites
 
             # A calculation that will only perturb a single atom will only print one line
-            match = re.search('.*Atom which will be perturbed.*', line)
+            match = re.search(r'.*Atom which will be perturbed.*', line)
             if match:
                 hubbard_sites = {}
                 number_of_perturbed_atoms = 1

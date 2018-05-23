@@ -26,8 +26,8 @@ class HpCalculation(JobCalculation):
         super(HpCalculation, self)._init_internal_params()
 
         self._PREFIX = 'aiida'
-        self._INPUT_FILE_NAME = 'aiida.in'
-        self._OUTPUT_FILE_NAME = 'aiida.out'
+        self._INPUT_FILE_NAME = '{}.in'.format(self._PREFIX)
+        self._OUTPUT_FILE_NAME = '{}.out'.format(self._PREFIX)
         self._OUTPUT_CHI_SUFFIX = '.chi.dat'
         self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_parameters.dat'
 
@@ -45,6 +45,10 @@ class HpCalculation(JobCalculation):
             ('INPUTHP', 'nq2'),
             ('INPUTHP', 'nq3'),
         ]
+
+        # Default input and output files
+        self._DEFAULT_INPUT_FILE = self._INPUT_FILE_NAME
+        self._DEFAULT_OUTPUT_FILE = self._OUTPUT_FILE_NAME
 
     @classproperty
     def _OUTPUT_SUBFOLDER(cls):

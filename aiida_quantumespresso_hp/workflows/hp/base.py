@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from copy import deepcopy
 from aiida.common.extendeddicts import AttributeDict
 from aiida.orm import Code, CalculationFactory
 from aiida.orm.data.base import Bool
@@ -29,6 +28,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
     _calculation_class = HpCalculation
 
     ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
+    ERROR_MISSING_PERTURBATION_FILE = 5
 
     @classmethod
     def define(cls, spec):
@@ -109,3 +109,14 @@ def _handle_error_incorrect_order_atomic_positions(self, calculation):
     if calculation.finish_status == HpParser.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS:
         self.report('the parent calculation used a structure where the Hubbard atomic positions did not appear first')
         return ErrorHandlerReport(True, True, self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS)
+
+
+@register_error_handler(HpBaseWorkChain, 200)
+def _handle_error_missing_perturbation_file(self, calculation):
+    """
+    The calculation was run in `collect_chi` mode, however, the code did not find all the perturbation files that
+    it expected based on the number of Hubbard kinds in the parent calculation
+    """
+    if calculation.finish_status == HpParser.ERROR_MISSING_PERTURBATION_FILE:
+        self.report('one or more perturbation files that were expected for the collect_chi calculation, are missing')
+        return ErrorHandlerReport(True, True, self.ERROR_MISSING_PERTURBATION_FILE)
