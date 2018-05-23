@@ -31,14 +31,13 @@ def launch(
         }
     }
 
-    options = get_default_options(max_num_machines, max_wallclock_seconds)
-
     inputs = {
         'code': code,
         'parent_calculation': calculation,
         'qpoints': kpoints,
         'parameters': ParameterData(dict=parameters),
-        'options': ParameterData(dict=options)
+        'options': ParameterData(dict=get_default_options(max_num_machines, max_wallclock_seconds)),
+        'clean_workdir': Bool(clean_workdir),
     }
 
     if daemon:

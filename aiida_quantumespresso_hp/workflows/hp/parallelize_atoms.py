@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from copy import deepcopy
 from aiida.common.extendeddicts import AttributeDict
 from aiida.orm import Code, CalculationFactory, WorkflowFactory
 from aiida.orm.data.base import Bool, Int
@@ -22,43 +21,20 @@ class HpParallelizeAtomsWorkChain(WorkChain):
     while parallelizing the calculation over the Hubbard atoms
     """
 
+    ERROR_CHILD_WORKCHAIN_FAILED = 100
+
     @classmethod
     def define(cls, spec):
         super(HpParallelizeAtomsWorkChain, cls).define(spec)
-        spec.input('code', valid_type=Code)
-        spec.input('parent_calculation', valid_type=PwCalculation)
-        spec.input('qpoints', valid_type=KpointsData)
-        spec.input('parameters', valid_type=ParameterData)
-        spec.input('settings', valid_type=ParameterData)
-        spec.input('options', valid_type=ParameterData)
-        spec.input('max_iterations', valid_type=Int, default=Int(10))
+        spec.expose_inputs(HpBaseWorkChain)
         spec.outline(
-            cls.setup,
             cls.run_init,
             cls.run_atoms,
             cls.run_collect,
             cls.run_final,
-            cls.run_results
+            cls.results
         )
-        spec.output('parameters', valid_type=ParameterData)
-        spec.output('retrieved', valid_type=FolderData)
-        spec.output('matrices', valid_type=ArrayData)
-        spec.output('hubbard', valid_type=ParameterData)
-        spec.output('chi', valid_type=ArrayData)
-
-    def setup(self):
-        """
-        Define convenience dictionary of inputs for HpBaseWorkChain
-        """
-        self.ctx.inputs = AttributeDict({
-            'code': self.inputs.code,
-            'qpoints': self.inputs.qpoints,
-            'parameters': self.inputs.parameters.get_dict(),
-            'parent_folder': self.inputs.parent_calculation.out.remote_folder,
-            'settings': self.inputs.settings,
-            'options': self.inputs.options,
-            'max_iterations': self.inputs.max_iterations,
-        })
+        spec.expose_outputs(HpBaseWorkChain)
 
     def run_init(self):
         """
@@ -66,10 +42,8 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         and determine which kinds are to be perturbed. This information is parsed and can
         be used to determine exactly how many HpBaseWorkChains have to be launched
         """
-        inputs = deepcopy(self.ctx.inputs)
-
-        inputs.parameters = ParameterData(dict=inputs.parameters)
-        inputs['only_initialization'] = Bool(True)
+        inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
+        inputs.only_initialization = Bool(True)
 
         running = self.submit(HpBaseWorkChain, **inputs)
 
@@ -81,14 +55,22 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         """
         Run a separate HpBaseWorkChain for each of the defined Hubbard atoms
         """
-        output_params = self.ctx.initialization.out.parameters.get_dict()
+        workchain = self.ctx.initialization
+
+        if not workchain.is_finished_ok:
+            self.report('initialization workchain<{}> failed with finish status {}, aborting...'
+                .format(workchain.pk, workchain.finish_status))
+            return self.ERROR_CHILD_WORKCHAIN_FAILED
+
+        output_params = workchain.out.output_parameters.get_dict()
         hubbard_sites = output_params['hubbard_sites']
 
         for site_index, site_kind in hubbard_sites.iteritems():
 
             do_only_key = 'do_one_only({})'.format(site_index)
 
-            inputs = deepcopy(self.ctx.inputs)
+            inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
+            inputs.parameters = inputs.parameters.get_dict()
             inputs.parameters['INPUTHP'][do_only_key] = True
             inputs.parameters = ParameterData(dict=inputs.parameters)
 
@@ -105,8 +87,14 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         retrieved_folders = {}
 
         for workchain in self.ctx.workchains:
+
+            if not workchain.is_finished_ok:
+                self.report('child workchain<{}> failed with finish status {}, aborting...'
+                    .format(workchain.pk, workchain.finish_status))
+                return self.ERROR_CHILD_WORKCHAIN_FAILED
+
             retrieved = workchain.out.retrieved
-            output_params = workchain.out.parameters
+            output_params = workchain.out.output_parameters
             atomic_site_index = output_params.get_dict()['hubbard_sites'].keys()[0]
             retrieved_folders[atomic_site_index] = retrieved
 
@@ -116,31 +104,23 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         """
         Perform the final HpCalculation to collect the various components of the chi matrices
         """
-        inputs = deepcopy(self.ctx.inputs)
-        inputs.parent_folder = self.ctx.merged_retrieved
+        inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
+        inputs.parameters = inputs.parameters.get_dict()
         inputs.parameters['INPUTHP']['collect_chi'] = True
         inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parent_folder = self.ctx.merged_retrieved
+        inputs.pop('parent_calculation', None)
 
         running = self.submit(HpBaseWorkChain, **inputs)
 
         self.report('launching HpBaseWorkChain<{}> to collect matrices'.format(running.pk))
         self.to_context(workchains=append_(running))
 
-    def run_results(self):
+    def results(self):
         """
-        Retrieve the results from the final matrix collection calculation
+        Retrieve the results from the final matrix collection workchain
         """
-        workchain = self.ctx.workchains[-1]
-
-        # We expect the last workchain, which was a matrix collecting calculation, to
-        # have all the output links. If not something must have gone wrong
-        for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
-            if not link in workchain.out:
-                self.abort_nowait("final collecting workchain is missing expected output link '{}'".format(link))
-            else:
-                self.out(link, workchain.out[link])
-
-        self.report('workchain completed successfully')
+        self.out_many(self.exposed_outputs(self.ctx.workchains[-1], HpBaseWorkChain))
 
 
 @workfunction

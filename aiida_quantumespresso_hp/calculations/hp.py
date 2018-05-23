@@ -140,7 +140,6 @@ class HpCalculation(JobCalculation):
 
         return calcinfo
 
-
     def get_retrieve_list(self, input_nodes):
         """
         Build the list of files that are to be retrieved upon calculation completion so that they can
@@ -177,7 +176,6 @@ class HpCalculation(JobCalculation):
 
         return retrieve_list
 
-
     def get_local_copy_list(self, input_nodes):
         """
         Build the local copy list, which amounts to copying the output subfolder of the specified
@@ -195,7 +193,6 @@ class HpCalculation(JobCalculation):
             local_copy_list.append((folder_src, folder_dst))
 
         return local_copy_list
-
 
     def get_remote_copy_list(self, input_nodes):
         """
@@ -215,7 +212,6 @@ class HpCalculation(JobCalculation):
             remote_copy_list.append((computer_uuid, folder_src, folder_dst))
 
         return remote_copy_list
-
 
     def validate_input_nodes(self, input_nodes_raw):
         """
@@ -254,7 +250,6 @@ class HpCalculation(JobCalculation):
             raise InputValidationError('the following input nodes were not recognized: {}'.format(input_nodes_raw.keys()))
 
         return input_nodes
-
 
     def validate_input_parent_folder(self, input_nodes):
         """
@@ -297,7 +292,6 @@ class HpCalculation(JobCalculation):
                 .format(input_parameters.pk))
 
         return parent_folder_node
-
 
     def validate_input_parameters(self, input_nodes):
         """
@@ -342,7 +336,6 @@ class HpCalculation(JobCalculation):
         input_parameters['INPUTHP']['nq3'] = mesh[2]
 
         return input_parameters
-
 
     def write_input_files(self, tempfolder, input_parameters):
         """

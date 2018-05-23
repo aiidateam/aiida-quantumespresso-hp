@@ -9,6 +9,7 @@ from aiida.parsers.exceptions import OutputParsingError
 from aiida_quantumespresso.parsers import QEOutputParsingError
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 
+
 class HpParser(Parser):
     """
     Parser implementation for Quantum ESPRESSO Hp calculations 
@@ -16,13 +17,10 @@ class HpParser(Parser):
     _parser_version = '0.1'
     _parser_name = 'AiiDA Quantum ESPRESSO HP parser'
 
-
-    class ExitStatus(enum.Enum):
-        ERROR_NO_OUTPUT = 1
-        ERROR_PREMATURE_TERMINATION = 2
-        ERROR_CONVERGENCE_NOT_REACHED = 3
-        ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
-
+    ERROR_NO_OUTPUT = 1
+    ERROR_PREMATURE_TERMINATION = 2
+    ERROR_CONVERGENCE_NOT_REACHED = 3
+    ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
 
     def __init__(self, calculation):
         """
@@ -39,7 +37,7 @@ class HpParser(Parser):
         """
         Returns the name of the link to the standard output ParameterData
         """
-        return 'parameters'
+        return 'output_parameters'
 
     def get_linkname_hubbard(self):
         """
@@ -68,7 +66,7 @@ class HpParser(Parser):
             'parser_warnings': [],
             'warnings': []
         }
-        
+
     def parse_with_retrieved(self, retrieved):
         """
         Parse the results of retrieved nodes
@@ -132,8 +130,7 @@ class HpParser(Parser):
 
     def parse_stdout(self, filepath):
         """
-        Parse the output parameters from the output of a Hp calculation
-        written to standard out
+        Parse the output parameters from the output of a Hp calculation written to standard out
 
         :param filepath: path to file containing output written to stdout
         :returns: boolean representing success status of parsing, True equals parsing was successful
@@ -151,7 +148,7 @@ class HpParser(Parser):
 
         # Empty output can be considered as a problem
         if not output:
-            exit_status = self.ExitStatus.ERROR_NO_OUTPUT
+            exit_status = self.ERROR_NO_OUTPUT
             return exit_status, result
 
         # Parse the output line by line by creating an iterator of the lines
@@ -164,13 +161,13 @@ class HpParser(Parser):
 
             # If the atoms were not ordered correctlin the parent calculation
             if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
-                exit_status = self.ExitStatus.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS
+                exit_status = self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS
                 return exit_status, result
 
             # If the run did not convergence we expect to find the following string
             match = re.search('.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
             if match:
-                exit_status = self.ExitStatus.ERROR_CONVERGENCE_NOT_REACHED
+                exit_status = self.ERROR_CONVERGENCE_NOT_REACHED
                 return exit_status, result
 
             # Determine the atomic sites that will be perturbed, or that the calculation expects
@@ -201,7 +198,7 @@ class HpParser(Parser):
                 result['hubbard_sites'] = hubbard_sites
 
         if is_terminated:
-            exit_status = self.ExitStatus.ERROR_PREMATURE_TERMINATION
+            exit_status = self.ERROR_PREMATURE_TERMINATION
 
         return exit_status, result
 

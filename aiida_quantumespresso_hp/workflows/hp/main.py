@@ -21,62 +21,43 @@ class HpWorkChain(WorkChain):
     Otherwise a single HpBaseWorkChain will be launched that will compute every Hubbard atom serially.
     """
 
+    ERROR_CHILD_WORKCHAIN_FAILED = 100
+
     @classmethod
     def define(cls, spec):
         super(HpWorkChain, cls).define(spec)
-        spec.input('code', valid_type=Code)
-        spec.input('parent_calculation', valid_type=PwCalculation)
-        spec.input('qpoints', valid_type=KpointsData)
-        spec.input('parameters', valid_type=ParameterData)
-        spec.input('settings', valid_type=ParameterData)
-        spec.input('options', valid_type=ParameterData)
-        spec.input('max_iterations', valid_type=Int, default=Int(10))
+        spec.expose_inputs(HpBaseWorkChain)
         spec.input('parallelize_atoms', valid_type=Bool, default=Bool(False))
         spec.outline(
             cls.run_workchain,
-            cls.run_results,
+            cls.inspect_workchain,
+            cls.results,
         )
-        spec.output('parameters', valid_type=ParameterData)
-        spec.output('retrieved', valid_type=FolderData)
-        spec.output('matrices', valid_type=ArrayData)
-        spec.output('hubbard', valid_type=ParameterData)
-        spec.output('chi', valid_type=ArrayData)
+        spec.expose_outputs(HpBaseWorkChain)
 
     def run_workchain(self):
         """
         If parallelize_atoms is true, run the HpParallelizeAtomsWorkChain, otherwise run HpBaseWorkChain
         """
-        inputs = {
-            'code': self.inputs.code,
-            'parent_calculation': self.inputs.parent_calculation,
-            'qpoints': self.inputs.qpoints,
-            'parameters': self.inputs.parameters,
-            'settings': self.inputs.settings,
-            'options': self.inputs.options,
-            'max_iterations': self.inputs.max_iterations,
-        }
-
         if self.inputs.parallelize_atoms:
-            running = self.submit(HpParallelizeAtomsWorkChain, **inputs)
-
+            running = self.submit(HpParallelizeAtomsWorkChain, **self.exposed_inputs(HpBaseWorkChain))
             self.report('running in parallel, launching HpParallelizeAtomsWorkChain<{}>'.format(running.pk))
             return ToContext(workchain=running)
         else:
-            running = self.submit(HpBaseWorkChain, **inputs)
-
+            running = self.submit(HpBaseWorkChain, **self.exposed_inputs(HpBaseWorkChain))
             self.report('running in serial, launching HpBaseWorkChain<{}>'.format(running.pk))
             return ToContext(workchain=running)
 
-    def run_results(self):
+    def inspect_workchain(self):
+        """
+        Verify that the child workchain has finished successfully
+        """
+        if not self.ctx.workchain.is_finished_ok:
+            self.report('the {} workchain did not finish successfully'.format(self.ctx.workchain.process_label))
+            return self.ERROR_CHILD_WORKCHAIN_FAILED
+
+    def results(self):
         """
         Retrieve the results from the completed sub workchain
         """
-        workchain = self.ctx.workchain
-
-        for link in ['retrieved', 'parameters', 'chi', 'hubbard', 'matrices']:
-            if not link in workchain.out:
-                self.abort_nowait("the sub workchain is missing expected output link '{}'".format(link))
-            else:
-                self.out(link, workchain.out[link])
-
-        self.report('workchain completed successfully')
+        self.out_many(self.exposed_outputs(self.ctx.workchain, HpBaseWorkChain))

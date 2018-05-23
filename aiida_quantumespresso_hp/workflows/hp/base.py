@@ -8,13 +8,17 @@ from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
+from aiida.parsers import ParserFactory
 from aiida.work.workchain import while_
-from aiida_quantumespresso.utils.resources import get_default_options
 from aiida_quantumespresso.common.workchain.base.restart import BaseRestartWorkChain
+from aiida_quantumespresso.common.workchain.utils import ErrorHandlerReport
+from aiida_quantumespresso.common.workchain.utils import register_error_handler
+from aiida_quantumespresso.utils.resources import get_default_options
 
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
+HpParser = ParserFactory('quantumespresso.hp')
 
 
 class HpBaseWorkChain(BaseRestartWorkChain):
@@ -23,6 +27,8 @@ class HpBaseWorkChain(BaseRestartWorkChain):
     """
     _verbose = False
     _calculation_class = HpCalculation
+
+    ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
 
     @classmethod
     def define(cls, spec):
@@ -44,7 +50,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
             ),
             cls.results,
         )
-        spec.output('parameters', valid_type=ParameterData)
+        spec.output('output_parameters', valid_type=ParameterData)
         spec.output('retrieved', valid_type=FolderData)
         spec.output('matrices', valid_type=ArrayData, required=False)
         spec.output('hubbard', valid_type=ParameterData, required=False)
@@ -58,7 +64,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         or q-points, in which case the parent_folder should be set. In either case, at least one
         of the two inputs has to be defined properly
         """
-        self.ctx.inputs_raw = AttributeDict({
+        self.ctx.inputs = AttributeDict({
             'code': self.inputs.code,
             'qpoints': self.inputs.qpoints,
         })
@@ -67,30 +73,39 @@ class HpBaseWorkChain(BaseRestartWorkChain):
             self.abort_nowait('Neither the parent_calculation nor the parent_folder input was defined')
 
         try:
-            self.ctx.inputs_raw.parent_folder = self.inputs.parent_calculation.out.remote_folder
+            self.ctx.inputs.parent_folder = self.inputs.parent_calculation.out.remote_folder
         except AttributeError:
-            self.ctx.inputs_raw.parent_folder = self.inputs.parent_folder
+            self.ctx.inputs.parent_folder = self.inputs.parent_folder
 
         if 'parameters' in self.inputs:
-            self.ctx.inputs_raw.parameters = self.inputs.parameters.get_dict()
+            self.ctx.inputs.parameters = self.inputs.parameters.get_dict()
         else:
-            self.ctx.inputs_raw.parameters = {}
+            self.ctx.inputs.parameters = {}
 
         if 'settings' in self.inputs:
-            self.ctx.inputs_raw.settings = self.inputs.settings.get_dict()
+            self.ctx.inputs.settings = self.inputs.settings.get_dict()
         else:
-            self.ctx.inputs_raw.settings = {}
+            self.ctx.inputs.settings = {}
 
         if 'options' in self.inputs:
-            self.ctx.inputs_raw.options = self.inputs.options.get_dict()
+            self.ctx.inputs.options = self.inputs.options.get_dict()
         else:
-            self.ctx.inputs_raw.options = get_default_options()
+            self.ctx.inputs.options = get_default_options()
 
-        if 'INPUTHP'not in self.ctx.inputs_raw.parameters:
-            self.ctx.inputs_raw.parameters['INPUTHP'] = {}
+        if 'INPUTHP'not in self.ctx.inputs.parameters:
+            self.ctx.inputs.parameters['INPUTHP'] = {}
 
         if self.inputs.only_initialization.value:
-            self.ctx.inputs_raw.parameters['INPUTHP']['determine_num_pert_only'] = True
+            self.ctx.inputs.parameters['INPUTHP']['determine_num_pert_only'] = True
 
-        # Assign a deepcopy to self.ctx.inputs which will be used by the BaseRestartWorkChain
-        self.ctx.inputs = deepcopy(self.ctx.inputs_raw)
+
+@register_error_handler(HpBaseWorkChain, 100)
+def _handle_error_incorrect_order_atomic_positions(self, calculation):
+    """
+    The structure used by the parent calculation has its kinds in the wrong order, as in that the Hubbard kinds
+    were not added first, so they will not be printed first in the ATOMIC_POSITIONS card, which is required
+    by the hp.x code
+    """
+    if calculation.finish_status == HpParser.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS:
+        self.report('the parent calculation used a structure where the Hubbard atomic positions did not appear first')
+        return ErrorHandlerReport(True, True, self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS)

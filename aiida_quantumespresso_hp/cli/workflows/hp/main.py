@@ -2,6 +2,7 @@
 import click
 from aiida.utils.cli import command
 from aiida.utils.cli import options
+from aiida_quantumespresso.utils.cli import options as options_qe
 
 
 @command()
@@ -11,7 +12,11 @@ from aiida.utils.cli import options
 @options.max_num_machines()
 @options.max_wallclock_seconds()
 @options.daemon()
-@click.option('-p', '--parallelize-atoms', is_flag=True, default=False)
+@options_qe.clean_workdir()
+@click.option(
+    '--parallelize-atoms', is_flag=True, default=False, show_default=True,
+    help='Parallelize the linear response calculation over the Hubbard atoms'
+)
 def launch(
     code, calculation, kpoints, max_num_machines, max_wallclock_seconds, daemon, parallelize_atoms):
     """
@@ -30,19 +35,15 @@ def launch(
         }
     }
 
-    options = get_default_options(max_num_machines, max_wallclock_seconds)
-
     inputs = {
         'code': code,
         'parent_calculation': calculation,
         'qpoints': kpoints,
         'parameters': ParameterData(dict=parameters),
-        'settings': ParameterData(dict={}),
-        'options': ParameterData(dict=options)
+        'options': ParameterData(dict=get_default_options(max_num_machines, max_wallclock_seconds)),
+        'clean_workdir': Bool(clean_workdir),
+        'parallelize_atoms': Bool(parallelize_atoms),
     }
-
-    if parallelize_atoms:
-        inputs['parallelize_atoms'] = Bool(True)
 
     if daemon:
         workchain = submit(HpWorkChain, **inputs)

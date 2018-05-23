@@ -8,18 +8,35 @@ from aiida_quantumespresso.utils.cli import options as options_qe
 @command()
 @options.code('--pw', 'code_pw', callback_kwargs={'entry_point': 'quantumespresso.pw'})
 @options.code('--hp', 'code_hp', callback_kwargs={'entry_point': 'quantumespresso.hp'})
-@click.option('-h', '--hubbard-kind', multiple=True, nargs=2, type=click.Tuple([unicode, float]))
 @options.structure()
 @options.pseudo_family()
-@options.kpoint_mesh()
+@options.kpoint_mesh('--kpoints', help='The k-point mesh to use for the SCF calculations')
+@options.kpoint_mesh('--qpoints', help='The q-point mesh to use for the linear response calculation')
+@options_qe.ecutwfc()
+@options_qe.ecutrho()
+@options_qe.hubbard_u()
+@options_qe.starting_magnetization()
+@options_qe.automatic_parallelization()
+@options_qe.clean_workdir()
 @options.max_num_machines()
 @options.max_wallclock_seconds()
 @options.daemon()
-@options_qe.automatic_parallelization()
-@options_qe.clean_workdir()
+@click.option(
+    '--meta-convergence', is_flag=True, default=False, show_default=True,
+    help='Switch on the meta-convergence for the Hubbard parameters'
+)
+@click.option(
+    '--is-insulator', is_flag=True, default=False, show_default=True,
+    help='Treat the structure as an insulator'
+)
+@click.option(
+    '--parallelize-atoms', is_flag=True, default=False, show_default=True,
+    help='Parallelize the linear response calculation over the Hubbard atoms'
+)
 def launch(
-    code_pw, code_hp, hubbard_kind, structure, pseudo_family, kpoints, max_num_machines, max_wallclock_seconds, daemon,
-    automatic_parallelization, clean_workdir):
+    code_pw, code_hp, structure, pseudo_family, kpoints, qpoints, ecutwfc, ecutrho, hubbard_u, starting_magnetization,
+    automatic_parallelization, clean_workdir, max_num_machines, max_wallclock_seconds, daemon, meta_convergence,
+    is_insulator, parallelize_atoms):
     """
     Run the SelfConsistentHubbardWorkChain for a given input structure
     """
@@ -33,8 +50,8 @@ def launch(
 
     parameters = {
         'SYSTEM': {
-            'ecutwfc': 30.,
-            'ecutrho': 240.,
+            'ecutwfc': ecutwfc,
+            'ecutrho': ecutrho,
             'lda_plus_u': True,
         },
     }
@@ -46,16 +63,33 @@ def launch(
 
     options = get_default_options(max_num_machines, max_wallclock_seconds)
 
-    hubbard_u = {
-        'Co': 1E-8
-    }
+    structure_kinds = structure.get_kind_names()
+    hubbard_u_kinds = [kind for kind, value in hubbard_u]
+    hubbard_u = {kind: value for kind, value in hubbard_u}
 
-    settings = {}
+    if not set(hubbard_u_kinds).issubset(structure_kinds):
+        raise click.BadParameter(
+            'the kinds in the specified starting Hubbard U values {} is not a strict subset of the kinds in the structure {}'.format(
+            hubbard_u_kinds, structure_kinds), param_hint='hubbard_u'
+        )
+
+    if starting_magnetization:
+
+        parameters['SYSTEM']['nspin'] = 2
+
+        for kind, magnetization in starting_magnetization:
+
+            if kind not in structure_kinds:
+                raise click.BadParameter('the provided structure does not contain the kind {}'.format(kind), param_hint='starting_magnetization')
+
+            parameters['SYSTEM'].setdefault('starting_magnetization', {})[kind] = magnetization
+
 
     inputs = {
         'structure': structure,
         'hubbard_u': ParameterData(dict=hubbard_u),
-        'is_insulator': Bool(True),
+        'meta_convergence': Bool(meta_convergence),
+        'is_insulator': Bool(is_insulator),
         'scf': {
             'code': code_pw,
             'pseudo_family': Str(pseudo_family),
@@ -63,20 +97,12 @@ def launch(
             'parameters': ParameterData(dict=parameters),
             'options': ParameterData(dict=options)
         },
-        'relax': {
-            'code': code_pw,
-            'pseudo_family': Str(pseudo_family),
-            'kpoints': kpoints,
-            'parameters': ParameterData(dict=parameters),
-            'options': ParameterData(dict=options),
-            'meta_convergence': Bool(False),
-        },
         'hp': {
             'code': code_hp,
-            'qpoints': kpoints,
+            'qpoints': qpoints,
             'parameters': ParameterData(dict=parameters_hp),
-            'settings': ParameterData(dict=settings),
             'options': ParameterData(dict=options),
+            'parallelize_atoms': Bool(parallelize_atoms),
         }
     }
 
