@@ -10,8 +10,8 @@ from aiida_quantumespresso.utils.cli import options as options_qe
 @options.code('--hp', 'code_hp', callback_kwargs={'entry_point': 'quantumespresso.hp'})
 @options.structure()
 @options.pseudo_family()
-@options.kpoint_mesh('--kpoints', help='The k-point mesh to use for the SCF calculations')
-@options.kpoint_mesh('--qpoints', help='The q-point mesh to use for the linear response calculation')
+@options.kpoint_mesh('-k', 'kpoints', help='the k-point mesh to use for the SCF calculations')
+@options.kpoint_mesh('-q', 'qpoints', help='the q-point mesh to use for the linear response calculation')
 @options_qe.ecutwfc()
 @options_qe.ecutrho()
 @options_qe.hubbard_u()
@@ -23,15 +23,15 @@ from aiida_quantumespresso.utils.cli import options as options_qe
 @options.daemon()
 @click.option(
     '--meta-convergence', is_flag=True, default=False, show_default=True,
-    help='Switch on the meta-convergence for the Hubbard parameters'
+    help='switch on the meta-convergence for the Hubbard parameters'
 )
 @click.option(
     '--is-insulator', is_flag=True, default=False, show_default=True,
-    help='Treat the structure as an insulator'
+    help='treat the structure as an insulator'
 )
 @click.option(
     '--parallelize-atoms', is_flag=True, default=False, show_default=True,
-    help='Parallelize the linear response calculation over the Hubbard atoms'
+    help='parallelize the linear response calculation over the Hubbard atoms'
 )
 def launch(
     code_pw, code_hp, structure, pseudo_family, kpoints, qpoints, ecutwfc, ecutrho, hubbard_u, starting_magnetization,

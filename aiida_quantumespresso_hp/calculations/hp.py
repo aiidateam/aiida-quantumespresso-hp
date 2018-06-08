@@ -11,7 +11,8 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.calculation.job import JobCalculation
 from aiida.orm.calculation.function import FunctionCalculation
-from aiida_quantumespresso.calculations import get_input_data_text, _lowercase_dict, _uppercase_dict
+from aiida_quantumespresso.calculations import _lowercase_dict, _uppercase_dict
+from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
@@ -22,14 +23,17 @@ class HpCalculation(JobCalculation):
     Quantum ESPRESSO Hp calculations
     """
 
+    _PREFIX = 'aiida'
+    _INPUT_FILE_NAME = '{}.in'.format(_PREFIX)
+    _OUTPUT_FILE_NAME = '{}.out'.format(_PREFIX)
+    _OUTPUT_FILE_NAME_CHI = '{}.chi.dat'.format(_PREFIX)
+    _OUTPUT_FILE_NAME_HUBBARD = '{}.Hubbard_parameters.dat'.format(_PREFIX)
+
+    _INPUT_FILE_NAME_HUBBARD_FILE = 'parameters.in'
+    _OUTPUT_FILE_NAME_HUBBARD_FILE = 'parameters.out'
+
     def _init_internal_params(self):
         super(HpCalculation, self)._init_internal_params()
-
-        self._PREFIX = 'aiida'
-        self._INPUT_FILE_NAME = '{}.in'.format(self._PREFIX)
-        self._OUTPUT_FILE_NAME = '{}.out'.format(self._PREFIX)
-        self._OUTPUT_CHI_SUFFIX = '.chi.dat'
-        self._OUTPUT_HUBBARD_SUFFIX = '.Hubbard_parameters.dat'
 
         self._default_parser = 'quantumespresso.hp'
         self._compulsory_namelists = ['INPUTHP']
@@ -49,6 +53,30 @@ class HpCalculation(JobCalculation):
         # Default input and output files
         self._DEFAULT_INPUT_FILE = self._INPUT_FILE_NAME
         self._DEFAULT_OUTPUT_FILE = self._OUTPUT_FILE_NAME
+
+    @classproperty
+    def input_file_name(cls):
+        return cls._INPUT_FILE_NAME
+
+    @classproperty
+    def output_file_name(cls):
+        return cls._OUTPUT_FILE_NAME
+
+    @classproperty
+    def output_file_name_chi(cls):
+        return cls._OUTPUT_FILE_NAME_CHI
+
+    @classproperty
+    def output_file_name_hubbard(cls):
+        return cls._OUTPUT_FILE_NAME_HUBBARD
+
+    @classproperty
+    def input_file_name_hubbard_file(cls):
+        return cls._INPUT_FILE_NAME_HUBBARD_FILE
+
+    @classproperty
+    def output_file_name_hubbard_file(cls):
+        return cls._OUTPUT_FILE_NAME_HUBBARD_FILE
 
     @classproperty
     def _OUTPUT_SUBFOLDER(cls):
@@ -131,8 +159,8 @@ class HpCalculation(JobCalculation):
         cmdline_params = input_settings.pop('CMDLINE', [])
 
         codeinfo = CodeInfo()
-        codeinfo.cmdline_params = (list(cmdline_params) + ["-in", self._INPUT_FILE_NAME])
-        codeinfo.stdout_name = self._OUTPUT_FILE_NAME
+        codeinfo.cmdline_params = (list(cmdline_params) + ['-in', self.input_file_name])
+        codeinfo.stdout_name = self.output_file_name
         codeinfo.code_uuid = input_code.uuid
 
         calcinfo = CalcInfo()
@@ -163,9 +191,10 @@ class HpCalculation(JobCalculation):
         retrieve_list = []
 
         # Default output files that are written after a completed or post-processing HpCalculation
-        retrieve_list.append(self._OUTPUT_FILE_NAME)
-        retrieve_list.append(self._PREFIX + self._OUTPUT_CHI_SUFFIX)
-        retrieve_list.append(self._PREFIX + self._OUTPUT_HUBBARD_SUFFIX)
+        retrieve_list.append(self.output_file_name)
+        retrieve_list.append(self.output_file_name_chi)
+        retrieve_list.append(self.output_file_name_hubbard)
+        retrieve_list.append(self.output_file_name_hubbard_file)
 
         # Required files and directories for final collection calculations
         path_save_directory = os.path.join(self._OUTPUT_SUBFOLDER, self._PREFIX + '.save')
@@ -327,7 +356,7 @@ class HpCalculation(JobCalculation):
         try:
             mesh, offset = qpoints.get_kpoints_mesh()
         except AttributeError:
-            raise NotImplementedError("support for explicit qpoints is not implemented, only uniform meshes")
+            raise NotImplementedError('support for explicit qpoints is not implemented, only uniform meshes')
 
         if any([i != 0. for i in offset]):
             raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')
@@ -349,15 +378,15 @@ class HpCalculation(JobCalculation):
         :param tempfolder: an aiida.common.folders.Folder to temporarily write files on disk
         :param input_parameters: a dictionary with input namelists and their flags
         """
-        filename = tempfolder.get_abs_path(self._INPUT_FILE_NAME)
+        filename = tempfolder.get_abs_path(self.input_file_name)
 
         with open(filename, 'w') as handle:
             for namelist_name in self._compulsory_namelists:
                 namelist = input_parameters.pop(namelist_name)
-                handle.write("&{0}\n".format(namelist_name))
+                handle.write('&{0}\n'.format(namelist_name))
                 for key, value in sorted(namelist.iteritems()):
-                    handle.write(get_input_data_text(key, value))
-                handle.write("/\n")
+                    handle.write(convert_input_to_namelist_entry(key, value))
+                handle.write('/\n')
 
         if input_parameters:
             raise InputValidationError('these specified namelists are invalid: {}'

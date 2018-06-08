@@ -4,6 +4,7 @@ from aiida.common.exceptions import InvalidOperation
 from aiida.common.datastructures import calc_states
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.parameter import ParameterData
+from aiida.orm.data.singlefile import SinglefileData
 from aiida.parsers.parser import Parser
 from aiida.parsers.exceptions import OutputParsingError
 from aiida_quantumespresso.parsers import QEOutputParsingError
@@ -46,6 +47,12 @@ class HpParser(Parser):
         """
         return 'hubbard'
 
+    def get_linkname_hubbard_file(self):
+        """
+        Returns the name of the link to the Hubbard output SinglefileData that can be used for a PwCalculation
+        """
+        return 'hubbard_file'
+
     def get_linkname_matrices(self):
         """
         Returns the name of the link to the output matrices ArrayData
@@ -85,7 +92,7 @@ class HpParser(Parser):
 
         # Verify the standard output file is present, parse it and attach as output parameters
         try:
-            filepath_stdout = output_folder.get_abs_path(self.calculation._OUTPUT_FILE_NAME)
+            filepath_stdout = output_folder.get_abs_path(self.calculation.output_file_name)
         except OSError as exception:
             self.logger.error("expected output file '{}' was not found".format(filepath))
             return False, ()
@@ -98,13 +105,18 @@ class HpParser(Parser):
 
         # We cannot use get_abs_path of the output_folder, since that will check for file existence and will throw
         output_path = output_folder.get_abs_path('.')
-        filepath_chi = os.path.join(output_path, self.calculation._PREFIX + self.calculation._OUTPUT_CHI_SUFFIX)
-        filepath_hubbard = os.path.join(output_path, self.calculation._PREFIX + self.calculation._OUTPUT_HUBBARD_SUFFIX)
+        filepath_chi = os.path.join(output_path, self.calculation.output_file_name_chi)
+        filepath_hubbard = os.path.join(output_path, self.calculation.output_file_name_hubbard)
+        filepath_hubbard_file = os.path.join(output_path, self.calculation.output_file_name_hubbard_file)
 
         for filepath in [filepath_chi, filepath_hubbard]:
             if not os.path.isfile(filepath):
                 complete_calculation = False
                 self.logger.info("output file '{}' was not found, assuming partial calculation".format(filepath))
+
+        if os.path.isfile(filepath_hubbard_file):
+            output_hubbard_file = SinglefileData(file=filepath_hubbard_file)
+            output_nodes.append((self.get_linkname_hubbard_file(), output_hubbard_file))
 
         if complete_calculation:
             dict_hubbard = self.parse_hubbard(filepath_hubbard)

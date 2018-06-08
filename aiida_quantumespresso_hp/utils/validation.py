@@ -22,13 +22,14 @@ def validate_parent_calculation(calculation):
 
     lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', None)
     hubbard_u = parameters.get('SYSTEM', {}).get('hubbard_u', {})
+    hubbard_v = parameters.get('SYSTEM', {}).get('hubbard_v', {})
+    hubbard_parameters = parameters.get('SYSTEM', {}).get('hubbard_parameters', None)
 
     if lda_plus_u is not True:
-        print lda_plus_u
         raise ValueError('the parent calculation did not set lda_plus_u = True')
 
-    if not hubbard_u:
-        raise ValueError('the parent calculation did not specify any Hubbard kinds')
+    if not hubbard_u and not hubbard_v and not hubbard_parameters:
+        raise ValueError('the parent calculation did not specify any Hubbard U or V parameters')
 
     try:
         structure = calculation.inp.structure

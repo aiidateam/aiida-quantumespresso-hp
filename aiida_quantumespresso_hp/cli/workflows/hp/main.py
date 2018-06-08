@@ -15,7 +15,7 @@ from aiida_quantumespresso.utils.cli import options as options_qe
 @options_qe.clean_workdir()
 @click.option(
     '--parallelize-atoms', is_flag=True, default=False, show_default=True,
-    help='Parallelize the linear response calculation over the Hubbard atoms'
+    help='parallelize the linear response calculation over the Hubbard atoms'
 )
 def launch(
     code, calculation, kpoints, max_num_machines, max_wallclock_seconds, daemon, parallelize_atoms):
