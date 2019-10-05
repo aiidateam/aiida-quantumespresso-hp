@@ -1,192 +1,165 @@
 # -*- coding: utf-8 -*-
-import glob, os, re, numpy, enum
-from aiida.common.exceptions import InvalidOperation
-from aiida.common.datastructures import calc_states
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.singlefile import SinglefileData
-from aiida.parsers.parser import Parser
-from aiida.parsers.exceptions import OutputParsingError
-from aiida_quantumespresso.parsers import QEOutputParsingError
+"""Parser implementation for the `HpCalculation` plugin."""
+from __future__ import absolute_import
+
+import os
+import re
+import numpy
+from six.moves import range
+
+from aiida import orm
+from aiida.common import exceptions
+from aiida.parsers import Parser
+
+from aiida_quantumespresso.utils.mapping import get_logging_container
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 
 
 class HpParser(Parser):
-    """
-    Parser implementation for Quantum ESPRESSO Hp calculations 
-    """
-    _parser_version = '0.1'
-    _parser_name = 'AiiDA Quantum ESPRESSO HP parser'
+    """Parser implementation for the `HpCalculation` plugin."""
 
-    ERROR_NO_OUTPUT = 1
-    ERROR_PREMATURE_TERMINATION = 2
-    ERROR_CONVERGENCE_NOT_REACHED = 3
-    ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
-    ERROR_MISSING_PERTURBATION_FILE = 5
+    def __init__(self, node):
+        super(HpParser, self).__init__(node)
+        if not issubclass(node.process_class, HpCalculation):
+            args = (HpCalculation, node.uuid, node.process_class)
+            raise exceptions.ParsingError('Node must be a {} but node<{}> has process class {}'.format(*args))
 
-    def __init__(self, calculation):
-        """
-        Initialize the instance of HpParser
-        """
-        if not isinstance(calculation, HpCalculation):
-            raise QEOutputParsingError('input calculation must be a HpCalculation')
+    def parse(self, **kwargs):
+        """Parse the contents of the output files retrieved in the `FolderData`."""
+        try:
+            self.retrieved
+        except exceptions.NotExistent:
+            return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
-        self.calculation = calculation
+        for parse_method in [self.parse_stdout, self.parse_hubbard, self.parse_hubbard_file, self.parse_hubbard_chi]:
+            exit_code = parse_method()
+            if exit_code:
+                return exit_code
 
-        super(HpParser, self).__init__(calculation)
+    def parse_stdout(self):
+        """Parse the stdout output file.
 
-    def get_linkname_outparams(self):
-        """
-        Returns the name of the link to the standard output ParameterData
-        """
-        return 'output_parameters'
+        Parse the output parameters from the output of a Hp calculation written to standard out.
 
-    def get_linkname_hubbard(self):
+        :return: optional exit code in case of an error
         """
-        Returns the name of the link to the Hubbard output ParameterData
-        """
-        return 'hubbard'
+        filename = self.node.get_attribute('output_filename')
 
-    def get_linkname_hubbard_file(self):
-        """
-        Returns the name of the link to the Hubbard output SinglefileData that can be used for a PwCalculation
-        """
-        return 'hubbard_file'
-
-    def get_linkname_matrices(self):
-        """
-        Returns the name of the link to the output matrices ArrayData
-        """
-        return 'matrices'
-
-    def get_linkname_chi(self):
-        """
-        Returns the name of the link to the output chi ArrayData
-        """
-        return 'chi'
-
-    def parse_result_template(self):
-        """
-        Returns a dictionary 
-        """
-        return {
-            'parser_info': '{} v{}'.format(self._parser_name, self._parser_version),
-            'parser_warnings': [],
-            'warnings': []
-        }
-
-    def parse_with_retrieved(self, retrieved):
-        """
-        Parse the results of retrieved nodes
-
-        :param retrieved: dictionary of retrieved nodes
-        """
-        is_success = True
-        output_nodes = []
+        if filename not in self.retrieved.list_object_names():
+            return self.exit_codes.ERROR_OUTPUT_STDOUT_MISSING
 
         try:
-            output_folder = retrieved[self.calculation._get_linkname_retrieved()]
-        except KeyError:
-            self.logger.error('no retrieved folder found')
-            return False, ()
+            stdout = self.retrieved.get_object_content(filename)
+        except IOError:
+            return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 
-        # Verify the standard output file is present, parse it and attach as output parameters
         try:
-            filepath_stdout = output_folder.get_abs_path(self.calculation.output_file_name)
-        except OSError as exception:
-            self.logger.error("expected output file '{}' was not found".format(filepath))
-            return False, ()
+            parsed_data, logs = self.parse_stdout_content(stdout)
+        except Exception:  # pylint: disable=broad-except
+            return self.exit_codes.ERROR_OUTPUT_STDOUT_PARSE
+        else:
+            self.out('parameters', orm.Dict(dict=parsed_data))
 
-        is_success, dict_stdout = self.parse_stdout(filepath_stdout)
-        output_nodes.append((self.get_linkname_outparams(), ParameterData(dict=dict_stdout)))
+        exit_status = [
+            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+            'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
+            'ERROR_MISSING_PERTURBATION_FILE',
+            'ERROR_CONVERGENCE_NOT_REACHED',
+            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+        ]
 
-        # The final chi and hubbard files are only written by a serial or post-processing calculation
-        complete_calculation = True
+        for exit_status in exit_status:
+            if exit_status in logs['error']:
+                return self.exit_codes.get(exit_status)
 
-        # We cannot use get_abs_path of the output_folder, since that will check for file existence and will throw
-        output_path = output_folder.get_abs_path('.')
-        filepath_chi = os.path.join(output_path, self.calculation.output_file_name_chi)
-        filepath_hubbard = os.path.join(output_path, self.calculation.output_file_name_hubbard)
-        filepath_hubbard_file = os.path.join(output_path, self.calculation.output_file_name_hubbard_file)
+    def parse_hubbard(self):
+        """Parse the hubbard output file.
 
-        for filepath in [filepath_chi, filepath_hubbard]:
-            if not os.path.isfile(filepath):
-                complete_calculation = False
-                self.logger.info("output file '{}' was not found, assuming partial calculation".format(filepath))
-
-        if os.path.isfile(filepath_hubbard_file):
-            output_hubbard_file = SinglefileData(file=filepath_hubbard_file)
-            output_nodes.append((self.get_linkname_hubbard_file(), output_hubbard_file))
-
-        if complete_calculation:
-            dict_hubbard = self.parse_hubbard(filepath_hubbard)
-            dict_chi = self.parse_chi(filepath_chi)
-
-            output_matrices = ArrayData()
-            output_matrices.set_array('chi0', dict_hubbard['chi0'])
-            output_matrices.set_array('chi1', dict_hubbard['chi1'])
-            output_matrices.set_array('chi0_inv', dict_hubbard['chi0_inv'])
-            output_matrices.set_array('chi1_inv', dict_hubbard['chi1_inv'])
-            output_matrices.set_array('hubbard', dict_hubbard['hubbard'])
-
-            output_chi = ArrayData()
-            output_chi.set_array('chi0', dict_chi['chi0'])
-            output_chi.set_array('chi1', dict_chi['chi1'])
-
-            output_hubbard = ParameterData(dict=dict_hubbard['hubbard_U'])
-
-            output_nodes.append((self.get_linkname_matrices(), output_matrices))
-            output_nodes.append((self.get_linkname_hubbard(), output_hubbard))
-            output_nodes.append((self.get_linkname_chi(), output_chi))
-        
-        return is_success, output_nodes
-
-    def parse_stdout(self, filepath):
+        :return: optional exit code in case of an error
         """
-        Parse the output parameters from the output of a Hp calculation written to standard out
+        filename = HpCalculation.filename_output_hubbard
+
+        with self.retrieved.open(filename, 'r') as handle:
+            parsed_data = self.parse_hubbard_content(handle)
+
+        matrices = orm.ArrayData()
+        matrices.set_array('chi0', parsed_data['chi0'])
+        matrices.set_array('chi1', parsed_data['chi1'])
+        matrices.set_array('chi0_inv', parsed_data['chi0_inv'])
+        matrices.set_array('chi1_inv', parsed_data['chi1_inv'])
+        matrices.set_array('hubbard', parsed_data['hubbard'])
+
+        self.out('matrices', matrices)
+        self.out('hubbard', orm.Dict(dict=parsed_data['hubbard_U']))
+
+    def parse_hubbard_file(self):
+        """Parse the hubbard output file.
+
+        :return: optional exit code in case of an error
+        """
+        filename = HpCalculation.filename_output_hubbard_parameters
+
+        if filename not in self.retrieved.list_object_names():
+            self.logger.info("output file '{}' was not found, assuming partial calculation".format(filename))
+            return
+
+        if filename in self.retrieved.list_object_names():
+            with self.retrieved.open(filename, 'rb') as handle:
+                self.out('hubbard_file', orm.SinglefileData(file=handle))
+
+    def parse_hubbard_chi(self):
+        """Parse the hubbard output file.
+
+        :return: optional exit code in case of an error
+        """
+        filename = HpCalculation.filename_output_hubbard_chi
+
+        if filename not in self.retrieved.list_object_names():
+            self.logger.info("output file '{}' was not found, assuming partial calculation".format(filename))
+            return
+
+        with self.retrieved.open(filename, 'r') as handle:
+            parsed_data = self.parse_chi_content(handle)
+
+        output_chi = orm.ArrayData()
+        output_chi.set_array('chi0', parsed_data['chi0'])
+        output_chi.set_array('chi1', parsed_data['chi1'])
+
+        self.out('chi', output_chi)
+
+    @staticmethod
+    def parse_stdout_content(stdout):
+        """Parse the output parameters from the output of a Hp calculation written to standard out.
 
         :param filepath: path to file containing output written to stdout
         :returns: boolean representing success status of parsing, True equals parsing was successful
         :returns: dictionary with the parsed parameters
         """
-        exit_status = 0
-        is_terminated = True
-        result = self.parse_result_template()
-
-        try:
-            with open(filepath, 'r') as handle:
-                output = handle.readlines()
-        except IOError:
-            raise QEOutputParsingError('failed to read file: {}.'.format(filepath))
-
-        # Empty output can be considered as a problem
-        if not output:
-            exit_status = self.ERROR_NO_OUTPUT
-            return exit_status, result
+        parsed_data = {}
+        logs = get_logging_container()
+        is_prematurely_terminated = True
 
         # Parse the output line by line by creating an iterator of the lines
-        it = iter(output)
-        for line in it:
+        iterator = iter(stdout.split('\n'))
+        for line in iterator:
 
             # If the output does not contain the line with 'JOB DONE' the program was prematurely terminated
             if 'JOB DONE' in line:
-                is_terminated = False
+                is_prematurely_terminated = False
 
             # If the atoms were not ordered correctly in the parent calculation
             if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
-                exit_status = self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS
-                return exit_status, result
+                logs.error.append('ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS')
+                return
 
             # If not all expected perturbation files were found for a chi_collect calculation
             if 'Error in routine hub_read_chi (1)' in line:
-                exit_status = self.ERROR_MISSING_PERTURBATION_FILE
-                return exit_status, result
+                logs.error.append('ERROR_MISSING_PERTURBATION_FILE')
 
             # If the run did not convergence we expect to find the following string
             match = re.search(r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
             if match:
-                exit_status = self.ERROR_CONVERGENCE_NOT_REACHED
-                return exit_status, result
+                logs.error.append('ERROR_CONVERGENCE_NOT_REACHED')
 
             # Determine the atomic sites that will be perturbed, or that the calculation expects
             # to have been calculated when post-processing the final matrices
@@ -194,44 +167,40 @@ class HpParser(Parser):
             if match:
                 hubbard_sites = {}
                 number_of_perturbed_atoms = int(match.group(1))
-                blank_line = next(it)
-                for i in range(number_of_perturbed_atoms):
-                    values = next(it).split()
+                _ = next(iterator)  # skip blank line
+                for _ in range(number_of_perturbed_atoms):
+                    values = next(iterator).split()
                     index = values[0]
                     kind = values[1]
                     hubbard_sites[index] = kind
-                result['hubbard_sites'] = hubbard_sites
+                parsed_data['hubbard_sites'] = hubbard_sites
 
             # A calculation that will only perturb a single atom will only print one line
             match = re.search(r'.*Atom which will be perturbed.*', line)
             if match:
                 hubbard_sites = {}
                 number_of_perturbed_atoms = 1
-                blank_line = next(it)
-                for i in range(number_of_perturbed_atoms):
-                    values = next(it).split()
+                _ = next(iterator)  # skip blank line
+                for _ in range(number_of_perturbed_atoms):
+                    values = next(iterator).split()
                     index = values[0]
                     kind = values[1]
                     hubbard_sites[index] = kind
-                result['hubbard_sites'] = hubbard_sites
+                parsed_data['hubbard_sites'] = hubbard_sites
 
-        if is_terminated:
-            exit_status = self.ERROR_PREMATURE_TERMINATION
+        if is_prematurely_terminated:
+            logs.error.append('ERROR_PREMATURE_TERMINATION')
 
-        return exit_status, result
+        return parsed_data, logs
 
-    def parse_chi(self, filepath):
+    def parse_chi_content(self, handle):
         """
         Parse the contents of the file {prefix}.chi.dat as written by a HpCalculation
 
         :param filepath: absolute filepath to the chi.dat output file
         :returns: dictionary with parsed contents
         """
-        try:
-            with open(filepath, 'r') as handle:
-                data = handle.readlines()
-        except IOError as exception:
-            raise OutputParsingError("could not read the '{}' output file".format(os.path.basename(filepath)))
+        data = handle.readlines()
 
         result = {}
         blocks = {
@@ -249,9 +218,10 @@ class HpParser(Parser):
                 blocks['chi1'][1] = len(data)
                 break
 
-        if not all(sum(blocks.values(), [])):
-            raise OutputParsingError("could not determine beginning and end of all blocks in '{}'"
-                .format(os.path.basename(filepath)))
+        if not all(sum(list(blocks.values()), [])):
+            raise ValueError(
+                "could not determine beginning and end of all blocks in '{}'".format(os.path.basename(handle.name))
+            )
 
         for matrix_name in ('chi0', 'chi1'):
             matrix_block = blocks[matrix_name]
@@ -261,30 +231,22 @@ class HpParser(Parser):
 
         return result
 
-    def parse_hubbard(self, filepath):
+    def parse_hubbard_content(self, handle):
         """
         Parse the contents of the file {prefix}.Hubbard_U.dat as written by a HpCalculation
 
         :param filepath: absolute filepath to the Hubbard_U.dat output file
         :returns: dictionary with parsed contents
         """
-        try:
-            with open(filepath, 'r') as handle:
-                data = handle.readlines()
-        except IOError as exception:
-            raise OutputParsingError("could not read the '{}' output file".format(os.path.basename(filepath)))
+        data = handle.readlines()
 
-        result = {
-            'hubbard_U': {
-                'sites': []
-            }
-        }
+        result = {'hubbard_U': {'sites': []}}
         blocks = {
-            'chi0':     [None, None],
-            'chi1':     [None, None],
+            'chi0': [None, None],
+            'chi1': [None, None],
             'chi0_inv': [None, None],
             'chi1_inv': [None, None],
-            'hubbard':  [None, None],
+            'hubbard': [None, None],
         }
 
         for line_number, line in enumerate(data):
@@ -330,9 +292,12 @@ class HpParser(Parser):
                 blocks['hubbard'][1] = len(data)
                 break
 
-        if not all(sum(blocks.values(), [])):
-            raise OutputParsingError("could not determine beginning and end of all matrix blocks in '{}'"
-                .format(os.path.basename(filepath)))
+        if not all(sum(list(blocks.values()), [])):
+            raise ValueError(
+                "could not determine beginning and end of all matrix blocks in '{}'".format(
+                    os.path.basename(handle.name)
+                )
+            )
 
         for matrix_name in ('chi0', 'chi1', 'chi0_inv', 'chi1_inv', 'hubbard'):
             matrix_block = blocks[matrix_name]
@@ -340,21 +305,24 @@ class HpParser(Parser):
             matrix = self.parse_hubbard_matrix(matrix_data)
 
             if len(set(matrix.shape)) != 1:
-                raise OutputParsingError("the matrix '{}' in '{}'' is not square but has shape {}"
-                    .format(matrix_name, os.path.basename(filepath), matrix.shape))
+                raise ValueError(
+                    "the matrix '{}' in '{}'' is not square but has shape {}".format(
+                        matrix_name, os.path.basename(handle.name), matrix.shape
+                    )
+                )
 
             result[matrix_name] = matrix
 
         return result
 
-    def parse_hubbard_matrix(self, data):
-        """
-        Utility function to parse one of the matrices that are written to the {prefix}.Hubbard_U.dat
-        file by a HpCalculation. Each matrix should be square of size N, which is given by the product
-        of the number of q-points and the number of Hubbard species
-        Each matrix row is printed with a maximum number of 8 elements per line and each line is followed
-        by an empty line. In the parsing of the data, we will use the empty line to detect the end of
-        the current matrix row
+    @staticmethod
+    def parse_hubbard_matrix(data):
+        """Utility function to parse one of the matrices that are written to the {prefix}.Hubbard_U.dat files.
+
+        Each matrix should be square of size N, which is given by the product of the number of q-points and the number
+        of Hubbard species. Each matrix row is printed with a maximum number of 8 elements per line and each line is
+        followed by an empty line. In the parsing of the data, we will use the empty line to detect the end of the
+        current matrix row.
 
         :param data: a list of strings representing lines in the Hubbard_U.dat file of a certain matrix
         :returns: square numpy matrix of floats representing the parsed matrix
@@ -364,8 +332,8 @@ class HpParser(Parser):
 
         for line in data:
             if line.strip():
-                for f in line.split():
-                    row.append(float(f))
+                for value in line.split():
+                    row.append(float(value))
             else:
                 if row:
                     matrix.append(row)

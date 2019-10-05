@@ -1,0 +1,35 @@
+chi:
+  array|chi0:
+  - 1
+  - 1
+  array|chi1:
+  - 1
+  - 0
+hubbard:
+  sites:
+  - index: '1'
+    kind: Co
+    new_kind: Co
+    new_type: '1'
+    spin: '1'
+    type: '1'
+    value: '7.6150'
+matrices:
+  array|chi0:
+  - 1
+  - 1
+  array|chi0_inv:
+  - 1
+  - 1
+  array|chi1:
+  - 1
+  - 1
+  array|chi1_inv:
+  - 1
+  - 1
+  array|hubbard:
+  - 1
+  - 1
+parameters:
+  hubbard_sites:
+    '1': Co
