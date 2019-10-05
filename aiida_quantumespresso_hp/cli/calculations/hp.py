@@ -1,63 +1,51 @@
 # -*- coding: utf-8 -*-
+"""Command line scripts to launch a `HpCalculation` for testing and demonstration purposes."""
+from __future__ import absolute_import
+
 import click
-from aiida.utils.cli import command
-from aiida.utils.cli import options
+
+from aiida.cmdline.params import options, types
+from aiida.cmdline.utils import decorators
+
+from aiida_quantumespresso.cli.utils import launch
+from aiida_quantumespresso.cli.utils import options as options_qe
+from . import cmd_launch
 
 
-@command()
-@options.code(callback_kwargs={'entry_point': 'quantumespresso.hp'})
-@options.calculation(callback_kwargs={'entry_point': 'quantumespresso.pw'})
-@options.kpoint_mesh()
-@options.max_num_machines()
-@options.max_wallclock_seconds()
-@options.daemon()
-def launch(code, calculation, kpoints, max_num_machines, max_wallclock_seconds, daemon):
-    """
-    Run a HpCalculation for a previously completed PwCalculation
-    """
-    from aiida.orm import load_node
-    from aiida.orm.data.parameter import ParameterData
-    from aiida.orm.data.upf import get_pseudos_from_structure
-    from aiida.orm.utils import CalculationFactory
-    from aiida.work.launch import run_get_pid, submit
+@cmd_launch.command('hp')
+@options.CODE(required=True, type=types.CodeParamType(entry_point='quantumespresso.hp'))
+@options_qe.KPOINTS_MESH(default=[1, 1, 1])
+@options_qe.PARENT_FOLDER()
+@options_qe.MAX_NUM_MACHINES()
+@options_qe.MAX_WALLCLOCK_SECONDS()
+@options_qe.WITH_MPI()
+@options_qe.DAEMON()
+@options.DRY_RUN()
+@decorators.with_dbenv()
+def launch_calculation(
+    code, kpoints_mesh, parent_folder, max_num_machines, max_wallclock_seconds, with_mpi, daemon, dry_run
+):
+    """Run a `HpCalculation`."""
+    from aiida.orm import Dict
+    from aiida.plugins import CalculationFactory
     from aiida_quantumespresso.utils.resources import get_default_options
-    from aiida_quantumespresso_hp.utils.validation import validate_parent_calculation
 
-    HpCalculation = CalculationFactory('quantumespresso.hp')
-
-    try:
-        validate_parent_calculation(calculation)
-    except ValueError as exception:
-        raise click.BadParameter('invalid parent calculation: {}'.format(exception))
-
-    parameters = {
-        'INPUTHP': {
-        }
-    }
+    parameters = {'INPUTHP': {}}
 
     inputs = {
         'code': code,
-        'qpoints': kpoints,
-        'parameters': ParameterData(dict=parameters),
-        'parent_folder': calculation.out.remote_folder,
-        'options': get_default_options(max_num_machines, max_wallclock_seconds),
+        'qpoints': kpoints_mesh,
+        'parameters': Dict(dict=parameters),
+        'parent_folder': parent_folder,
+        'metadata': {
+            'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi),
+        }
     }
 
-    click.echo('Running a hp.x calculation ... ')
+    if dry_run:
+        if daemon:
+            raise click.BadParameter('cannot send to the daemon if in dry_run mode', param_hint='--daemon')
+        inputs.setdefault('metadata', {})['store_provenance'] = False
+        inputs['metadata']['dry_run'] = True
 
-    process = HpCalculation.process()
-
-    if daemon:
-        calculation = submit(process, **inputs)
-        pk = calculation.pk
-        click.echo('Submitted {}<{}> to the daemon'.format(HpCalculation.__name__, calculation.pk))
-    else:
-        results, pk = run_get_pid(process, **inputs)
-
-    calculation = load_node(pk)
-
-    click.echo('HpCalculation<{}> terminated with state: {}'.format(pk, calculation.get_state()))
-    click.echo('\n{link:25s} {node}'.format(link='Output link', node='Node pk and type'))
-    click.echo('{s}'.format(s='-'*60))
-    for link, node in sorted(calculation.get_outputs(also_labels=True)):
-        click.echo('{:25s} <{}> {}'.format(link, node.pk, node.__class__.__name__))
+    launch.launch_process(CalculationFactory('quantumespresso.hp'), daemon, **inputs)

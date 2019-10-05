@@ -42,10 +42,7 @@
             "quantumespresso.hp.hubbard = aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain"
         ],
         "console_scripts": [
-            "launch_calculation_hp = aiida_quantumespresso_hp.cli.calculations.hp:launch",
-            "launch_workflow_hp_base = aiida_quantumespresso_hp.cli.workflows.hp.base:launch",
-            "launch_workflow_hp_main = aiida_quantumespresso_hp.cli.workflows.hp.main:launch",
-            "launch_workflow_hp_hubbard = aiida_quantumespresso_hp.cli.workflows.hubbard:launch"
+            "aiida-quantumespresso-hp = aiida_quantumespresso_hp.cli:cmd_root"
         ]
     }
 }
