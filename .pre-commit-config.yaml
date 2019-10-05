@@ -1,0 +1,61 @@
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.2.3
+  hooks:
+  - id: trailing-whitespace
+    exclude: &exclude >
+      (?x)^(
+          tests/calculations/test_pw/.*.in|
+          tests/fixtures/.*|
+          tests/parsers/fixtures/.*|
+          tests/parsers/*.yml
+      )$
+  - id: double-quote-string-fixer
+
+- repo: local
+  hooks:
+
+  - id: yapf
+    name: yapf
+    entry: yapf
+    language: system
+    types: [python]
+    args: ['-i']
+    exclude: &exclude_files >
+      (?x)^(
+        docs/.*|
+        tests/.*
+      )$
+
+  - id: prospector
+    language: system
+    types: [file, python]
+    exclude: *exclude_files
+    name: prospector
+    description: 'This hook runs Prospector: https://github.com/landscapeio/prospector'
+    entry: prospector
+
+  - id: version-number
+    name: Check consistency in version number
+    entry: python ./.ci/validate_version_number.py
+    args: ['version']
+    language: system
+    files: >-
+      (?x)^(
+        setup.json|
+        aiida_quantumespresso_hp/__init__.py|
+        ./.ci/validate_version_number.py|
+      )$
+    pass_filenames: false
+
+- repo: https://github.com/python-modernize/python-modernize.git
+  rev: a234ce4e185cf77a55632888f1811d83b4ad9ef2
+  hooks:
+  - id: python-modernize
+    exclude: >
+      (?x)^(
+        docs/.*|
+        examples/.*
+      )$
+    args:
+      - --write
+      - --nobackups

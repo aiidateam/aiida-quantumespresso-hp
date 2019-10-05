@@ -1,5 +1,5 @@
 {
-    "version": "0.1.0",
+    "version": "3.0.0a5",
     "name": "aiida_quantumespresso_hp",
     "url": "https://github.com/sphuber/aiida-quantumespresso-hp",
     "license": "MIT License",
@@ -13,8 +13,21 @@
     ],
     "install_requires": [
         "aiida-core>=1.0.0b6,<2.0",
-        "aiida-quantumespresso>=3.0.0a5,<4.0"
+        "aiida-quantumespresso>=3.0.0a5,<4.0",
+        "click>=7.0.0"
     ],
+    "extras_require": {
+        "dev": [
+            "pre-commit==1.17.0",
+            "prospector==1.1.7",
+            "pylint==1.9.4; python_version<'3.0'",
+            "pylint==2.3.1; python_version>='3.0'",
+            "pgtest==1.2.0",
+            "pytest==3.6.3",
+            "pytest-regressions==1.0.5",
+            "yapf==0.28.0"
+        ]
+    },
     "entry_points": {
         "aiida.calculations": [
             "quantumespresso.hp = aiida_quantumespresso_hp.calculations.hp:HpCalculation"
