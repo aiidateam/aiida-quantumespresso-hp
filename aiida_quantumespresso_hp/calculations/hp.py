@@ -1,358 +1,284 @@
 # -*- coding: utf-8 -*-
+"""`CalcJob` implementation for the hp.x code of Quantum ESPRESSO."""
+from __future__ import absolute_import
 import os
-from aiida.orm import CalculationFactory
+import six
+
+from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
-from aiida.common.exceptions import InputValidationError, ValidationError, UniquenessError, NotExistent
-from aiida.common.links import LinkType
+from aiida.common.exceptions import InputValidationError
 from aiida.common.utils import classproperty
-from aiida.orm.data.folder import FolderData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array.kpoints import KpointsData
-from aiida.orm.calculation.job import JobCalculation
-from aiida.orm.calculation.function import FunctionCalculation
+from aiida.engine import CalcJob
+from aiida.plugins import CalculationFactory
+
 from aiida_quantumespresso.calculations import _lowercase_dict, _uppercase_dict
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
-
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 
 
-class HpCalculation(JobCalculation):
-    """
-    Quantum ESPRESSO Hp calculations
-    """
+class HpCalculation(CalcJob):
+    """`CalcJob` implementation for the hp.x code of Quantum ESPRESSO."""
 
-    _PREFIX = 'aiida'
-    _INPUT_FILE_NAME = '{}.in'.format(_PREFIX)
-    _OUTPUT_FILE_NAME = '{}.out'.format(_PREFIX)
-    _OUTPUT_FILE_NAME_CHI = '{}.chi.dat'.format(_PREFIX)
-    _OUTPUT_FILE_NAME_HUBBARD = '{}.Hubbard_parameters.dat'.format(_PREFIX)
+    # Keywords that cannot be set manually, only by the plugin
+    _blocked_keywords = [
+        ('INPUTHP', 'iverbosity'),
+        ('INPUTHP', 'prefix'),
+        ('INPUTHP', 'outdir'),
+        ('INPUTHP', 'nq1'),
+        ('INPUTHP', 'nq2'),
+        ('INPUTHP', 'nq3'),
+    ]
+    _compulsory_namelists = ['INPUTHP']
 
-    _INPUT_FILE_NAME_HUBBARD_FILE = 'parameters.in'
-    _OUTPUT_FILE_NAME_HUBBARD_FILE = 'parameters.out'
+    _prefix = 'aiida'
+    _default_input_file = '{}.in'.format(_prefix)
+    _default_output_file = '{}.out'.format(_prefix)
+    _dirname_output = 'out'
+    _filename_input_hubbard_parameters = 'parameters.in'
+    _filename_output_hubbard_parameters = 'parameters.out'
 
-    def _init_internal_params(self):
-        super(HpCalculation, self)._init_internal_params()
+    @classmethod
+    def define(cls, spec):
+        # yapf: disable
+        super(HpCalculation, cls).define(spec)
+        spec.input('metadata.options.input_filename', valid_type=six.string_types, default=cls._default_input_file)
+        spec.input('metadata.options.output_filename', valid_type=six.string_types, default=cls._default_output_file)
+        spec.input('metadata.options.parser_name', valid_type=six.string_types, default='quantumespresso.hp')
+        spec.input('parameters', valid_type=orm.Dict,
+            help='The input parameters for the namelists.')
+        spec.input('parent_folder', valid_type=orm.RemoteData,
+            help='The remote folder of a completed `PwCalculation` with `lda_plus_u` switch turned on')
+        spec.input('qpoints', valid_type=orm.KpointsData,
+            help='The q-point grid on which to perform the perturbative calculation.')
+        spec.input('settings', valid_type=orm.Dict, required=False,
+            help='Optional node for special settings.')
+        spec.output('parameters', valid_type=orm.Dict,
+            help='')
+        spec.output('matrices', valid_type=orm.ArrayData, required=False,
+            help='')
+        spec.output('hubbard', valid_type=orm.Dict, required=False,
+            help='')
+        spec.output('chi', valid_type=orm.ArrayData, required=False,
+            help='')
+        spec.output('hubbard_file', valid_type=orm.SinglefileData, required=False,
+            help='')
+        spec.default_output_node = 'parameters'
 
-        self._default_parser = 'quantumespresso.hp'
-        self._compulsory_namelists = ['INPUTHP']
-        self._optional_inputs = ['settings']
-        self._required_inputs = ['code', 'parameters', 'parent_folder', 'qpoints']
+        # Unrecoverable errors: resources like the retrieved folder or its expected contents are missing
+        spec.exit_code(200, 'ERROR_NO_RETRIEVED_FOLDER',
+            message='The retrieved folder data node could not be accessed.')
+        spec.exit_code(210, 'ERROR_OUTPUT_STDOUT_MISSING',
+            message='The retrieved folder did not contain the required stdout output file.')
 
-        # Keywords that cannot be set manually, only by the plugin
-        self._blocked_keywords = [
-            ('INPUTHP', 'iverbosity'),
-            ('INPUTHP', 'prefix'),
-            ('INPUTHP', 'outdir'),
-            ('INPUTHP', 'nq1'),
-            ('INPUTHP', 'nq2'),
-            ('INPUTHP', 'nq3'),
-        ]
+        # Unrecoverable errors: required retrieved files could not be read, parsed or are otherwise incomplete
+        spec.exit_code(300, 'ERROR_OUTPUT_FILES',
+            message='Problems with one or more output files.')
+        spec.exit_code(310, 'ERROR_OUTPUT_STDOUT_READ',
+            message='The stdout output file could not be read.')
+        spec.exit_code(311, 'ERROR_OUTPUT_STDOUT_PARSE',
+            message='The stdout output file could not be parsed.')
+        spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+            message='The stdout output file was incomplete.')
 
-        # Default input and output files
-        self._DEFAULT_INPUT_FILE = self._INPUT_FILE_NAME
-        self._DEFAULT_OUTPUT_FILE = self._OUTPUT_FILE_NAME
+        spec.exit_code(360, 'ERROR_MISSING_PERTURBATION_FILE',
+            message='One of the required perturbation inputs files was not found.')
+        spec.exit_code(365, 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
+            message='The atomic positions were not sorted with Hubbard sites first.')
+
+        # Significant errors but calculation can be used to restart
+        spec.exit_code(400, 'ERROR_OUT_OF_WALLTIME',
+            message='The calculation stopped prematurely because it ran out of walltime.')
+        spec.exit_code(410, 'ERROR_CONVERGENCE_NOT_REACHED',
+            message='The electronic minimization cycle did not reach self-consistency.')
 
     @classproperty
-    def input_file_name(cls):
-        return cls._INPUT_FILE_NAME
+    def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
+        """Return the relative output filename that contains chi."""
+        return '{}.chi.dat'.format(cls._prefix)
 
     @classproperty
-    def output_file_name(cls):
-        return cls._OUTPUT_FILE_NAME
+    def filename_output_hubbard(cls):  # pylint: disable=no-self-argument
+        """Return the relative output filename that contains the Hubbard values and matrices."""
+        return '{}.Hubbard_parameters.dat'.format(cls._prefix)
 
     @classproperty
-    def output_file_name_chi(cls):
-        return cls._OUTPUT_FILE_NAME_CHI
+    def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
+        """Return the relative output filename that all Hubbard parameters."""
+        return cls._filename_output_hubbard_parameters
 
     @classproperty
-    def output_file_name_hubbard(cls):
-        return cls._OUTPUT_FILE_NAME_HUBBARD
+    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
+        """Return the relative input filename that all Hubbard parameters."""
+        return cls._filename_input_hubbard_parameters
 
     @classproperty
-    def input_file_name_hubbard_file(cls):
-        return cls._INPUT_FILE_NAME_HUBBARD_FILE
+    def dirname_output_hubbard(cls):  # pylint: disable=no-self-argument
+        """Return the relative directory name that contains raw output data."""
+        return os.path.join(cls._dirname_output, 'HP')
 
-    @classproperty
-    def output_file_name_hubbard_file(cls):
-        return cls._OUTPUT_FILE_NAME_HUBBARD_FILE
+    def prepare_for_submission(self, folder):
+        """Create the input files from the input nodes passed to this instance of the `CalcJob`.
 
-    @classproperty
-    def _OUTPUT_SUBFOLDER(cls):
-        return './out/'
-
-    @classproperty
-    def _FOLDER_RAW(cls):
-        return os.path.join(cls._OUTPUT_SUBFOLDER, 'HP')
-
-    @classproperty
-    def _use_methods(cls):
+        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
+        :return: `aiida.common.datastructures.CalcInfo` instance
         """
-        Additional use_* methods for the Hp calculation class
-        """
-        retdict = JobCalculation._use_methods
-        retdict.update({
-            'parameters': {
-                'valid_types': (ParameterData),
-                'additional_parameter': None,
-                'linkname': 'parameters',
-                'docstring': ('A node that specifies the input parameters for the namelists'),
-            },
-            'parent_folder': {
-                'valid_types': (FolderData, RemoteData),
-                'additional_parameter': None,
-                'linkname': 'parent_folder',
-                'docstring': ('The remote folder of a completed PwCalculation with lda_plus_u switch turned on'),
-            },
-            'qpoints': {
-                'valid_types': (KpointsData),
-                'additional_parameter': None,
-                'linkname': 'qpoints',
-                'docstring': ('Specify the q-point grid on which to perform the perturbative calculation'),
-            },
-            'settings': {
-                'valid_types': (ParameterData),
-                'additional_parameter': None,
-                'linkname': 'settings',
-                'docstring': ('An optional node for special settings'),
-            },
-        })
-        return retdict
-
-    def _get_input_valid_types(self, key):
-        return self._use_methods[key]['valid_types']
-
-    def _get_input_valid_type(self, key):
-        valid_types = self._get_input_valid_types(key)
-
-        if isinstance(valid_types, tuple):
-            return valid_types[0]
+        if 'settings' in self.inputs:
+            settings = self.inputs.settings.get_dict()
         else:
-            return valid_types
+            settings = {}
 
-    def _prepare_for_submission(self, tempfolder, input_nodes_raw):        
-        """
-        This method is called prior to job submission with a set of calculation input nodes.
-        The inputs will be validated and sanitized, after which the necessary input files will
-        be written to disk in a temporary folder. A CalcInfo instance will be returned that contains
-        lists of files that need to be copied to the remote machine before job submission, as well
-        as file lists that are to be retrieved after job completion.
+        parent_folder = self.validate_input_parent_folder(self.inputs.parent_folder)
+        parameters = self.validate_input_parameters(self.inputs.parameters, self.inputs.qpoints)
 
-        :param tempfolder: an aiida.common.folders.Folder to temporarily write files on disk
-        :param input_nodes_raw: a dictionary with the raw input nodes
-        :returns: CalcInfo instance
-        """
-        input_nodes = self.validate_input_nodes(input_nodes_raw)
-        input_parent_folder = self.validate_input_parent_folder(input_nodes)
-        input_parameters = self.validate_input_parameters(input_nodes)
-        input_settings = input_nodes[self.get_linkname('settings')].get_dict()
-        input_code = input_nodes[self.get_linkname('code')]
+        self.write_input_files(folder, parameters)
 
-        self.write_input_files(tempfolder, input_parameters)
-
-        retrieve_list = self.get_retrieve_list(input_nodes)
-        local_copy_list = self.get_local_copy_list(input_nodes)
-        remote_copy_list = self.get_remote_copy_list(input_nodes)
-
-        # Empty command line by default
-        cmdline_params = input_settings.pop('CMDLINE', [])
+        cmdline_params = settings.pop('CMDLINE', [])  # Empty command line by default
 
         codeinfo = CodeInfo()
-        codeinfo.cmdline_params = (list(cmdline_params) + ['-in', self.input_file_name])
-        codeinfo.stdout_name = self.output_file_name
-        codeinfo.code_uuid = input_code.uuid
+        codeinfo.code_uuid = self.inputs.code.uuid
+        codeinfo.stdout_name = self.options.output_filename
 
         calcinfo = CalcInfo()
-        calcinfo.uuid = self.uuid
         calcinfo.codes_info = [codeinfo]
-        calcinfo.retrieve_list = retrieve_list
-        calcinfo.local_copy_list = local_copy_list
-        calcinfo.remote_copy_list = remote_copy_list
+        calcinfo.cmdline_params = (list(cmdline_params) + ['-in', self.options.input_filename])
+        calcinfo.retrieve_list = self.get_retrieve_list()
+        calcinfo.local_copy_list = self.get_local_copy_list(parent_folder)
+        calcinfo.remote_copy_list = self.get_remote_copy_list(parent_folder)
 
         return calcinfo
 
-    def get_retrieve_list(self, input_nodes):
-        """
-        Build the list of files that are to be retrieved upon calculation completion so that they can
-        be passed to the parser.
+    def get_retrieve_list(self):
+        """Return the `retrieve_list`.
 
-        A HpCalculation can be parallelized over atoms by running individual calculations, but a
-        final post-processing calculation will have to be performed to compute the final matrices
-        The current version of hp.x requires the following folders and files:
+        A `HpCalculation` can be parallelized over atoms by running individual calculations, but a final post-processing
+        calculation will have to be performed to compute the final matrices. The current version of hp.x requires the
+        following folders and files:
 
-            * Perturbation files: by default in _FOLDER_RAW/_PREFIX.chi.pert_*.dat
-            * QE save directory: by default in _OUTPUT_SUBFOLDER/_PREFIX.save
-            * The occupations file: by default in _OUTPUT_SUBFOLDER/_PREFIX.occup
+            * Perturbation files: by default in dirname_output_hubbard/_prefix.chi.pert_*.dat
+            * QE save directory: by default in _dirname_output/_prefix.save
+            * The occupations file: by default in _dirname_output/_prefix.occup
 
-        :param input_nodes: dictionary of validated and sanitized input nodes
         :returns: list of resource retrieval instructions
         """
         retrieve_list = []
 
         # Default output files that are written after a completed or post-processing HpCalculation
-        retrieve_list.append(self.output_file_name)
-        retrieve_list.append(self.output_file_name_chi)
-        retrieve_list.append(self.output_file_name_hubbard)
-        retrieve_list.append(self.output_file_name_hubbard_file)
+        retrieve_list.append(self.options.output_filename)
+        retrieve_list.append(self.filename_output_hubbard)
+        retrieve_list.append(self.filename_output_hubbard_chi)
+        retrieve_list.append(self.filename_output_hubbard_parameters)
 
         # Required files and directories for final collection calculations
-        path_save_directory = os.path.join(self._OUTPUT_SUBFOLDER, self._PREFIX + '.save')
-        path_occup_file = os.path.join(self._OUTPUT_SUBFOLDER, self._PREFIX + '.occup')
+        path_save_directory = os.path.join(self._dirname_output, self._prefix + '.save')
+        path_occup_file = os.path.join(self._dirname_output, self._prefix + '.occup')
 
         retrieve_list.append([path_save_directory, path_save_directory, 0])
         retrieve_list.append([path_occup_file, path_occup_file, 0])
 
-        src_perturbation_files = os.path.join(self._FOLDER_RAW, '{}.chi.pert_*.dat'.format(self._PREFIX))
+        src_perturbation_files = os.path.join(self.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(self._prefix))
         dst_perturbation_files = '.'
         retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 
         return retrieve_list
 
-    def get_local_copy_list(self, input_nodes):
-        """
-        Build the local copy list, which amounts to copying the output subfolder of the specified
-        parent_folder input node if it is a local FolderData object
+    def get_local_copy_list(self, parent_folder):
+        """Return the `local_copy_list`.
 
-        :param input_nodes: dictionary of validated and sanitized input nodes
+        Build the local copy list, which amounts to copying the output subfolder of the specified `parent_folder` input
+        node if it is a local `FolderData` object.
+
+        :param parent_folder: the `parent_folder` input node.
         :returns: list of resource copy instructions
         """
         local_copy_list = []
-        parent_folder = input_nodes['parent_folder']
 
-        if isinstance(parent_folder, FolderData):
-            folder_src = parent_folder.get_abs_path(self._OUTPUT_SUBFOLDER)
-            folder_dst = self._OUTPUT_SUBFOLDER
+        if isinstance(parent_folder, orm.FolderData):
+            folder_src = parent_folder.get_abs_path(self._dirname_output)
+            folder_dst = self._dirname_output
             local_copy_list.append((folder_src, folder_dst))
 
         return local_copy_list
 
-    def get_remote_copy_list(self, input_nodes):
-        """
-        Build the remote copy list, which amounts to copying the output subfolder of the specified
-        parent_folder input node if it is a remote RemoteData object
+    def get_remote_copy_list(self, parent_folder):
+        """Return the `remote_copy_list`.
 
-        :param input_nodes: dictionary of validated and sanitized input nodes
+        Build the remote copy list, which amounts to copying the output subfolder of the specified `parent_folder` input
+        node if it is a remote `RemoteData` object.
+
+        :param parent_folder: the `parent_folder` input node.
         :returns: list of resource copy instructions
         """
         remote_copy_list = []
-        parent_folder = input_nodes['parent_folder']
 
-        if isinstance(parent_folder, RemoteData):
-            computer_uuid = parent_folder.get_computer().uuid
-            folder_src = os.path.join(parent_folder.get_remote_path(), self._OUTPUT_SUBFOLDER)
-            folder_dst = self._OUTPUT_SUBFOLDER
+        if isinstance(parent_folder, orm.RemoteData):
+            computer_uuid = parent_folder.computer.uuid
+            folder_src = os.path.join(parent_folder.get_remote_path(), self._dirname_output)
+            folder_dst = self._dirname_output
             remote_copy_list.append((computer_uuid, folder_src, folder_dst))
 
         return remote_copy_list
 
-    def validate_input_nodes(self, input_nodes_raw):
-        """
-        This function will validate that all required input nodes are present and that their content
-        is valid. The parameter node necessary to write the input will also be created
+    @staticmethod
+    def validate_input_parent_folder(parent_folder):
+        """Validate the `parent_folder` input.
 
-        :param input_nodes_raw: a dictionary with the raw input nodes
-        :returns: dictionary with validated and sanitized input nodes
-        """
-        input_nodes = {}
+        Make sure that it belongs to either a:
 
-        # Verify that all required inputs are provided in the raw input dictionary
-        for input_key in self._required_inputs:
-            try:
-                input_link = self.get_linkname(input_key)
-                input_node = input_nodes_raw.pop(input_key)
-            except KeyError:
-                raise InputValidationError("required input '{}' was not specified".format(input_key))
-
-            input_nodes[input_link] = input_node
-
-        # Check for optional inputs in the raw input dictionary, creating an instance of its valid types otherwise
-        for input_key in self._optional_inputs:
-            try:
-                input_link = self.get_linkname(input_key)
-                input_node = input_nodes_raw.pop(input_key)
-            except KeyError:
-                valid_types = self._use_methods[input_key]['valid_types']
-                valid_type_class = self._get_input_valid_type(input_key)
-                input_node = valid_type_class()
-
-            input_nodes[input_link] = input_node
-
-        # Any remaining input nodes are not recognized raise an input validation exception
-        if input_nodes_raw:
-            raise InputValidationError('the following input nodes were not recognized: {}'.format(input_nodes_raw.keys()))
-
-        return input_nodes
-
-    def validate_input_parent_folder(self, input_nodes):
-        """
-        Validate the parent_folder node from the verified input_nodes, making sure that it belongs to either a
-
-            * PwCalculation that was run with the 'lda_plus_u' switch turned on
+            * PwCalculation that was run with the `lda_plus_u` switch turned on
             * HpCalculation indicating a restart from unconverged calculation
-            * FunctionCalculation which may be used in workchains for collecting chi matrix calculations
+            * WorkFunctionNode which may be used in workchains for collecting chi matrix calculations
 
-        :param input_nodes: dictionary of sanitized and validated input nodes
-        :returns: the parent_folder input node if valid
-        :raises: if the parent_folder does not correspond to PwCalculation with 'lda_plus_u'
+        :param parent_folder: the `parent_folder` input node
+        :returns: the `parent_folder` input node if valid
+        :raises: if the `parent_folder` does not correspond to `PwCalculation` with `lda_plus_u=True`
         """
-        parent_folder_link = self.get_linkname('parent_folder')
-        parent_folder_node = input_nodes[parent_folder_link]
+        creator = parent_folder.creator
 
-        parent_calculation = parent_folder_node.get_inputs(link_type=LinkType.CREATE)
+        if not creator:
+            raise ValueError('could not determine the creator of {}'.format(parent_folder))
 
-        if len(parent_calculation) != 1:
-            raise ValueError('could not determine the parent calculation of the parent_folder input node')
+        if isinstance(creator, orm.CalcJobNode) and creator.process_class not in {PwCalculation, HpCalculation}:
+            raise ValueError('creator of `parent_folder` {} input node has incorrect type'.format(creator))
 
-        parent_calculation = parent_calculation[0]
+        if creator.process_class == PwCalculation:
+            try:
+                parameters = creator.inputs.parameters.get_dict()
+            except KeyError:
+                raise ValueError('could not retrieve the input parameters node from the parent calculation')
 
-        if not isinstance(parent_calculation, (PwCalculation, HpCalculation, FunctionCalculation)):
-            raise ValueError('the parent calculation of the parent folder input node is not a {}, {} or {}'
-                .format(PwCalculation.__name__, HpCalculation.__name__, FunctionCalculation))
+            lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
 
-        if isinstance(parent_calculation, (HpCalculation, FunctionCalculation)):
-            return parent_folder_node
+            if not lda_plus_u:
+                raise ValueError('parent calculation {} was not run with `lda_plus_u`'.format(creator))
 
-        try:
-            input_parameters = parent_calculation.inp.parameters
-        except KeyError:
-            raise ValueError('could not retrieve the input parameters node from the parent calculation')
+        return parent_folder
 
-        lda_plus_u = input_parameters.get_dict().get('SYSTEM', {}).get('lda_plus_u', False)
+    def validate_input_parameters(self, parameters, qpoints):
+        """Validate the parameters and qpoints input nodes and create from it the input parameter dictionary.
 
-        if not lda_plus_u:
-            raise ValueError("the input parameters<{}> of the parent calculation did not specify 'lda_plus_u: True'"
-                .format(input_parameters.pk))
+        The returned input dictionary will contain all the necessary namelists and their flags that should be written to
+        the input file of the calculation.
 
-        return parent_folder_node
-
-    def validate_input_parameters(self, input_nodes):
+        :param parameters: the `parameters` input node
+        :param qpoints: the `qpoints` input node
+        :returns: a dictionary with input namelists and their flags
         """
-        Validate the parameters input node and create from it the input parameter dictionary that contains
-        all the necessary namelists and their flags that should be written to the input file of the calculation
-
-        :param input_nodes: dictionary of sanitized and validated input nodes
-        :returns: input_parameters a dictionary with input namelists and their flags
-        """
-        qpoints = input_nodes[self.get_linkname('qpoints')]
-        parameters = input_nodes[self.get_linkname('parameters')].get_dict()
-
         # Transform first-level keys (i.e. namelist and card names) to uppercase and second-level to lowercase
-        input_parameters = _uppercase_dict(parameters, dict_name='parameters')
-        input_parameters = {k: _lowercase_dict(v, dict_name=k) for k, v in input_parameters.iteritems()}
+        result = _uppercase_dict(parameters.get_dict(), dict_name='parameters')
+        result = {key: _lowercase_dict(value, dict_name=key) for key, value in six.iteritems(result)}
 
         # Check that required namelists are present
         for namelist in self._compulsory_namelists:
-            if not namelist in input_parameters:
+            if namelist not in result:
                 raise InputValidationError("the required namelist '{}' was not defined".format(namelist))
 
         # Check for presence of blocked keywords
         for namelist, flag in self._blocked_keywords:
-            if namelist in input_parameters and flag in input_parameters[namelist]:
-                raise InputValidationError("explicit definition of the '{}' "
-                    "flag in the '{}' namelist or card is not allowed".format(flag, namelist))
+            if namelist in result and flag in result[namelist]:
+                raise InputValidationError(
+                    "explicit definition of flag '{}' in namelist '{}' is not allowed".format(flag, namelist))
 
-        # Validate qpoint input node
         try:
             mesh, offset = qpoints.get_kpoints_mesh()
         except AttributeError:
@@ -361,33 +287,29 @@ class HpCalculation(JobCalculation):
         if any([i != 0. for i in offset]):
             raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')
 
-        input_parameters['INPUTHP']['iverbosity'] = 2
-        input_parameters['INPUTHP']['outdir'] = self._OUTPUT_SUBFOLDER
-        input_parameters['INPUTHP']['prefix'] = self._PREFIX
-        input_parameters['INPUTHP']['nq1'] = mesh[0]
-        input_parameters['INPUTHP']['nq2'] = mesh[1]
-        input_parameters['INPUTHP']['nq3'] = mesh[2]
+        result['INPUTHP']['iverbosity'] = 2
+        result['INPUTHP']['outdir'] = self._dirname_output
+        result['INPUTHP']['prefix'] = self._prefix
+        result['INPUTHP']['nq1'] = mesh[0]
+        result['INPUTHP']['nq2'] = mesh[1]
+        result['INPUTHP']['nq3'] = mesh[2]
 
-        return input_parameters
+        return result
 
-    def write_input_files(self, tempfolder, input_parameters):
+    def write_input_files(self, folder, parameters):
+        """Write the prepared `parameters` to the input file in the sandbox folder.
+
+        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
+        :param parameters: a dictionary with input namelists and their flags
         """
-        Take the input_parameters dictionary with the namelists and their flags
-        and write the input file to disk in the temporary folder
-
-        :param tempfolder: an aiida.common.folders.Folder to temporarily write files on disk
-        :param input_parameters: a dictionary with input namelists and their flags
-        """
-        filename = tempfolder.get_abs_path(self.input_file_name)
-
-        with open(filename, 'w') as handle:
+        with folder.open(self.options.input_filename, 'w') as handle:
             for namelist_name in self._compulsory_namelists:
-                namelist = input_parameters.pop(namelist_name)
-                handle.write('&{0}\n'.format(namelist_name))
-                for key, value in sorted(namelist.iteritems()):
+                namelist = parameters.pop(namelist_name)
+                handle.write(u'&{0}\n'.format(namelist_name))
+                for key, value in sorted(six.iteritems(namelist)):
                     handle.write(convert_input_to_namelist_entry(key, value))
-                handle.write('/\n')
+                handle.write(u'/\n')
 
-        if input_parameters:
-            raise InputValidationError('these specified namelists are invalid: {}'
-                .format(', '.join(input_parameters.keys())))
+        if parameters:
+            invalid = ', '.join(list(parameters.keys()))
+            raise InputValidationError('these specified namelists are invalid: {}'.format(invalid))

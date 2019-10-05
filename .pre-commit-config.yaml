@@ -4,8 +4,7 @@
   - id: trailing-whitespace
     exclude: &exclude >
       (?x)^(
-          tests/calculations/test_pw/.*.in|
-          tests/fixtures/.*|
+          tests/calculations/.*.in|
           tests/parsers/fixtures/.*|
           tests/parsers/*.yml
       )$
@@ -22,6 +21,8 @@
     args: ['-i']
     exclude: &exclude_files >
       (?x)^(
+        aiida_quantumespresso_hp/cli/workflows/.*|
+        aiida_quantumespresso_hp/workflows/.*|
         docs/.*|
         tests/.*
       )$
