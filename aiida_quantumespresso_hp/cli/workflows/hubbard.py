@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 import click
-from aiida.utils.cli import command
-from aiida.utils.cli import options
+
+from aiida.cmdline.params import options
+from aiida.cmdline.utils import decorators
 from aiida_quantumespresso.utils.cli import options as options_qe
 
 
-@command()
+@click.command()
 @options.code('--pw', 'code_pw', callback_kwargs={'entry_point': 'quantumespresso.pw'})
 @options.code('--hp', 'code_hp', callback_kwargs={'entry_point': 'quantumespresso.hp'})
 @options.structure()
@@ -33,6 +35,7 @@ from aiida_quantumespresso.utils.cli import options as options_qe
     '--parallelize-atoms', is_flag=True, default=False, show_default=True,
     help='parallelize the linear response calculation over the Hubbard atoms'
 )
+@decorators.with_dbenv()
 def launch(
     code_pw, code_hp, structure, pseudo_family, kpoints, qpoints, ecutwfc, ecutrho, hubbard_u, starting_magnetization,
     automatic_parallelization, clean_workdir, max_num_machines, max_wallclock_seconds, daemon, meta_convergence,
@@ -40,10 +43,9 @@ def launch(
     """
     Run the SelfConsistentHubbardWorkChain for a given input structure
     """
-    from aiida.orm.data.base import Bool, Str
-    from aiida.orm.data.parameter import ParameterData
-    from aiida.orm.utils import WorkflowFactory
-    from aiida.work.launch import run, submit
+    from aiida import orm
+    from aiida.engine import run, submit
+    from aiida.plugins import WorkflowFactory
     from aiida_quantumespresso.utils.resources import get_default_options
 
     SelfConsistentHubbardWorkChain = WorkflowFactory('quantumespresso.hp.hubbard')
@@ -84,25 +86,24 @@ def launch(
 
             parameters['SYSTEM'].setdefault('starting_magnetization', {})[kind] = magnetization
 
-
     inputs = {
         'structure': structure,
-        'hubbard_u': ParameterData(dict=hubbard_u),
-        'meta_convergence': Bool(meta_convergence),
-        'is_insulator': Bool(is_insulator),
+        'hubbard_u': orm.Dict(dict=hubbard_u),
+        'meta_convergence': orm.Bool(meta_convergence),
+        'is_insulator': orm.Bool(is_insulator),
         'scf': {
             'code': code_pw,
-            'pseudo_family': Str(pseudo_family),
+            'pseudo_family': orm.Str(pseudo_family),
             'kpoints': kpoints,
-            'parameters': ParameterData(dict=parameters),
-            'options': ParameterData(dict=options)
+            'parameters': orm.Dict(dict=parameters),
+            'options': orm.Dict(dict=options)
         },
         'hp': {
             'code': code_hp,
             'qpoints': qpoints,
-            'parameters': ParameterData(dict=parameters_hp),
-            'options': ParameterData(dict=options),
-            'parallelize_atoms': Bool(parallelize_atoms),
+            'parameters': orm.Dict(dict=parameters_hp),
+            'options': orm.Dict(dict=options),
+            'parallelize_atoms': orm.Bool(parallelize_atoms),
         }
     }
 

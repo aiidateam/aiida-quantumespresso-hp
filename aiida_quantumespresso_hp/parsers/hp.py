@@ -31,7 +31,9 @@ class HpParser(Parser):
         except exceptions.NotExistent:
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
-        for parse_method in [self.parse_stdout, self.parse_hubbard, self.parse_hubbard_chi, self.parse_hubbard_parameters]:
+        for parse_method in [
+            self.parse_stdout, self.parse_hubbard, self.parse_hubbard_chi, self.parse_hubbard_parameters
+        ]:
             exit_code = parse_method()
             if exit_code:
                 return exit_code
@@ -51,7 +53,9 @@ class HpParser(Parser):
 
         A complete run means that all perturbations were calculation and the final matrices were computerd
         """
-        return any([key.startswith('do_one_only') for key in self.node.inputs.parameters.get_attribute('INPUTHP', {}).keys()])
+        return any([
+            key.startswith('do_one_only') for key in self.node.inputs.parameters.get_attribute('INPUTHP', {}).keys()
+        ])
 
     @property
     def is_complete_calculation(self):

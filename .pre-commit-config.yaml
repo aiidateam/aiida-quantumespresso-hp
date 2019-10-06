@@ -21,8 +21,8 @@
     args: ['-i']
     exclude: &exclude_files >
       (?x)^(
-        aiida_quantumespresso_hp/cli/workflows/.*|
-        aiida_quantumespresso_hp/workflows/.*|
+        aiida_quantumespresso_hp/cli/workflows/hubbard.py|
+        aiida_quantumespresso_hp/workflows/hubbard.py|
         docs/.*|
         tests/.*
       )$
@@ -55,7 +55,6 @@
     exclude: >
       (?x)^(
         docs/.*|
-        examples/.*
       )$
     args:
       - --write

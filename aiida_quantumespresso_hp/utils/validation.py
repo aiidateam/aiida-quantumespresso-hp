@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
-from aiida.orm import CalculationFactory
-
-
-PwCalculation = CalculationFactory('quantumespresso.pw')
+"""Utilities for validating various data structures."""
+from __future__ import absolute_import
 
 
 def validate_parent_calculation(calculation):
-    """
-    Validate whether the given calculation is a valid parent calculation for a HpCalculation
+    """Validate whether the given calculation is a valid parent calculation for a HpCalculation.
 
     :param calculation: the calculation to validate
     :raises ValueError: if the calculation is not a valid parent calculation for a HpCalculation
     """
-    if not isinstance(calculation, PwCalculation):
+    from aiida.plugins import CalculationFactory
+
+    PwCalculation = CalculationFactory('quantumespresso.pw')
+
+    if calculation.process_class is not PwCalculation:
         raise ValueError('the parent calculation should be of type PwCalculation')
 
     try:
-        parameters = calculation.inp.parameters.get_dict()
+        parameters = calculation.inputs.parameters.get_dict()
     except KeyError:
         raise ValueError('could not retrieve the input parameters node')
 
@@ -26,24 +27,23 @@ def validate_parent_calculation(calculation):
     hubbard_parameters = parameters.get('SYSTEM', {}).get('hubbard_parameters', None)
 
     if lda_plus_u is not True:
-        raise ValueError('the parent calculation did not set lda_plus_u = True')
+        raise ValueError('the parent calculation did not set `lda_plus_u=True`')
 
     if not hubbard_u and not hubbard_v and not hubbard_parameters:
         raise ValueError('the parent calculation did not specify any Hubbard U or V parameters')
 
     try:
-        structure = calculation.inp.structure
+        structure = calculation.inputs.structure
     except KeyError:
         raise ValueError('could not retrieve the input structure node')
 
-    validate_structure_kind_order(structure, hubbard_u.keys())
+    validate_structure_kind_order(structure, list(hubbard_u.keys()))
 
 
 def validate_structure_kind_order(structure, hubbard_kinds):
-    """
-    Determines whether the kinds in the structure node have the right order for the given list
-    of Hubbard U kinds. For the order to be right, means for the Hubbard kinds to come first in
-    the list of kinds of the structure
+    """Determines whether the kinds in the structure node have the right order for the given list of Hubbard U kinds.
+
+    For the order to be right, means for the Hubbard kinds to come first in the list of kinds of the structure.
 
     :param structure: StructureData node
     :param hubbard_kinds: a list of Hubbard kinds

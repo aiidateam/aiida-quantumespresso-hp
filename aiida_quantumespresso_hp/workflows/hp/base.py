@@ -1,122 +1,92 @@
 # -*- coding: utf-8 -*-
-from aiida.common.extendeddicts import AttributeDict
-from aiida.orm import Code, CalculationFactory
-from aiida.orm.data.base import Bool
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.folder import FolderData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array.kpoints import KpointsData
-from aiida.parsers import ParserFactory
-from aiida.work.workchain import while_
+"""Workchain to run a Quantum ESPRESSO hp.x calculation with automated error handling and restarts."""
+from __future__ import absolute_import
+
+from aiida import orm
+from aiida.common import AttributeDict
+from aiida.engine import while_
+from aiida.plugins import CalculationFactory
+
 from aiida_quantumespresso.common.workchain.base.restart import BaseRestartWorkChain
-from aiida_quantumespresso.common.workchain.utils import ErrorHandlerReport
-from aiida_quantumespresso.common.workchain.utils import register_error_handler
-from aiida_quantumespresso.utils.resources import get_default_options
+from aiida_quantumespresso.common.workchain.utils import ErrorHandlerReport, register_error_handler
 
-
-PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
-HpParser = ParserFactory('quantumespresso.hp')
 
 
 class HpBaseWorkChain(BaseRestartWorkChain):
-    """
-    Base workchain to launch a Quantum Espresso hp.x calculation
-    """
-    _verbose = False
-    _calculation_class = HpCalculation
+    """Workchain to run a Quantum ESPRESSO hp.x calculation with automated error handling and restarts."""
 
-    ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS = 4
-    ERROR_MISSING_PERTURBATION_FILE = 5
+    _calculation_class = HpCalculation
 
     @classmethod
     def define(cls, spec):
+        # yapf: disable
         super(HpBaseWorkChain, cls).define(spec)
-        spec.input('code', valid_type=Code)
-        spec.input('qpoints', valid_type=KpointsData)
-        spec.input('parent_calculation', valid_type=PwCalculation, required=False)
-        spec.input('parent_folder', valid_type=(FolderData, RemoteData), required=False)
-        spec.input('parameters', valid_type=ParameterData, required=False)
-        spec.input('settings', valid_type=ParameterData, required=False)
-        spec.input('options', valid_type=ParameterData, required=False)
-        spec.input('only_initialization', valid_type=Bool, default=Bool(False))
+        spec.expose_inputs(HpCalculation, namespace='hp')
+        spec.input('only_initialization', valid_type=orm.Bool, default=orm.Bool(False))
         spec.outline(
             cls.setup,
-            cls.validate_inputs,
+            cls.validate_parameters,
+            cls.validate_resources,
             while_(cls.should_run_calculation)(
                 cls.run_calculation,
                 cls.inspect_calculation,
             ),
             cls.results,
         )
-        spec.output('output_parameters', valid_type=ParameterData)
-        spec.output('retrieved', valid_type=FolderData)
-        spec.output('matrices', valid_type=ArrayData, required=False)
-        spec.output('hubbard', valid_type=ParameterData, required=False)
-        spec.output('chi', valid_type=ArrayData, required=False)
+        spec.exit_code(204, 'ERROR_INVALID_INPUT_RESOURCES_UNDERSPECIFIED',
+            message='The `metadata.options` did not specify both `resources.num_machines` and `max_wallclock_seconds`.')
+        spec.exit_code(300, 'ERROR_UNRECOVERABLE_FAILURE',
+            message='The calculation failed with an unrecoverable error.')
+        spec.expose_outputs(HpCalculation)
 
-    def validate_inputs(self):
+    def setup(self):
+        """Call the `setup` of the `BaseRestartWorkChain` and then create the inputs dictionary in `self.ctx.inputs`.
+
+        This `self.ctx.inputs` dictionary will be used by the `BaseRestartWorkChain` to submit the calculations in the
+        internal loop.
         """
-        A HpCalculation can be continued either from a completed PwCalculation in which case
-        the parent_calculation input should be set, or it can be a restart from a previous HpCalculation
-        as for example the final post-processing calculation when parallelizing over atoms and
-        or q-points, in which case the parent_folder should be set. In either case, at least one
-        of the two inputs has to be defined properly
-        """
-        self.ctx.inputs = AttributeDict({
-            'code': self.inputs.code,
-            'qpoints': self.inputs.qpoints,
-        })
+        super(HpBaseWorkChain, self).setup()
+        self.ctx.inputs = AttributeDict(self.exposed_inputs(HpCalculation, 'hp'))
 
-        if not ('parent_calculation' in self.inputs or 'parent_folder' in self.inputs):
-            self.abort_nowait('Neither the parent_calculation nor the parent_folder input was defined')
-
-        try:
-            self.ctx.inputs.parent_folder = self.inputs.parent_calculation.out.remote_folder
-        except AttributeError:
-            self.ctx.inputs.parent_folder = self.inputs.parent_folder
-
-        if 'parameters' in self.inputs:
-            self.ctx.inputs.parameters = self.inputs.parameters.get_dict()
-        else:
-            self.ctx.inputs.parameters = {}
-
-        if 'settings' in self.inputs:
-            self.ctx.inputs.settings = self.inputs.settings.get_dict()
-        else:
-            self.ctx.inputs.settings = {}
-
-        if 'options' in self.inputs:
-            self.ctx.inputs.options = self.inputs.options.get_dict()
-        else:
-            self.ctx.inputs.options = get_default_options()
-
-        if 'INPUTHP'not in self.ctx.inputs.parameters:
-            self.ctx.inputs.parameters['INPUTHP'] = {}
+    def validate_parameters(self):
+        """Validate inputs that might depend on each other and cannot be validated by the spec."""
+        self.ctx.inputs.parameters = self.ctx.inputs.parameters.get_dict()
+        self.ctx.inputs.parameters.setdefault('INPUTHP', {})
 
         if self.inputs.only_initialization.value:
             self.ctx.inputs.parameters['INPUTHP']['determine_num_pert_only'] = True
 
+    def validate_resources(self):
+        """Validate the inputs related to the resources.
 
-@register_error_handler(HpBaseWorkChain, 100)
-def _handle_error_incorrect_order_atomic_positions(self, calculation):
-    """
-    The structure used by the parent calculation has its kinds in the wrong order, as in that the Hubbard kinds
-    were not added first, so they will not be printed first in the ATOMIC_POSITIONS card, which is required
-    by the hp.x code
-    """
-    if calculation.finish_status == HpParser.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS:
-        self.report('the parent calculation used a structure where the Hubbard atomic positions did not appear first')
-        return ErrorHandlerReport(True, True, self.ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS)
+        The `metadata.options` should at least contain the options `resources` and `max_wallclock_seconds`, where
+        `resources` should define the `num_machines`.
+        """
+        num_machines = self.ctx.inputs.metadata.options.get('resources', {}).get('num_machines', None)
+        max_wallclock_seconds = self.ctx.inputs.metadata.options.get('max_wallclock_seconds', None)
+
+        if num_machines is None or max_wallclock_seconds is None:
+            return self.exit_codes.ERROR_INVALID_INPUT_RESOURCES_UNDERSPECIFIED
+
+        # self.set_max_seconds(max_wallclock_seconds)
+
+    def report_error_handled(self, calculation, action):
+        """Report an action taken for a calculation that has failed.
+
+        This should be called in a registered error handler if its condition is met and an action was taken.
+
+        :param calculation: the failed calculation node
+        :param action: a string message with the action taken
+        """
+        arguments = [calculation.process_label, calculation.pk, calculation.exit_status, calculation.exit_message]
+        self.report('{}<{}> failed with exit status {}: {}'.format(*arguments))
+        self.report('Action taken: {}'.format(action))
 
 
-@register_error_handler(HpBaseWorkChain, 200)
-def _handle_error_missing_perturbation_file(self, calculation):
-    """
-    The calculation was run in `collect_chi` mode, however, the code did not find all the perturbation files that
-    it expected based on the number of Hubbard kinds in the parent calculation
-    """
-    if calculation.finish_status == HpParser.ERROR_MISSING_PERTURBATION_FILE:
-        self.report('one or more perturbation files that were expected for the collect_chi calculation, are missing')
-        return ErrorHandlerReport(True, True, self.ERROR_MISSING_PERTURBATION_FILE)
+@register_error_handler(HpBaseWorkChain, 600)
+def _handle_unrecoverable_failure(self, calculation):
+    """Calculations with an exit status below 400 are unrecoverable, so abort the work chain."""
+    if calculation.exit_status < 400:
+        self.report_error_handled(calculation, 'unrecoverable error, aborting...')
+        return ErrorHandlerReport(True, True, self.exit_codes.ERROR_UNRECOVERABLE_FAILURE)

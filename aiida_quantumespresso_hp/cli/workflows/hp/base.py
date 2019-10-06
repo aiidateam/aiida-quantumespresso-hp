@@ -1,47 +1,55 @@
 # -*- coding: utf-8 -*-
+"""Command line scripts to launch a `HpBaseWorkChain` for testing and demonstration purposes."""
+from __future__ import absolute_import
+
 import click
-from aiida.utils.cli import command
-from aiida.utils.cli import options
-from aiida_quantumespresso.utils.cli import options as options_qe
+
+from aiida.cmdline.params import options, types
+from aiida.cmdline.utils import decorators
+
+from aiida_quantumespresso.cli.utils import launch
+from aiida_quantumespresso.cli.utils import options as options_qe
+from .. import cmd_launch
 
 
-@command()
-@options.code(callback_kwargs={'entry_point': 'quantumespresso.hp'})
-@options.calculation(callback_kwargs={'entry_point': 'quantumespresso.pw'})
-@options.kpoint_mesh()
-@options.max_num_machines()
-@options.max_wallclock_seconds()
-@options.daemon()
-@options_qe.clean_workdir()
-def launch(
-    code, calculation, kpoints, max_num_machines, max_wallclock_seconds, daemon, clean_workdir):
-    """
-    Run the HpWorkChain for a completed Hubbard PwCalculation
-    """
-    from aiida.orm.data.base import Bool
-    from aiida.orm.data.parameter import ParameterData
-    from aiida.orm.utils import WorkflowFactory
-    from aiida.work.launch import run, submit
+@cmd_launch.command('hp-base')
+@options.CODE(required=True, type=types.CodeParamType(entry_point='quantumespresso.hp'))
+@options_qe.KPOINTS_MESH(default=[1, 1, 1])
+@options_qe.PARENT_FOLDER()
+@options_qe.MAX_NUM_MACHINES()
+@options_qe.MAX_WALLCLOCK_SECONDS()
+@options_qe.WITH_MPI()
+@options_qe.DAEMON()
+@options.DRY_RUN()
+@options_qe.CLEAN_WORKDIR()
+@decorators.with_dbenv()
+def launch_workflow(
+    code, kpoints_mesh, parent_folder, max_num_machines, max_wallclock_seconds, with_mpi, clean_workdir, daemon, dry_run
+):
+    """Run a `HpBaseWorkChain`."""
+    from aiida import orm
+    from aiida.plugins import WorkflowFactory
     from aiida_quantumespresso.utils.resources import get_default_options
 
-    HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
-
-    parameters = {
-        'INPUTHP': {
-        }
-    }
+    parameters = {'INPUTHP': {}}
 
     inputs = {
-        'code': code,
-        'parent_calculation': calculation,
-        'qpoints': kpoints,
-        'parameters': ParameterData(dict=parameters),
-        'options': ParameterData(dict=get_default_options(max_num_machines, max_wallclock_seconds)),
-        'clean_workdir': Bool(clean_workdir),
+        'hp': {
+            'code': code,
+            'qpoints': kpoints_mesh,
+            'parameters': orm.Dict(dict=parameters),
+            'parent_folder': parent_folder,
+            'metadata': {
+                'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi),
+            },
+        },
+        'clean_workdir': orm.Bool(clean_workdir),
     }
 
-    if daemon:
-        workchain = submit(HpBaseWorkChain, **inputs)
-        click.echo('Submitted {}<{}> to the daemon'.format(HpBaseWorkChain.__name__, workchain.pk))
-    else:
-        run(HpBaseWorkChain, **inputs)
+    if dry_run:
+        if daemon:
+            raise click.BadParameter('cannot send to the daemon if in dry_run mode', param_hint='--daemon')
+        inputs.setdefault('metadata', {})['store_provenance'] = False
+        inputs['metadata']['dry_run'] = True
+
+    launch.launch_process(WorkflowFactory('quantumespresso.hp.base'), daemon, **inputs)

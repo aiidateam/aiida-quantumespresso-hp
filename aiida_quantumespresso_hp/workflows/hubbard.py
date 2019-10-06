@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 from copy import copy, deepcopy
 from aiida.common.extendeddicts import AttributeDict
-from aiida.orm import Code
-from aiida.orm.data.base import Bool, Float, Int, Str
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.array.bands import find_bandgap
-from aiida.orm.utils import CalculationFactory, WorkflowFactory
-from aiida.work.workchain import WorkChain, ToContext, while_, if_, append_
+from aiida import orm
+from aiida.engine import WorkChain, ToContext, while_, if_, append_
+from aiida.orm.nodes.data.array.bands import find_bandgap
+from aiida.plugins import CalculationFactory, WorkflowFactory
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
+from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
 from aiida_quantumespresso_hp.utils.validation import validate_structure_kind_order
-from aiida_quantumespresso_hp.workflows.workfunctions import structure_reorder_kinds
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 PwBaseWorkChain = WorkflowFactory('quantumespresso.pw.base')
@@ -44,7 +42,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             - SCF with fixed occupations, where total magnetization and number of bands are fixed
               to the values found from the previous SCF calculation
 
-    When convergence is achieved a ParameterData node will be returned containing the final converged
+    When convergence is achieved a Dict node will be returned containing the final converged
     Hubbard U parameters.
     """
 
@@ -70,12 +68,12 @@ class SelfConsistentHubbardWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(SelfConsistentHubbardWorkChain, cls).define(spec)
-        spec.input('structure', valid_type=StructureData)
-        spec.input('hubbard_u', valid_type=ParameterData)
-        spec.input('tolerance', valid_type=Float, default=Float(0.1))
-        spec.input('max_iterations', valid_type=Int, default=Int(5))
-        spec.input('is_insulator', valid_type=Bool, required=False)
-        spec.input('meta_convergence', valid_type=Bool, default=Bool(False))
+        spec.input('structure', valid_type=orm.StructureData)
+        spec.input('hubbard_u', valid_type=orm.Dict)
+        spec.input('tolerance', valid_type=orm.Float, default=orm.Float(0.1))
+        spec.input('max_iterations', valid_type=orm.Int, default=orm.Int(5))
+        spec.input('is_insulator', valid_type=orm.Bool, required=False)
+        spec.input('meta_convergence', valid_type=orm.Bool, default=orm.Bool(False))
         spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('structure'))
         spec.expose_inputs(HpWorkChain, namespace='hp', exclude=('parent_calculation'))
         spec.outline(
@@ -125,7 +123,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         hubbard_u = self.inputs.hubbard_u
 
         structure_kinds = structure.get_kind_names()
-        hubbard_u_kinds = hubbard_u.get_dict().keys()
+        hubbard_u_kinds = list(hubbard_u.get_dict().keys())
 
         if not set(hubbard_u_kinds).issubset(structure_kinds):
             self.report('kinds specified in starting Hubbard U values is not a strict subset of the structure kinds')
@@ -133,16 +131,16 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         try:
             validate_structure_kind_order(structure, hubbard_u_kinds)
-        except ValueError as exception:
+        except ValueError:
             self.report('structure has incorrect kind order, reordering...')
-            structure = structure_reorder_kinds(structure, hubbard_u)['reordered']
+            structure = structure_reorder_kinds(structure, hubbard_u)
             self.report('reordered StructureData<{}>'.format(structure.pk))
 
         # Set the current structure
         self.ctx.current_structure = structure
         self.ctx.current_hubbard_u = hubbard_u.get_dict()
 
-        # If provided in the inputs, unwrap the parameters ParameterData node, else specify empty dict
+        # If provided in the inputs, unwrap the parameters Dict node, else specify empty dict
         if 'parameters' in self.ctx.inputs:
             self.ctx.inputs.parameters = self.ctx.inputs.parameters.get_dict()
         else:
@@ -200,7 +198,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['smearing'] = self.defaults.smearing_method
         inputs.parameters['SYSTEM']['degauss'] = self.defaults.smearing_degauss
 
-        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -240,7 +238,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
     def is_metal(self):
         """
-        Return whether the current structure is a metal 
+        Return whether the current structure is a metal
         """
         return self.ctx.is_metal
 
@@ -265,7 +263,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
 
-        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parameters = Dict(dict=inputs.parameters)
 
         running = self.submit(PwRelaxWorkChain, **inputs)
 
@@ -286,7 +284,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         try:
             structure = workchain.out.output_structure
-        except AttributeError as exception:
+        except AttributeError:
             self.report('the relax workchain did not have an output structure and probably failed')
             return self.ERROR_CHILD_PROCESS_RELAX_WORKCHAIN_NO_STRUCTURE
 
@@ -310,7 +308,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
-        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -332,7 +330,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_preconverge)
 
-        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -362,7 +360,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
         inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
 
-        inputs.parameters = ParameterData(dict=inputs.parameters)
+        inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -401,7 +399,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         try:
             hubbard = workchain.out.hubbard
-        except AttributeError as exception:
+        except AttributeError:
             self.report("the Hp workchain did not have a 'hubbard' output node and probably failed")
             return self.ERROR_CHILD_PROCESS_HP_WORKCHAIN_NO_HUBBARD
 
@@ -444,4 +442,4 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         """
         self.report('Hubbard U parameters self-consistently converged in {} iterations'.format(self.ctx.iteration))
         self.out('structure', self.ctx.current_structure)
-        self.out('hubbard_u', ParameterData(dict=self.ctx.current_hubbard_u))
+        self.out('hubbard_u', orm.Dict(dict=self.ctx.current_hubbard_u))

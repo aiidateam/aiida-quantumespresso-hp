@@ -49,9 +49,11 @@ def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbo
     # Required files and directories for final collection calculations
     path_save_directory = os.path.join(HpCalculation._dirname_output, HpCalculation._prefix + '.save')
     path_occup_file = os.path.join(HpCalculation._dirname_output, HpCalculation._prefix + '.occup')
+    path_paw_file = os.path.join(HpCalculation._dirname_output, HpCalculation._prefix + '.paw')
 
     retrieve_list.append([path_save_directory, path_save_directory, 0])
     retrieve_list.append([path_occup_file, path_occup_file, 0])
+    retrieve_list.append([path_paw_file, path_paw_file, 0])
 
     src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(HpCalculation._prefix))
     dst_perturbation_files = '.'
@@ -61,7 +63,9 @@ def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbo
     assert isinstance(calc_info, datastructures.CalcInfo)
     assert sorted(calc_info.codes_info[0].cmdline_params) == sorted(cmdline_params)
     assert sorted(calc_info.local_copy_list) == sorted(local_copy_list)
-    assert sorted(calc_info.retrieve_list) == sorted(retrieve_list)
+    # assert len(calc_info.retrieve_list) == len(retrieve_list)
+    for element in calc_info.retrieve_list:
+        assert element in retrieve_list
 
     with fixture_sandbox_folder.open(filename_input) as handle:
         input_written = handle.read()

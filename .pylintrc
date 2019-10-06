@@ -61,7 +61,8 @@ disable=bad-continuation,
         logging-format-interpolation,
         no-else-raise,
         useless-object-inheritance,
-        inconsistent-return-statements
+        inconsistent-return-statements,
+        import-outside-toplevel
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -323,7 +324,6 @@ function-naming-style=snake_case
 good-names=i,
            j,
            k,
-           Run,
            UpfData,
            Dict,
            KpointsData,
@@ -344,6 +344,8 @@ good-names=i,
            PwRelaxWorkChain,
            PwBandsWorkChain,
            PwBandStructureWorkChain,
+           HpCalculation,
+           HpBaseWorkChain,
            _
 
 # Include a hint for the correct naming format with invalid-name

@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-from aiida.common.extendeddicts import AttributeDict
-from aiida.orm import Code, CalculationFactory, WorkflowFactory
-from aiida.orm.data.base import Bool, Int
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.folder import FolderData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array.kpoints import KpointsData
-from aiida.work.workchain import WorkChain, ToContext, append_
-from aiida.work.workfunctions import workfunction
+"""Work chain to launch a Quantum Espresso hp.x calculation parallelizing over the Hubbard atoms."""
+from __future__ import absolute_import
 
+import six
+
+from aiida import orm
+from aiida.common import AttributeDict
+from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida.engine import WorkChain, ToContext, append_
+
+from aiida_quantumespresso_hp.calculations.functions.collect_atomic_calculations import collect_atomic_calculations
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
@@ -16,17 +17,15 @@ HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
 
 
 class HpParallelizeAtomsWorkChain(WorkChain):
-    """
-    Workchain to launch a Quantum Espresso hp.x calculation for a completed PwCalculation
-    while parallelizing the calculation over the Hubbard atoms
-    """
+    """Work chain to launch a Quantum Espresso hp.x calculation parallelizing over the Hubbard atoms."""
 
     ERROR_CHILD_WORKCHAIN_FAILED = 100
 
     @classmethod
     def define(cls, spec):
+        # yapf: disable
         super(HpParallelizeAtomsWorkChain, cls).define(spec)
-        spec.expose_inputs(HpBaseWorkChain)
+        spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization',))
         spec.outline(
             cls.run_init,
             cls.run_atoms,
@@ -35,145 +34,88 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             cls.results
         )
         spec.expose_outputs(HpBaseWorkChain)
+        spec.exit_code(300, 'ERROR_CHILD_WORKCHAIN_FAILED',
+            message='A child work chain failed.')
+        spec.exit_code(301, 'ERROR_INITIALIZATION_WORKCHAIN_FAILED',
+            message='The child work chain failed.')
 
     def run_init(self):
-        """
-        Run an initialization HpCalculatio that will only perform the symmetry analysis
-        and determine which kinds are to be perturbed. This information is parsed and can
-        be used to determine exactly how many HpBaseWorkChains have to be launched
+        """Run an initialization `HpBaseWorkChain` to that will determine which kinds need to be perturbed.
+
+        By performing an `initialization_only` calculation only the symmetry analysis will be performed to determine
+        which kinds are to be perturbed. This information is parsed and can be used to determine exactly how many
+        `HpBaseWorkChains` have to be launched in parallel.
         """
         inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
-        inputs.only_initialization = Bool(True)
+        inputs.only_initialization = orm.Bool(True)
 
         running = self.submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching initialization HpBaseWorkChain<{}>'.format(running.pk))
+        self.report('launched initialization HpBaseWorkChain<{}>'.format(running.pk))
 
         return ToContext(initialization=running)
 
     def run_atoms(self):
-        """
-        Run a separate HpBaseWorkChain for each of the defined Hubbard atoms
-        """
+        """Run a separate `HpBaseWorkChain` for each of the defined Hubbard atoms."""
         workchain = self.ctx.initialization
 
         if not workchain.is_finished_ok:
-            self.report('initialization workchain<{}> failed with finish status {}, aborting...'
-                .format(workchain.pk, workchain.finish_status))
-            return self.ERROR_CHILD_WORKCHAIN_FAILED
+            args = (workchain.__class__.__name__, workchain.pk, workchain.exit_status)
+            self.report('initialization work chain {}<{}> failed with finish status {}, aborting...'.format(*args))
+            return self.exit_codes.ERROR_INITIALIZATION_WORKCHAIN_FAILED
 
-        output_params = workchain.out.output_parameters.get_dict()
+        output_params = workchain.outputs.parameters.get_dict()
         hubbard_sites = output_params['hubbard_sites']
 
-        for site_index, site_kind in hubbard_sites.iteritems():
+        for site_index, site_kind in six.iteritems(hubbard_sites):
 
             do_only_key = 'do_one_only({})'.format(site_index)
 
             inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
-            inputs.parameters = inputs.parameters.get_dict()
-            inputs.parameters['INPUTHP'][do_only_key] = True
-            inputs.parameters = ParameterData(dict=inputs.parameters)
+            inputs.hp.parameters = inputs.hp.parameters.get_dict()
+            inputs.hp.parameters['INPUTHP'][do_only_key] = True
+            inputs.hp.parameters = orm.Dict(dict=inputs.hp.parameters)
 
             running = self.submit(HpBaseWorkChain, **inputs)
 
-            self.report('launching HpBaseWorkChain<{}> for atomic site {} of kind {}'.format(running.pk, site_index, site_kind))
+            args = (HpBaseWorkChain.__name__, running.pk, site_index, site_kind)
+            self.report('launched {}<{}> for atomic site {} of kind {}'.format(*args))
             self.to_context(workchains=append_(running))
 
     def run_collect(self):
-        """
-        Collect all the retrieved folders of the launched HpBaseWorkChain and merge them into
-        a single FolderData object that will be used for the final HpCalculation
+        """Collect all `retrieved` nodes of the completed `HpBaseWorkChain` and merge them into a single `FolderData`.
+
+        The merged `FolderData` is used as input for a final `HpBaseWorkChain` to compute final matrices.
         """
         retrieved_folders = {}
 
         for workchain in self.ctx.workchains:
 
             if not workchain.is_finished_ok:
-                self.report('child workchain<{}> failed with finish status {}, aborting...'
-                    .format(workchain.pk, workchain.finish_status))
-                return self.ERROR_CHILD_WORKCHAIN_FAILED
+                args = (workchain.__class__.__name__, workchain.pk, workchain.exit_status)
+                self.report('child work chain {}<{}> failed with exit status {}, aborting...'.format(*args))
+                return self.exit_codes.ERROR_CHILD_WORKCHAIN_FAILED
 
-            retrieved = workchain.out.retrieved
-            output_params = workchain.out.output_parameters
-            atomic_site_index = output_params.get_dict()['hubbard_sites'].keys()[0]
-            retrieved_folders[atomic_site_index] = retrieved
+            retrieved = workchain.outputs.retrieved
+            output_params = workchain.outputs.parameters
+            atomic_site_index = list(output_params.get_dict()['hubbard_sites'].keys())[0]
+            retrieved_folders['site_index_{}'.format(atomic_site_index)] = retrieved
 
-        self.ctx.merged_retrieved = recollect_atomic_calculations(**retrieved_folders)
+        self.ctx.merged_retrieved = collect_atomic_calculations(**retrieved_folders)
 
     def run_final(self):
-        """
-        Perform the final HpCalculation to collect the various components of the chi matrices
-        """
+        """Perform the final HpCalculation to collect the various components of the chi matrices."""
         inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
-        inputs.parameters = inputs.parameters.get_dict()
-        inputs.parameters['INPUTHP']['collect_chi'] = True
-        inputs.parameters = ParameterData(dict=inputs.parameters)
-        inputs.parent_folder = self.ctx.merged_retrieved
-        inputs.pop('parent_calculation', None)
+        inputs.hp.parameters = inputs.hp.parameters.get_dict()
+        inputs.hp.parameters['INPUTHP']['collect_chi'] = True
+        inputs.hp.parameters = orm.Dict(dict=inputs.hp.parameters)
+        inputs.hp.parent_folder = self.ctx.merged_retrieved
 
         running = self.submit(HpBaseWorkChain, **inputs)
 
-        self.report('launching HpBaseWorkChain<{}> to collect matrices'.format(running.pk))
+        self.report('launched HpBaseWorkChain<{}> to collect matrices'.format(running.pk))
         self.to_context(workchains=append_(running))
 
     def results(self):
-        """
-        Retrieve the results from the final matrix collection workchain
-        """
+        """Retrieve the results from the final matrix collection workchain."""
         self.out_many(self.exposed_outputs(self.ctx.workchains[-1], HpBaseWorkChain))
-
-
-@workfunction
-def recollect_atomic_calculations(**kwargs):
-    """
-    Collect dynamical matrix files into a single folder, putting a different number at the end of
-    each final dynamical matrix file, obtained from the input link, which corresponds to its place
-    in the list of q-points originally generated by distribute_qpoints.
-    
-    :param kwargs: keys are the string representation of the hubbard atom index and the value is the 
-        corresponding retrieved folder object.
-    :return: FolderData object containing the perturbation files of the computed HpBaseWorkChain
-    """
-    import os
-    import errno
-
-    output_folder_sub = HpCalculation._OUTPUT_SUBFOLDER
-    output_folder_raw = HpCalculation._FOLDER_RAW
-    output_prefix = HpCalculation()._PREFIX
-
-    # Initialize the merged folder, by creating the subdirectory for the perturbation files
-    merged_folder = FolderData()
-    folder_path = os.path.normpath(merged_folder.get_abs_path('.'))
-    output_path = os.path.join(folder_path, output_folder_raw)
-
-    try:
-        os.makedirs(output_path)
-    except OSError as error:
-        if error.errno == errno.EEXIST and os.path.isdir(output_path):
-            pass
-        else:
-            raise
-
-    for atomic_site_index, retrieved_folder in kwargs.iteritems():
-        filepath = os.path.join(output_folder_raw, '{}.chi.pert_{}.dat'.format(output_prefix, atomic_site_index))
-        filepath_src = retrieved_folder.get_abs_path(filepath)
-        filepath_dst = filepath
-        merged_folder.add_path(filepath_src, filepath_dst)
-
-    # TODO: currently the Hp code requires the .save folder that is written by the original
-    # PwCalculation, for the final post-processing matrix collection step. It doesn't really need all
-    # the information contained in that folder, and requiring it means, copying it from remote to a
-    # local folder and then reuploading it to remote folder. This is unnecessarily heavy
-    retrieved_folder = kwargs.values()[0]
-    dirpath = os.path.join(output_folder_sub, output_prefix + '.save')
-    dirpath_src = retrieved_folder.get_abs_path(dirpath)
-    dirpath_dst = dirpath
-    merged_folder.add_path(dirpath_src, dirpath_dst)
-
-    retrieved_folder = kwargs.values()[0]
-    filepath = os.path.join(output_folder_sub, output_prefix + '.occup')
-    filepath_src = retrieved_folder.get_abs_path(filepath)
-    filepath_dst = filepath
-    merged_folder.add_path(filepath_src, filepath_dst)
-    
-    return merged_folder
