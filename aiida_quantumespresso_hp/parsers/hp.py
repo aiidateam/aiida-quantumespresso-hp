@@ -31,10 +31,35 @@ class HpParser(Parser):
         except exceptions.NotExistent:
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
-        for parse_method in [self.parse_stdout, self.parse_hubbard, self.parse_hubbard_file, self.parse_hubbard_chi]:
+        for parse_method in [self.parse_stdout, self.parse_hubbard, self.parse_hubbard_chi, self.parse_hubbard_parameters]:
             exit_code = parse_method()
             if exit_code:
                 return exit_code
+
+    @property
+    def is_initialization_only(self):
+        """Return whether the calculation was an `initialization_only` run.
+
+        This is the case if the `determin_num_pert_only` flag was set to `True` in the `INPUTHP` namelist.
+        In this case, there will only be a stdout file. All other output files will be missing, but that is expected.
+        """
+        return self.node.inputs.parameters.get_attribute('INPUTHP', {}).get('determine_num_pert_only', False)
+
+    @property
+    def is_partial_site(self):
+        """Return whether the calculation computed just a sub set of all sites to be perturbed.
+
+        A complete run means that all perturbations were calculation and the final matrices were computerd
+        """
+        return any([key.startswith('do_one_only') for key in self.node.inputs.parameters.get_attribute('INPUTHP', {}).keys()])
+
+    @property
+    def is_complete_calculation(self):
+        """Return whether the calculation was a complete run.
+
+        A complete run means that all perturbations were performed and the final matrices were computed.
+        """
+        return not (self.is_initialization_only or self.is_partial_site)
 
     def parse_stdout(self):
         """Parse the stdout output file.
@@ -61,6 +86,7 @@ class HpParser(Parser):
             self.out('parameters', orm.Dict(dict=parsed_data))
 
         exit_status = [
+            'ERROR_INVALID_NAMELIST',
             'ERROR_OUTPUT_STDOUT_INCOMPLETE',
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             'ERROR_MISSING_PERTURBATION_FILE',
@@ -79,53 +105,55 @@ class HpParser(Parser):
         """
         filename = HpCalculation.filename_output_hubbard
 
-        with self.retrieved.open(filename, 'r') as handle:
-            parsed_data = self.parse_hubbard_content(handle)
+        try:
+            with self.retrieved.open(filename, 'r') as handle:
+                parsed_data = self.parse_hubbard_content(handle)
+        except IOError:
+            if self.is_complete_calculation:
+                return self.exit_codes.ERROR_OUTPUT_HUBBARD_MISSING
+        else:
+            matrices = orm.ArrayData()
+            matrices.set_array('chi0', parsed_data['chi0'])
+            matrices.set_array('chi1', parsed_data['chi1'])
+            matrices.set_array('chi0_inv', parsed_data['chi0_inv'])
+            matrices.set_array('chi1_inv', parsed_data['chi1_inv'])
+            matrices.set_array('hubbard', parsed_data['hubbard'])
 
-        matrices = orm.ArrayData()
-        matrices.set_array('chi0', parsed_data['chi0'])
-        matrices.set_array('chi1', parsed_data['chi1'])
-        matrices.set_array('chi0_inv', parsed_data['chi0_inv'])
-        matrices.set_array('chi1_inv', parsed_data['chi1_inv'])
-        matrices.set_array('hubbard', parsed_data['hubbard'])
-
-        self.out('matrices', matrices)
-        self.out('hubbard', orm.Dict(dict=parsed_data['hubbard_U']))
-
-    def parse_hubbard_file(self):
-        """Parse the hubbard output file.
-
-        :return: optional exit code in case of an error
-        """
-        filename = HpCalculation.filename_output_hubbard_parameters
-
-        if filename not in self.retrieved.list_object_names():
-            self.logger.info("output file '{}' was not found, assuming partial calculation".format(filename))
-            return
-
-        if filename in self.retrieved.list_object_names():
-            with self.retrieved.open(filename, 'rb') as handle:
-                self.out('hubbard_file', orm.SinglefileData(file=handle))
+            self.out('hubbard', orm.Dict(dict=parsed_data['hubbard_U']))
+            self.out('hubbard_matrices', matrices)
 
     def parse_hubbard_chi(self):
-        """Parse the hubbard output file.
+        """Parse the hubbard chi output file.
 
         :return: optional exit code in case of an error
         """
         filename = HpCalculation.filename_output_hubbard_chi
 
-        if filename not in self.retrieved.list_object_names():
-            self.logger.info("output file '{}' was not found, assuming partial calculation".format(filename))
-            return
+        try:
+            with self.retrieved.open(filename, 'r') as handle:
+                parsed_data = self.parse_chi_content(handle)
+        except IOError:
+            if self.is_complete_calculation:
+                return self.exit_codes.ERROR_OUTPUT_HUBBARD_CHI_MISSING
+        else:
+            output_chi = orm.ArrayData()
+            output_chi.set_array('chi0', parsed_data['chi0'])
+            output_chi.set_array('chi1', parsed_data['chi1'])
 
-        with self.retrieved.open(filename, 'r') as handle:
-            parsed_data = self.parse_chi_content(handle)
+            self.out('hubbard_chi', output_chi)
 
-        output_chi = orm.ArrayData()
-        output_chi.set_array('chi0', parsed_data['chi0'])
-        output_chi.set_array('chi1', parsed_data['chi1'])
+    def parse_hubbard_parameters(self):
+        """Parse the hubbard parameters output file.
 
-        self.out('chi', output_chi)
+        :return: optional exit code in case of an error
+        """
+        filename = HpCalculation.filename_output_hubbard_parameters
+
+        try:
+            with self.retrieved.open(filename, 'rb') as handle:
+                self.out('hubbard_parameters', orm.SinglefileData(file=handle))
+        except IOError:
+            pass  # the file is not required to exist
 
     @staticmethod
     def parse_stdout_content(stdout):
@@ -147,10 +175,12 @@ class HpParser(Parser):
             if 'JOB DONE' in line:
                 is_prematurely_terminated = False
 
+            if 'reading inputhp namelist' in line:
+                logs.error.append('ERROR_INVALID_NAMELIST')
+
             # If the atoms were not ordered correctly in the parent calculation
             if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
                 logs.error.append('ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS')
-                return
 
             # If not all expected perturbation files were found for a chi_collect calculation
             if 'Error in routine hub_read_chi (1)' in line:
