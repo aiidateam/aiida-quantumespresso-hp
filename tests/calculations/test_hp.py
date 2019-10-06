@@ -53,13 +53,13 @@ def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbo
     retrieve_list.append([path_save_directory, path_save_directory, 0])
     retrieve_list.append([path_occup_file, path_occup_file, 0])
 
-    src_perturbation_files = os.path.join(HpCalculation._FOLDER_RAW, '{}.chi.pert_*.dat'.format(HpCalculation._prefix))
+    src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(HpCalculation._prefix))
     dst_perturbation_files = '.'
     retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 
     # Check the attributes of the returned `CalcInfo`
     assert isinstance(calc_info, datastructures.CalcInfo)
-    assert sorted(calc_info.cmdline_params) == sorted(cmdline_params)
+    assert sorted(calc_info.codes_info[0].cmdline_params) == sorted(cmdline_params)
     assert sorted(calc_info.local_copy_list) == sorted(local_copy_list)
     assert sorted(calc_info.retrieve_list) == sorted(retrieve_list)
 

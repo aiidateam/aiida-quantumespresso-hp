@@ -47,7 +47,7 @@ class HpCalculation(CalcJob):
         spec.input('metadata.options.parser_name', valid_type=six.string_types, default='quantumespresso.hp')
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters for the namelists.')
-        spec.input('parent_folder', valid_type=orm.RemoteData,
+        spec.input('parent_folder', valid_type=(orm.FolderData, orm.RemoteData),
             help='The remote folder of a completed `PwCalculation` with `lda_plus_u` switch turned on')
         spec.input('qpoints', valid_type=orm.KpointsData,
             help='The q-point grid on which to perform the perturbative calculation.')
@@ -55,13 +55,13 @@ class HpCalculation(CalcJob):
             help='Optional node for special settings.')
         spec.output('parameters', valid_type=orm.Dict,
             help='')
-        spec.output('matrices', valid_type=orm.ArrayData, required=False,
-            help='')
         spec.output('hubbard', valid_type=orm.Dict, required=False,
             help='')
-        spec.output('chi', valid_type=orm.ArrayData, required=False,
+        spec.output('hubbard_chi', valid_type=orm.ArrayData, required=False,
             help='')
-        spec.output('hubbard_file', valid_type=orm.SinglefileData, required=False,
+        spec.output('hubbard_matrices', valid_type=orm.ArrayData, required=False,
+            help='')
+        spec.output('hubbard_parameters', valid_type=orm.SinglefileData, required=False,
             help='')
         spec.default_output_node = 'parameters'
 
@@ -70,6 +70,12 @@ class HpCalculation(CalcJob):
             message='The retrieved folder data node could not be accessed.')
         spec.exit_code(210, 'ERROR_OUTPUT_STDOUT_MISSING',
             message='The retrieved folder did not contain the required stdout output file.')
+        spec.exit_code(211, 'ERROR_OUTPUT_HUBBARD_MISSING',
+            message='The retrieved folder did not contain the required hubbard output file.')
+        spec.exit_code(212, 'ERROR_OUTPUT_HUBBARD_CHI_MISSING',
+            message='The retrieved folder did not contain the required hubbard chi output file.')
+        spec.exit_code(213, 'ERROR_OUTPUT_HUBBARD_PARAMETERS_MISSING',
+            message='The retrieved folder did not contain the required hubbard parameters output file.')
 
         # Unrecoverable errors: required retrieved files could not be read, parsed or are otherwise incomplete
         spec.exit_code(300, 'ERROR_OUTPUT_FILES',
@@ -80,7 +86,8 @@ class HpCalculation(CalcJob):
             message='The stdout output file could not be parsed.')
         spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
             message='The stdout output file was incomplete.')
-
+        spec.exit_code(350, 'ERROR_INVALID_NAMELIST',
+            message='The namelist in the input file contained invalid syntax and could not be parsed.')
         spec.exit_code(360, 'ERROR_MISSING_PERTURBATION_FILE',
             message='One of the required perturbation inputs files was not found.')
         spec.exit_code(365, 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
@@ -113,9 +120,14 @@ class HpCalculation(CalcJob):
         return cls._filename_input_hubbard_parameters
 
     @classproperty
-    def dirname_output_hubbard(cls):  # pylint: disable=no-self-argument
+    def dirname_output(cls):  # pylint: disable=no-self-argument
         """Return the relative directory name that contains raw output data."""
-        return os.path.join(cls._dirname_output, 'HP')
+        return cls._dirname_output
+
+    @classproperty
+    def dirname_output_hubbard(cls):  # pylint: disable=no-self-argument
+        """Return the relative directory name that contains raw output data written by hp.x."""
+        return os.path.join(cls.dirname_output, 'HP')
 
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`.
@@ -138,10 +150,10 @@ class HpCalculation(CalcJob):
         codeinfo = CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
         codeinfo.stdout_name = self.options.output_filename
+        codeinfo.cmdline_params = (list(cmdline_params) + ['-in', self.options.input_filename])
 
         calcinfo = CalcInfo()
         calcinfo.codes_info = [codeinfo]
-        calcinfo.cmdline_params = (list(cmdline_params) + ['-in', self.options.input_filename])
         calcinfo.retrieve_list = self.get_retrieve_list()
         calcinfo.local_copy_list = self.get_local_copy_list(parent_folder)
         calcinfo.remote_copy_list = self.get_remote_copy_list(parent_folder)
@@ -172,9 +184,11 @@ class HpCalculation(CalcJob):
         # Required files and directories for final collection calculations
         path_save_directory = os.path.join(self._dirname_output, self._prefix + '.save')
         path_occup_file = os.path.join(self._dirname_output, self._prefix + '.occup')
+        path_paw_file = os.path.join(self._dirname_output, self._prefix + '.paw')
 
         retrieve_list.append([path_save_directory, path_save_directory, 0])
         retrieve_list.append([path_occup_file, path_occup_file, 0])
+        retrieve_list.append([path_paw_file, path_paw_file, 0])
 
         src_perturbation_files = os.path.join(self.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(self._prefix))
         dst_perturbation_files = '.'
@@ -194,9 +208,7 @@ class HpCalculation(CalcJob):
         local_copy_list = []
 
         if isinstance(parent_folder, orm.FolderData):
-            folder_src = parent_folder.get_abs_path(self._dirname_output)
-            folder_dst = self._dirname_output
-            local_copy_list.append((folder_src, folder_dst))
+            local_copy_list.append((parent_folder.uuid, 'out', '.'))
 
         return local_copy_list
 

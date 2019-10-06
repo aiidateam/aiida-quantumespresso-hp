@@ -15,7 +15,7 @@ from . import cmd_launch
 @cmd_launch.command('hp')
 @options.CODE(required=True, type=types.CodeParamType(entry_point='quantumespresso.hp'))
 @options_qe.KPOINTS_MESH(default=[1, 1, 1])
-@options_qe.PARENT_FOLDER()
+@options_qe.PARENT_FOLDER(type=types.DataParamType(sub_classes=('aiida.data:folder', 'aiida.data:remote')))
 @options_qe.MAX_NUM_MACHINES()
 @options_qe.MAX_WALLCLOCK_SECONDS()
 @options_qe.WITH_MPI()
