@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Parser implementation for the `HpCalculation` plugin."""
-
 import os
 import re
 import numpy
@@ -109,10 +108,10 @@ class HpParser(Parser):
                 return self.exit_codes.ERROR_OUTPUT_HUBBARD_MISSING
         else:
             matrices = orm.ArrayData()
+            matrices.set_array('chi', parsed_data['chi'])
             matrices.set_array('chi0', parsed_data['chi0'])
-            matrices.set_array('chi1', parsed_data['chi1'])
+            matrices.set_array('chi_inv', parsed_data['chi_inv'])
             matrices.set_array('chi0_inv', parsed_data['chi0_inv'])
-            matrices.set_array('chi1_inv', parsed_data['chi1_inv'])
             matrices.set_array('hubbard', parsed_data['hubbard'])
 
             self.out('hubbard', orm.Dict(dict=parsed_data['hubbard_U']))
@@ -133,8 +132,8 @@ class HpParser(Parser):
                 return self.exit_codes.ERROR_OUTPUT_HUBBARD_CHI_MISSING
         else:
             output_chi = orm.ArrayData()
+            output_chi.set_array('chi', parsed_data['chi'])
             output_chi.set_array('chi0', parsed_data['chi0'])
-            output_chi.set_array('chi1', parsed_data['chi1'])
 
             self.out('hubbard_chi', output_chi)
 
@@ -229,18 +228,18 @@ class HpParser(Parser):
 
         result = {}
         blocks = {
+            'chi': [None, None],
             'chi0': [None, None],
-            'chi1': [None, None],
         }
 
         for line_number, line in enumerate(data):
-            if 'chi0' in line:
+            if 'chi0 :' in line:
                 blocks['chi0'][0] = line_number + 1
 
-            if 'chi1' in line:
+            if 'chi :' in line:
                 blocks['chi0'][1] = line_number
-                blocks['chi1'][0] = line_number + 1
-                blocks['chi1'][1] = len(data)
+                blocks['chi'][0] = line_number + 1
+                blocks['chi'][1] = len(data)
                 break
 
         if not all(sum(list(blocks.values()), [])):
@@ -248,10 +247,10 @@ class HpParser(Parser):
                 "could not determine beginning and end of all blocks in '{}'".format(os.path.basename(handle.name))
             )
 
-        for matrix_name in ('chi0', 'chi1'):
+        for matrix_name in ('chi0', 'chi'):
             matrix_block = blocks[matrix_name]
             matrix_data = data[matrix_block[0]:matrix_block[1]]
-            matrix = numpy.matrix(self.parse_hubbard_matrix(matrix_data))
+            matrix = numpy.array(self.parse_hubbard_matrix(matrix_data))
             result[matrix_name] = matrix
 
         return result
@@ -266,10 +265,10 @@ class HpParser(Parser):
 
         result = {'hubbard_U': {'sites': []}}
         blocks = {
+            'chi': [None, None],
             'chi0': [None, None],
-            'chi1': [None, None],
+            'chi_inv': [None, None],
             'chi0_inv': [None, None],
-            'chi1_inv': [None, None],
             'hubbard': [None, None],
         }
 
@@ -298,20 +297,20 @@ class HpParser(Parser):
             if 'chi0 matrix' in line:
                 blocks['chi0'][0] = line_number + 1
 
-            if 'chi1 matrix' in line:
+            if 'chi matrix' in line:
                 blocks['chi0'][1] = line_number
-                blocks['chi1'][0] = line_number + 1
+                blocks['chi'][0] = line_number + 1
 
             if 'chi0^{-1} matrix' in line:
-                blocks['chi1'][1] = line_number
+                blocks['chi'][1] = line_number
                 blocks['chi0_inv'][0] = line_number + 1
 
-            if 'chi1^{-1} matrix' in line:
+            if 'chi^{-1} matrix' in line:
                 blocks['chi0_inv'][1] = line_number
-                blocks['chi1_inv'][0] = line_number + 1
+                blocks['chi_inv'][0] = line_number + 1
 
             if 'Hubbard matrix' in line:
-                blocks['chi1_inv'][1] = line_number
+                blocks['chi_inv'][1] = line_number
                 blocks['hubbard'][0] = line_number + 1
                 blocks['hubbard'][1] = len(data)
                 break
@@ -323,15 +322,15 @@ class HpParser(Parser):
                 )
             )
 
-        for matrix_name in ('chi0', 'chi1', 'chi0_inv', 'chi1_inv', 'hubbard'):
+        for matrix_name in ('chi0', 'chi', 'chi0_inv', 'chi_inv', 'hubbard'):
             matrix_block = blocks[matrix_name]
             matrix_data = data[matrix_block[0]:matrix_block[1]]
             matrix = self.parse_hubbard_matrix(matrix_data)
 
             if len(set(matrix.shape)) != 1:
                 raise ValueError(
-                    "the matrix '{}' in '{}'' is not square but has shape {}".format(
-                        matrix_name, os.path.basename(handle.name), matrix.shape
+                    "the matrix '{}' in '{}'' is not square but has shape {}: {}".format(
+                        matrix_name, os.path.basename(handle.name), matrix.shape, matrix
                     )
                 )
 
@@ -363,4 +362,7 @@ class HpParser(Parser):
                     matrix.append(row)
                 row = []
 
-        return numpy.matrix(matrix)
+        if row:
+            matrix.append(row)
+
+        return numpy.array(matrix)

@@ -8,23 +8,23 @@ hubbard:
     type: '1'
     value: '7.6150'
 hubbard_chi:
+  array|chi:
+  - 1
+  - 1
   array|chi0:
   - 1
   - 1
-  array|chi1:
-  - 1
-  - 0
 hubbard_matrices:
+  array|chi:
+  - 1
+  - 1
   array|chi0:
   - 1
   - 1
   array|chi0_inv:
   - 1
   - 1
-  array|chi1:
-  - 1
-  - 1
-  array|chi1_inv:
+  array|chi_inv:
   - 1
   - 1
   array|hubbard:
