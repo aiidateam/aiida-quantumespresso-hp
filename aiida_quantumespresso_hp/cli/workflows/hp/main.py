@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Command line scripts to launch a `HpWorkChain` for testing and demonstration purposes."""
-from __future__ import absolute_import
 
 import click
 

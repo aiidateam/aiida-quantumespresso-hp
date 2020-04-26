@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Utilities for validating various data structures."""
-from __future__ import absolute_import
 
 
 def validate_parent_calculation(calculation):
@@ -52,7 +51,8 @@ def validate_structure_kind_order(structure, hubbard_kinds):
 
         if not hubbard_kinds:
             return
-        elif kind.name in hubbard_kinds:
+
+        if kind.name in hubbard_kinds:
             hubbard_kinds.remove(kind.name)
         else:
             raise ValueError('the structure does not have the right kind order')

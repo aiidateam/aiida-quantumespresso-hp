@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """Parser implementation for the `HpCalculation` plugin."""
-from __future__ import absolute_import
 
 import os
 import re
 import numpy
-from six.moves import range
 
 from aiida import orm
 from aiida.common import exceptions
@@ -19,7 +17,7 @@ class HpParser(Parser):
     """Parser implementation for the `HpCalculation` plugin."""
 
     def __init__(self, node):
-        super(HpParser, self).__init__(node)
+        super().__init__(node)
         if not issubclass(node.process_class, HpCalculation):
             args = (HpCalculation, node.uuid, node.process_class)
             raise exceptions.ParsingError('Node must be a {} but node<{}> has process class {}'.format(*args))

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Setup script for aiida-quantumespresso-hp package."""
-from __future__ import absolute_import
 import json
 
 # pylint: disable=wrong-import-order,unused-import

@@ -1,5 +1,5 @@
 {
-    "version": "3.0.0a5",
+    "version": "0.1.0",
     "name": "aiida_quantumespresso_hp",
     "url": "https://github.com/sphuber/aiida-quantumespresso-hp",
     "license": "MIT License",
@@ -7,14 +7,21 @@
     "author_email": "mail@sphuber.net",
     "description": "The AiiDA plugin for the Hubbard module of Quantum ESPRESSO",
     "classifiers": [
+        "Development Status :: 4 - Beta",
+        "Framework :: AiiDA",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 2.7",
-        "Development Status :: 4 - Beta"
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS :: MacOS X",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8"
     ],
     "install_requires": [
-        "aiida-core>=1.0.0b6,<2.0",
-        "aiida-quantumespresso>=3.0.0a5,<4.0",
-        "click>=7.0.0"
+        "aiida-core>=1.0.0,<2.0",
+        "aiida-quantumespresso>=3.0.0a6,<4.0",
+        "click~=7.0"
     ],
     "extras_require": {
         "dev": [

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=unused-argument
 """Tests for the `collect_atomic_calculations` calculation function."""
-from __future__ import absolute_import
 
 import contextlib
 import io
@@ -9,7 +8,6 @@ import os
 import shutil
 import tempfile
 
-from six.moves import range
 
 from aiida import orm
 

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Calculation function to collect dynamical matrix files from different hp.x calculations into a single folder."""
-from __future__ import absolute_import
 
 from aiida import orm
 from aiida.engine import calcfunction

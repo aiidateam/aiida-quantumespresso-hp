@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 from copy import copy, deepcopy
 from aiida.common.extendeddicts import AttributeDict
 from aiida import orm
@@ -67,7 +66,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(SelfConsistentHubbardWorkChain, cls).define(spec)
+        super().define(spec)
         spec.input('structure', valid_type=orm.StructureData)
         spec.input('hubbard_u', valid_type=orm.Dict)
         spec.input('tolerance', valid_type=orm.Float, default=orm.Float(0.1))

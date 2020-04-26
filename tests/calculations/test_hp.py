@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=unused-argument
 """Tests for the `HpCalculation` class."""
-from __future__ import absolute_import
 
 import os
 

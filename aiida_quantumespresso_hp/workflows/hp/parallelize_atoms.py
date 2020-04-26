@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """Work chain to launch a Quantum Espresso hp.x calculation parallelizing over the Hubbard atoms."""
-from __future__ import absolute_import
-
-import six
 
 from aiida import orm
 from aiida.common import AttributeDict
@@ -24,7 +21,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         # yapf: disable
-        super(HpParallelizeAtomsWorkChain, cls).define(spec)
+        super().define(spec)
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization',))
         spec.outline(
             cls.run_init,
@@ -67,7 +64,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         output_params = workchain.outputs.parameters.get_dict()
         hubbard_sites = output_params['hubbard_sites']
 
-        for site_index, site_kind in six.iteritems(hubbard_sites):
+        for site_index, site_kind in hubbard_sites.items():
 
             do_only_key = 'do_one_only({})'.format(site_index)
 

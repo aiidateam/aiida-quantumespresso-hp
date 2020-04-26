@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """`CalcJob` implementation for the hp.x code of Quantum ESPRESSO."""
-from __future__ import absolute_import
 import os
-import six
 
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
@@ -41,10 +39,10 @@ class HpCalculation(CalcJob):
     @classmethod
     def define(cls, spec):
         # yapf: disable
-        super(HpCalculation, cls).define(spec)
-        spec.input('metadata.options.input_filename', valid_type=six.string_types, default=cls._default_input_file)
-        spec.input('metadata.options.output_filename', valid_type=six.string_types, default=cls._default_output_file)
-        spec.input('metadata.options.parser_name', valid_type=six.string_types, default='quantumespresso.hp')
+        super().define(spec)
+        spec.input('metadata.options.input_filename', valid_type=str, default=cls._default_input_file)
+        spec.input('metadata.options.output_filename', valid_type=str, default=cls._default_output_file)
+        spec.input('metadata.options.parser_name', valid_type=str, default='quantumespresso.hp')
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters for the namelists.')
         spec.input('parent_folder', valid_type=(orm.FolderData, orm.RemoteData),
@@ -196,7 +194,8 @@ class HpCalculation(CalcJob):
 
         return retrieve_list
 
-    def get_local_copy_list(self, parent_folder):
+    @staticmethod
+    def get_local_copy_list(parent_folder):
         """Return the `local_copy_list`.
 
         Build the local copy list, which amounts to copying the output subfolder of the specified `parent_folder` input
@@ -278,7 +277,7 @@ class HpCalculation(CalcJob):
         """
         # Transform first-level keys (i.e. namelist and card names) to uppercase and second-level to lowercase
         result = _uppercase_dict(parameters.get_dict(), dict_name='parameters')
-        result = {key: _lowercase_dict(value, dict_name=key) for key, value in six.iteritems(result)}
+        result = {key: _lowercase_dict(value, dict_name=key) for key, value in result.items()}
 
         # Check that required namelists are present
         for namelist in self._compulsory_namelists:
@@ -318,7 +317,7 @@ class HpCalculation(CalcJob):
             for namelist_name in self._compulsory_namelists:
                 namelist = parameters.pop(namelist_name)
                 handle.write(u'&{0}\n'.format(namelist_name))
-                for key, value in sorted(six.iteritems(namelist)):
+                for key, value in sorted(namelist.items()):
                     handle.write(convert_input_to_namelist_entry(key, value))
                 handle.write(u'/\n')
 

@@ -1,6 +1,5 @@
 # pylint: disable=redefined-outer-name
 """Initialise a text database and profile for pytest."""
-from __future__ import absolute_import
 
 import shutil
 import tempfile

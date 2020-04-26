@@ -60,7 +60,6 @@ disable=bad-continuation,
         bad-option-value,
         logging-format-interpolation,
         no-else-raise,
-        useless-object-inheritance,
         inconsistent-return-statements,
         import-outside-toplevel
 
@@ -346,6 +345,7 @@ good-names=i,
            PwBandStructureWorkChain,
            HpCalculation,
            HpBaseWorkChain,
+           HpParallelizeAtomsWorkChain,
            _
 
 # Include a hint for the correct naming format with invalid-name

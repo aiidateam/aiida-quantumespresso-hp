@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Workchain to run a Quantum ESPRESSO hp.x calculation with automated error handling and restarts."""
-from __future__ import absolute_import
 
 from aiida import orm
 from aiida.common import AttributeDict
@@ -21,7 +20,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
     @classmethod
     def define(cls, spec):
         # yapf: disable
-        super(HpBaseWorkChain, cls).define(spec)
+        super().define(spec)
         spec.expose_inputs(HpCalculation, namespace='hp')
         spec.input('only_initialization', valid_type=orm.Bool, default=orm.Bool(False))
         spec.outline(
@@ -46,7 +45,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         This `self.ctx.inputs` dictionary will be used by the `BaseRestartWorkChain` to submit the calculations in the
         internal loop.
         """
-        super(HpBaseWorkChain, self).setup()
+        super().setup()
         self.ctx.inputs = AttributeDict(self.exposed_inputs(HpCalculation, 'hp'))
 
     def validate_parameters(self):

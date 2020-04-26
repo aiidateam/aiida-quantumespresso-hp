@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Pre-commit script to ensure that version numbers in `setup.json` and module `aiida_quantumespresso_hp` match."""
-from __future__ import absolute_import
 import os
 import json
 import sys
@@ -29,10 +28,10 @@ def cli():
 
 @cli.command('version')
 def validate_version():
-    """Check that version numbers in `setup.json` and `aiida_quantumespresso/__init__.py` match."""
+    """Check that version numbers in `setup.json` and `aiida_quantumespresso_hp/__init__.py` match."""
     sys.path.insert(0, FILEPATH_ROOT)
-    import aiida_quantumespresso  # pylint: disable=wrong-import-position
-    version = aiida_quantumespresso.__version__
+    import aiida_quantumespresso_hp  # pylint: disable=wrong-import-position
+    version = aiida_quantumespresso_hp.__version__
 
     setup_content = get_setup_json()
 

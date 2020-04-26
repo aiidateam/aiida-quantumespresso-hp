@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Work chain to run a Quantum ESPRESSO hp.x calculation."""
-from __future__ import absolute_import
 
 from aiida import orm
 from aiida.engine import WorkChain, ToContext, if_
@@ -21,7 +20,7 @@ class HpWorkChain(WorkChain):
     @classmethod
     def define(cls, spec):
         # yapf: disable
-        super(HpWorkChain, cls).define(spec)
+        super().define(spec)
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization',))
         spec.input('parallelize_atoms', valid_type=orm.Bool, default=orm.Bool(False))
         spec.outline(
@@ -38,6 +37,7 @@ class HpWorkChain(WorkChain):
             message='A child work chain failed.')
 
     def should_parallelize_atoms(self):
+        """Return whether the calculation should be parallelized over atoms."""
         return self.inputs.parallelize_atoms.value
 
     def run_base_workchain(self):

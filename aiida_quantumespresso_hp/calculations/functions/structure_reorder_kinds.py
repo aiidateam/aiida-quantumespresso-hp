@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Calculation function to reorder the kinds of a structure with the Hubbard sites first."""
-from __future__ import absolute_import
 from copy import deepcopy
 
 from aiida.engine import calcfunction
