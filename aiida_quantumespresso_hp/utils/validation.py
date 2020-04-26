@@ -40,7 +40,7 @@ def validate_parent_calculation(calculation):
 
 
 def validate_structure_kind_order(structure, hubbard_kinds):
-    """Determines whether the kinds in the structure node have the right order for the given list of Hubbard U kinds.
+    """Determine whether the kinds in the structure node have the right order for the given list of Hubbard U kinds.
 
     For the order to be right, means for the Hubbard kinds to come first in the list of kinds of the structure.
 

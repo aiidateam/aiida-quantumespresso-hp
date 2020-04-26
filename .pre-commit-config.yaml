@@ -1,49 +1,53 @@
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v2.2.3
-  hooks:
-  - id: trailing-whitespace
-    exclude: &exclude >
-      (?x)^(
-          tests/calculations/.*.in|
-          tests/parsers/fixtures/.*|
-          tests/parsers/*.yml
-      )$
-  - id: double-quote-string-fixer
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.5.0
+    hooks:
+    -   id: double-quote-string-fixer
+    -   id: end-of-file-fixer
+    -   id: fix-encoding-pragma
+    -   id: mixed-line-ending
+    -   id: trailing-whitespace
 
-- repo: local
-  hooks:
+-   repo: https://github.com/PyCQA/prospector
+    rev: 1.2.0
+    hooks:
+    -   id: prospector
+        language: system
+        exclude: &exclude_files >
+            (?x)^(
+                utils/fastentrypoints.py
+            )$
 
-  - id: yapf
-    name: yapf
-    entry: yapf
-    language: system
-    types: [python]
-    args: ['-i']
-    exclude: &exclude_files >
-      (?x)^(
-        aiida_quantumespresso_hp/cli/workflows/hubbard.py|
-        aiida_quantumespresso_hp/workflows/hubbard.py|
-        docs/.*|
-        tests/.*
-      )$
+-   repo: https://github.com/PyCQA/pydocstyle
+    rev: 5.0.2
+    hooks:
+    -   id: pydocstyle
+        exclude: >
+            (?x)^(
+                utils/fastentrypoints.py|
+                aiida_quantumespresso_hp/workflows/hubbard.py|
+            )$
+        args: ['--ignore=D104,D203,D213']
 
-  - id: prospector
-    language: system
-    types: [file, python]
-    exclude: *exclude_files
-    name: prospector
-    description: 'This hook runs Prospector: https://github.com/landscapeio/prospector'
-    entry: prospector
+-   repo: local
+    hooks:
+    -   id: yapf
+        name: yapf
+        entry: yapf
+        language: system
+        types: [python]
+        args: ['-i']
+        exclude: *exclude_files
 
-  - id: version-number
-    name: Check consistency in version number
-    entry: python ./.ci/validate_version_number.py
-    args: ['version']
-    language: system
-    files: >-
-      (?x)^(
-        setup.json|
-        aiida_quantumespresso_hp/__init__.py|
-        ./.ci/validate_version_number.py|
-      )$
-    pass_filenames: false
+    -   id: version-number
+        name: Check consistency in version number
+        entry: python ./.ci/validate_version_number.py
+        args: ['version']
+        language: system
+        pass_filenames: false
+        files: >-
+            (?x)^(
+                setup.json|
+                aiida_quantumespresso_hp/__init__.py|
+                ./.ci/validate_version_number.py|
+            )$

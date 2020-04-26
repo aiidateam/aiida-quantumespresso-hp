@@ -1,0 +1,4 @@
+include setup.json
+include LICENSE
+include README.md
+include utils/fastentrypoints.py

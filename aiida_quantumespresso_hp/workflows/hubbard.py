@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Turn-key solution to automatically compute the self-consistent Hubbard parameters for a given structure."""
 from copy import copy, deepcopy
 from aiida.common.extendeddicts import AttributeDict
 from aiida import orm
@@ -66,6 +67,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
+        # yapf: disable
         super().define(spec)
         spec.input('structure', valid_type=orm.StructureData)
         spec.input('hubbard_u', valid_type=orm.Dict)
@@ -87,7 +89,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                     cls.run_relax,
                     cls.inspect_relax,
                 ),
-                if_(cls.is_metal)(
+                if_(cls.is_metal)(  # pylint: disable=no-member
                     cls.run_scf_smearing
                 ).elif_(cls.is_magnetic)(
                     cls.run_scf_smearing,
@@ -219,7 +221,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         parameters = workchain.out.output_parameters.get_dict()
         number_electrons = parameters['number_of_electrons']
 
-        is_insulator, gap = find_bandgap(bands, number_electrons=number_electrons)
+        is_insulator, _ = find_bandgap(bands, number_electrons=number_electrons)
 
         if is_insulator:
             self.report('system is determined to be an insulator')
@@ -254,15 +256,19 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs = copy(self.ctx.inputs)
         inputs.parameters = deepcopy(inputs.parameters)
 
-        u_projection_type_relax = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_relax)
+        u_projection_type_relax = inputs.parameters['SYSTEM'].get(
+            'u_projection_type', self.defaults.u_projection_type_relax
+        )
 
         if u_projection_type_relax != self.defaults.u_projection_type_relax:
-            self.report("warning: you specified 'u_projection_type = {}' in the input parameters, but this will crash "
-                "pw.x, changing it to '{}'".format(u_projection_type_relax, self.defaults.u_projection_type_relax))
+            self.report(
+                "warning: you specified 'u_projection_type = {}' in the input parameters, but this will crash "
+                "pw.x, changing it to '{}'".format(u_projection_type_relax, self.defaults.u_projection_type_relax)
+            )
 
         inputs.parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
 
-        inputs.parameters = Dict(dict=inputs.parameters)
+        inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwRelaxWorkChain, **inputs)
 
@@ -304,8 +310,12 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM']['occupations'] = 'fixed'
         inputs.parameters['SYSTEM'].pop('degauss', None)
         inputs.parameters['SYSTEM'].pop('smearing', None)
-        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
-        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get(
+            'u_projection_type', self.defaults.u_projection_type_scf
+        )
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get(
+            'conv_thr', self.defaults.conv_thr_strictfinal
+        )
 
         inputs.parameters = orm.Dict(dict=inputs.parameters)
 
@@ -324,10 +334,18 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.parameters['CONTROL']['calculation'] = 'scf'
         inputs.parameters['SYSTEM']['occupations'] = 'smearing'
-        inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
-        inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get('degauss', self.defaults.smearing_degauss)
-        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
-        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_preconverge)
+        inputs.parameters['SYSTEM']['smearing'] = inputs.parameters['SYSTEM'].get(
+            'smearing', self.defaults.smearing_method
+        )
+        inputs.parameters['SYSTEM']['degauss'] = inputs.parameters['SYSTEM'].get(
+            'degauss', self.defaults.smearing_degauss
+        )
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get(
+            'u_projection_type', self.defaults.u_projection_type_scf
+        )
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get(
+            'conv_thr', self.defaults.conv_thr_preconverge
+        )
 
         inputs.parameters = orm.Dict(dict=inputs.parameters)
 
@@ -356,14 +374,20 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.parameters['SYSTEM'].pop('starting_magnetization', None)
         inputs.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
         inputs.parameters['SYSTEM']['tot_magnetization'] = previous_parameters.get_dict()['total_magnetization']
-        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_scf)
-        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
+        inputs.parameters['SYSTEM']['u_projection_type'] = inputs.parameters['SYSTEM'].get(
+            'u_projection_type', self.defaults.u_projection_type_scf
+        )
+        inputs.parameters['ELECTRONS']['conv_thr'] = inputs.parameters['ELECTRONS'].get(
+            'conv_thr', self.defaults.conv_thr_strictfinal
+        )
 
         inputs.parameters = orm.Dict(dict=inputs.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with fixed occupations, bands and total magnetization'.format(running.pk))
+        self.report(
+            'launching PwBaseWorkChain<{}> with fixed occupations, bands and total magnetization'.format(running.pk)
+        )
 
         return ToContext(workchains_scf=append_(running))
 
@@ -410,7 +434,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         # Compare new Hubbard U with values from previous iteration to check the convergence
         converged = True
-        for kind in curr_hubbard_u.keys():
+        for kind in curr_hubbard_u:
             prev_value = prev_hubbard_u[kind]
             curr_value = curr_hubbard_u[kind]
             if abs(curr_value - prev_value) > self.inputs.tolerance.value:
@@ -427,7 +451,9 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             else:
                 self.report('Hubbard U parameters are not converged')
 
-            self.report('values from previous iteration: {}'.format(' '.join([str(v) for v in prev_hubbard_u.values()])))
+            self.report(
+                'values from previous iteration: {}'.format(' '.join([str(v) for v in prev_hubbard_u.values()]))
+            )
             self.report('values from current iteration: {}'.format(' '.join([str(v) for v in curr_hubbard_u.values()])))
 
         # Set the new Hubbard U values in the input parameters for the next iteration

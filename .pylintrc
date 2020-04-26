@@ -346,6 +346,8 @@ good-names=i,
            HpCalculation,
            HpBaseWorkChain,
            HpParallelizeAtomsWorkChain,
+           HpWorkChain,
+           SelfConsistentHubbardWorkChain,
            _
 
 # Include a hint for the correct naming format with invalid-name

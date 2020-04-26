@@ -1,10 +1,10 @@
 
-     Program HP v.5.1.1 starts on  6Oct2019 at 16: 0: 0 
+     Program HP v.5.1.1 starts on  6Oct2019 at 16: 0: 0
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
          "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
-          URL http://www.quantum-espresso.org", 
+          URL http://www.quantum-espresso.org",
      in publications or presentations arising from this work. More details at
      http://www.quantum-espresso.org/quote
 
@@ -52,14 +52,14 @@
      celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
 
      crystal axes: (cart. coord. in units of alat)
-               a(1) = (  0.2839  0.1639  0.9448 )  
-               a(2) = ( -0.2839  0.1639  0.9448 )  
-               a(3) = (  0.0000 -0.3278  0.9448 )  
+               a(1) = (  0.2839  0.1639  0.9448 )
+               a(2) = ( -0.2839  0.1639  0.9448 )
+               a(3) = (  0.0000 -0.3278  0.9448 )
 
      reciprocal axes: (cart. coord. in units 2 pi/alat)
-               b(1) = (  1.7614  1.0169  0.3528 )  
-               b(2) = ( -1.7614  1.0169  0.3528 )  
-               b(3) = (  0.0000 -2.0339  0.3528 )  
+               b(1) = (  1.7614  1.0169  0.3528 )
+               b(2) = ( -1.7614  1.0169  0.3528 )
+               b(3) = (  0.0000 -2.0339  0.3528 )
 
      Atoms inside the unit cell (Cartesian axes):
      site n.  atom      mass           positions (alat units)
@@ -75,7 +75,7 @@
      HP           :     1.49s CPU         1.52s WALL
 
 
-   This run was terminated on:  16: 0: 2   6Oct2019            
+   This run was terminated on:  16: 0: 2   6Oct2019
 
 =------------------------------------------------------------------------------=
    JOB DONE.

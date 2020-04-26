@@ -1,15 +1,12 @@
-ignore-paths:
-  - docs
-  - tests
+pep8:
+    run: false
 
-pylint:
-  run: true
+pydocstyle:
+    run: false
 
 pyflakes:
-  run: false
+    run: false
 
-pep8:
-  run: false
-
-mccabe:
-  run: false
+pylint:
+    disable:
+        -   import-outside-toplevel

@@ -16,12 +16,6 @@ from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 class HpParser(Parser):
     """Parser implementation for the `HpCalculation` plugin."""
 
-    def __init__(self, node):
-        super().__init__(node)
-        if not issubclass(node.process_class, HpCalculation):
-            args = (HpCalculation, node.uuid, node.process_class)
-            raise exceptions.ParsingError('Node must be a {} but node<{}> has process class {}'.format(*args))
-
     def parse(self, **kwargs):
         """Parse the contents of the output files retrieved in the `FolderData`."""
         try:
@@ -226,8 +220,7 @@ class HpParser(Parser):
         return parsed_data, logs
 
     def parse_chi_content(self, handle):
-        """
-        Parse the contents of the file {prefix}.chi.dat as written by a HpCalculation
+        """Parse the contents of the file {prefix}.chi.dat as written by a HpCalculation.
 
         :param filepath: absolute filepath to the chi.dat output file
         :returns: dictionary with parsed contents
@@ -264,8 +257,7 @@ class HpParser(Parser):
         return result
 
     def parse_hubbard_content(self, handle):
-        """
-        Parse the contents of the file {prefix}.Hubbard_U.dat as written by a HpCalculation
+        """Parse the contents of the file {prefix}.Hubbard_U.dat as written by a HpCalculation.
 
         :param filepath: absolute filepath to the Hubbard_U.dat output file
         :returns: dictionary with parsed contents
@@ -349,7 +341,7 @@ class HpParser(Parser):
 
     @staticmethod
     def parse_hubbard_matrix(data):
-        """Utility function to parse one of the matrices that are written to the {prefix}.Hubbard_U.dat files.
+        """Parse one of the matrices that are written to the {prefix}.Hubbard_U.dat files.
 
         Each matrix should be square of size N, which is given by the product of the number of q-points and the number
         of Hubbard species. Each matrix row is printed with a maximum number of 8 elements per line and each line is

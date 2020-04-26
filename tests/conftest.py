@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # pylint: disable=redefined-outer-name
 """Initialise a text database and profile for pytest."""
 
@@ -10,7 +11,7 @@ from aiida.manage.fixtures import fixture_manager
 
 @pytest.fixture(scope='session')
 def fixture_environment():
-    """Setup a complete AiiDA test environment, with configuration, profile, database and repository."""
+    """Set up a complete AiiDA test environment, with configuration, profile, database and repository."""
     with fixture_manager() as manager:
         yield manager
 
@@ -40,7 +41,8 @@ def fixture_computer_localhost(fixture_work_directory):
         hostname='localhost',
         transport_type='local',
         scheduler_type='direct',
-        workdir=fixture_work_directory).store()
+        workdir=fixture_work_directory
+    ).store()
     computer.set_default_mpiprocs_per_machine(1)
     yield computer
 
@@ -108,7 +110,7 @@ def generate_calc_job_node():
         node.set_option('max_wallclock_seconds', 1800)
 
         if attributes:
-            node.set_attributes(attributes)
+            node.set_attribute_many(attributes)
 
         if inputs:
             for link_label, input_node in inputs.items():
@@ -121,7 +123,9 @@ def generate_calc_job_node():
 
         if test_name is not None:
             basepath = os.path.dirname(os.path.abspath(__file__))
-            filepath = os.path.join(basepath, 'parsers', 'fixtures', entry_point_name[len('quantumespresso.'):], test_name)
+            filepath = os.path.join(
+                basepath, 'parsers', 'fixtures', entry_point_name[len('quantumespresso.'):], test_name
+            )
             retrieved.put_object_from_tree(filepath)
 
         retrieved.add_incoming(node, link_type=LinkType.CREATE, link_label='retrieved')

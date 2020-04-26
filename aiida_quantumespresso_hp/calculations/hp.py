@@ -38,6 +38,7 @@ class HpCalculation(CalcJob):
 
     @classmethod
     def define(cls, spec):
+        """Define the process specification."""
         # yapf: disable
         super().define(spec)
         spec.input('metadata.options.input_filename', valid_type=str, default=cls._default_input_file)

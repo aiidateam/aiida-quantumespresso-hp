@@ -7,7 +7,7 @@ from aiida.engine import calcfunction
 
 @calcfunction
 def structure_reorder_kinds(structure, hubbard_u):
-    """Create a copy of the structure but with the kinds in the right order necessary for an hp.x calculation
+    """Create a copy of the structure but with the kinds in the right order necessary for an hp.x calculation.
 
     An HpCalculation which restarts from a completed PwCalculation, requires that the all Hubbard atoms appear first in
     the atomic positions card of the PwCalculation input file. This order is based on the order of the kinds in the

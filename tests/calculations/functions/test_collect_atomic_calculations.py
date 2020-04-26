@@ -8,7 +8,6 @@ import os
 import shutil
 import tempfile
 
-
 from aiida import orm
 
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
@@ -17,6 +16,7 @@ from aiida_quantumespresso_hp.calculations.functions.collect_atomic_calculations
 
 @contextlib.contextmanager
 def tempdir():
+    """Return the absolute filepath of a temporary directory."""
     dirpath = tempfile.mkdtemp()
     try:
         yield dirpath
@@ -41,6 +41,7 @@ def create_file_tree(directory, tree):
 
 
 def create_retrieved_folder(tree):
+    """Return a `FolderData` with the contents of `tree` copied within it."""
     with tempdir() as dirpath:
         create_file_tree(dirpath, tree)
         retrieved = orm.FolderData()

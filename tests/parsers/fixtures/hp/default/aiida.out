@@ -1,10 +1,10 @@
 
-     Program HP v.5.1.1 starts on  5Oct2019 at 14:12:46 
+     Program HP v.5.1.1 starts on  5Oct2019 at 14:12:46
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
          "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
-          URL http://www.quantum-espresso.org", 
+          URL http://www.quantum-espresso.org",
      in publications or presentations arising from this work. More details at
      http://www.quantum-espresso.org/quote
 
@@ -52,14 +52,14 @@
      celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
 
      crystal axes: (cart. coord. in units of alat)
-               a(1) = (  0.2839  0.1639  0.9448 )  
-               a(2) = ( -0.2839  0.1639  0.9448 )  
-               a(3) = (  0.0000 -0.3278  0.9448 )  
+               a(1) = (  0.2839  0.1639  0.9448 )
+               a(2) = ( -0.2839  0.1639  0.9448 )
+               a(3) = (  0.0000 -0.3278  0.9448 )
 
      reciprocal axes: (cart. coord. in units 2 pi/alat)
-               b(1) = (  1.7614  1.0169  0.3528 )  
-               b(2) = ( -1.7614  1.0169  0.3528 )  
-               b(3) = (  0.0000 -2.0339  0.3528 )  
+               b(1) = (  1.7614  1.0169  0.3528 )
+               b(2) = ( -1.7614  1.0169  0.3528 )
+               b(3) = (  0.0000 -2.0339  0.3528 )
 
      Atoms inside the unit cell (Cartesian axes):
      site n.  atom      mass           positions (alat units)
@@ -99,11 +99,11 @@
 
 
      Number of symmetries in the small group of q, nsymq = 12
-      + the symmetry q -> -q+G 
+      + the symmetry q -> -q+G
 
      Symmetry matrices (and vectors of fractional translations if f/=0):
 
-     isym =  1     identity                                     
+     isym =  1     identity
 
      cryst.   s( 1) = (     1          0          0      )
                       (     0          1          0      )
@@ -114,7 +114,7 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     isym =  2     180 deg rotation - cart. axis [1,0,0]        
+     isym =  2     180 deg rotation - cart. axis [1,0,0]
 
      cryst.   s( 2) = (     0         -1          0      )
                       (    -1          0          0      )
@@ -125,7 +125,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym =  3     120 deg rotation - cryst. axis [0,0,1]       
+     isym =  3     120 deg rotation - cryst. axis [0,0,1]
 
      cryst.   s( 3) = (     0          1          0      )
                       (     0          0          1      )
@@ -136,7 +136,7 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     isym =  4     120 deg rotation - cryst. axis [0,0,-1]      
+     isym =  4     120 deg rotation - cryst. axis [0,0,-1]
 
      cryst.   s( 4) = (     0          0          1      )
                       (     1          0          0      )
@@ -147,7 +147,7 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     isym =  5     180 deg rotation - cryst. axis [0,1,0]       
+     isym =  5     180 deg rotation - cryst. axis [0,1,0]
 
      cryst.   s( 5) = (    -1          0          0      )
                       (     0          0         -1      )
@@ -158,7 +158,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym =  6     180 deg rotation - cryst. axis [1,1,0]       
+     isym =  6     180 deg rotation - cryst. axis [1,1,0]
 
      cryst.   s( 6) = (     0          0         -1      )
                       (     0         -1          0      )
@@ -169,7 +169,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym =  7     inversion                                    
+     isym =  7     inversion
 
      cryst.   s( 7) = (    -1          0          0      )
                       (     0         -1          0      )
@@ -180,7 +180,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym =  8     inv. 180 deg rotation - cart. axis [1,0,0]   
+     isym =  8     inv. 180 deg rotation - cart. axis [1,0,0]
 
      cryst.   s( 8) = (     0          1          0      )
                       (     1          0          0      )
@@ -191,7 +191,7 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     isym =  9     inv. 120 deg rotation - cryst. axis [0,0,1]  
+     isym =  9     inv. 120 deg rotation - cryst. axis [0,0,1]
 
      cryst.   s( 9) = (     0         -1          0      )
                       (     0          0         -1      )
@@ -202,7 +202,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym = 10     inv. 120 deg rotation - cryst. axis [0,0,-1] 
+     isym = 10     inv. 120 deg rotation - cryst. axis [0,0,-1]
 
      cryst.   s(10) = (     0          0         -1      )
                       (    -1          0          0      )
@@ -213,7 +213,7 @@
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
-     isym = 11     inv. 180 deg rotation - cryst. axis [0,1,0]  
+     isym = 11     inv. 180 deg rotation - cryst. axis [0,1,0]
 
      cryst.   s(11) = (     1          0          0      )
                       (     0          0          1      )
@@ -224,7 +224,7 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     isym = 12     inv. 180 deg rotation - cryst. axis [1,1,0]  
+     isym = 12     inv. 180 deg rotation - cryst. axis [1,1,0]
 
      cryst.   s(12) = (     0          0          1      )
                       (     0          1          0      )
@@ -237,7 +237,7 @@
 
      This transformation sends q -> -q+G
 
-     isym = 13     identity                                     
+     isym = 13     identity
 
      cryst.   s(13) = (     1          0          0      )
                       (     0          1          0      )
@@ -323,7 +323,7 @@
       chi:  1  -0.0947109492   residue:    0.0000057781
       Average number of iter. in lin. system:   13.2
       Total CPU time :    32.6 s
-      
+
       =--------------------------------------------=
              CONVERGENCE HAS BEEN REACHED
       =--------------------------------------------=
@@ -335,7 +335,7 @@
      Post-processing calculation of Hubbard parameters ...
 
 
-     PRINTING TIMING FROM PWSCF ROUTINES: 
+     PRINTING TIMING FROM PWSCF ROUTINES:
 
 
      Called by init_run:
@@ -384,7 +384,7 @@
      add_vuspsi   :      0.48s CPU      0.47s WALL (     983 calls)
      cinterpolate :      0.05s CPU      0.08s WALL (      20 calls)
 
-     PRINTING TIMING FROM HUBBARD ROUTINES: 
+     PRINTING TIMING FROM HUBBARD ROUTINES:
 
      hub_setup_q  :      0.22s CPU      0.23s WALL (       1 calls)
      hub_init_q   :      0.03s CPU      0.03s WALL (       1 calls)
@@ -399,14 +399,14 @@
      hub_dv_of_dr :      0.30s CPU      0.41s WALL (      10 calls)
      hub_psymdvsc :      0.91s CPU      0.91s WALL (      10 calls)
 
-     PRINTING TIMING FROM LRM ROUTINES: 
+     PRINTING TIMING FROM LRM ROUTINES:
 
      lrm_ortho    :      0.07s CPU      0.10s WALL (      40 calls)
      lrm_cgsolve  :     18.42s CPU     18.67s WALL (      40 calls)
      lrm_ch_psi   :     18.29s CPU     18.53s WALL (     983 calls)
      lrm_incdrhos :      1.16s CPU      1.15s WALL (      40 calls)
 
-     USPP-RELATED ROUTINES: 
+     USPP-RELATED ROUTINES:
 
      lrm_newdq    :      0.73s CPU      0.73s WALL (      10 calls)
      lrm_adddvscf :      0.04s CPU      0.03s WALL (      36 calls)
@@ -416,7 +416,7 @@
      HP           :    32.00s CPU        32.62s WALL
 
 
-   This run was terminated on:  14:13:19   5Oct2019            
+   This run was terminated on:  14:13:19   5Oct2019
 
 =------------------------------------------------------------------------------=
    JOB DONE.

@@ -19,6 +19,7 @@ class HpWorkChain(WorkChain):
 
     @classmethod
     def define(cls, spec):
+        """Define the process specification."""
         # yapf: disable
         super().define(spec)
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization',))

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,protected-access
 """Tests for the `HpCalculation` class."""
 
 import os
@@ -13,8 +13,10 @@ from aiida_quantumespresso.utils.resources import get_default_options
 HpCalculation = CalculationFactory('quantumespresso.hp')
 
 
-def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbox_folder, generate_calc_job,
-    generate_calc_job_node, generate_code_localhost, generate_kpoints_mesh, file_regression):
+def test_hp_default(
+    fixture_database, fixture_computer_localhost, fixture_sandbox_folder, generate_calc_job, generate_calc_job_node,
+    generate_code_localhost, generate_kpoints_mesh, file_regression
+):
     """Test a default `HpCalculation`."""
     entry_point_name = 'quantumespresso.hp'
 
@@ -28,7 +30,9 @@ def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbo
         'parent_folder': parent_calculation.outputs.remote_folder,
         'qpoints': generate_kpoints_mesh(2),
         'parameters': orm.Dict(dict=parameters),
-        'metadata': {'options': get_default_options()}
+        'metadata': {
+            'options': get_default_options()
+        }
     }
 
     calc_info = generate_calc_job(fixture_sandbox_folder, entry_point_name, inputs)
@@ -54,7 +58,9 @@ def test_hp_default(fixture_database, fixture_computer_localhost, fixture_sandbo
     retrieve_list.append([path_occup_file, path_occup_file, 0])
     retrieve_list.append([path_paw_file, path_paw_file, 0])
 
-    src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(HpCalculation._prefix))
+    src_perturbation_files = os.path.join(
+        HpCalculation.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(HpCalculation._prefix)
+    )
     dst_perturbation_files = '.'
     retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 
