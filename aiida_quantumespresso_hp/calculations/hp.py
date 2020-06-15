@@ -41,9 +41,10 @@ class HpCalculation(CalcJob):
         """Define the process specification."""
         # yapf: disable
         super().define(spec)
-        spec.input('metadata.options.input_filename', valid_type=str, default=cls._default_input_file)
-        spec.input('metadata.options.output_filename', valid_type=str, default=cls._default_output_file)
-        spec.input('metadata.options.parser_name', valid_type=str, default='quantumespresso.hp')
+        spec.inputs['metadata']['options']['input_filename'].default = cls._default_input_file
+        spec.inputs['metadata']['options']['output_filename'].default = cls._default_output_file
+        spec.inputs['metadata']['options']['parser_name'].default = 'quantumespresso.hp'
+        spec.inputs['metadata']['options']['withmpi'].default = True
         spec.input('parameters', valid_type=orm.Dict,
             help='The input parameters for the namelists.')
         spec.input('parent_folder', valid_type=(orm.FolderData, orm.RemoteData),
