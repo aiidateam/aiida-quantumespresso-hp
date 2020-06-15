@@ -144,7 +144,7 @@ class HpCalculation(CalcJob):
 
         self.write_input_files(folder, parameters)
 
-        cmdline_params = settings.pop('CMDLINE', [])  # Empty command line by default
+        cmdline_params = settings.pop('cmdline', [])  # Empty command line by default
 
         codeinfo = CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
