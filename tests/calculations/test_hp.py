@@ -1,41 +1,22 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=unused-argument,protected-access
 """Tests for the `HpCalculation` class."""
-
 import os
 
-from aiida import orm
 from aiida.common import datastructures
 from aiida.plugins import CalculationFactory
-
-from aiida_quantumespresso.utils.resources import get_default_options
 
 HpCalculation = CalculationFactory('quantumespresso.hp')
 
 
 def test_hp_default(
-    fixture_database, fixture_computer_localhost, fixture_sandbox_folder, generate_calc_job, generate_calc_job_node,
-    generate_code_localhost, generate_kpoints_mesh, file_regression
+    fixture_database, fixture_localhost, fixture_sandbox_folder, generate_calc_job, generate_calc_job_node,
+    generate_code_localhost, generate_inputs_hp, file_regression
 ):
     """Test a default `HpCalculation`."""
     entry_point_name = 'quantumespresso.hp'
 
-    parameters = {'INPUTHP': {}}
-
-    parent_inputs = {'parameters': orm.Dict(dict={'SYSTEM': {'lda_plus_u': True}})}
-    parent_calculation = generate_calc_job_node('quantumespresso.pw', fixture_computer_localhost, inputs=parent_inputs)
-
-    inputs = {
-        'code': generate_code_localhost(entry_point_name, fixture_computer_localhost),
-        'parent_folder': parent_calculation.outputs.remote_folder,
-        'qpoints': generate_kpoints_mesh(2),
-        'parameters': orm.Dict(dict=parameters),
-        'metadata': {
-            'options': get_default_options()
-        }
-    }
-
-    calc_info = generate_calc_job(fixture_sandbox_folder, entry_point_name, inputs)
+    calc_info = generate_calc_job(fixture_sandbox_folder, entry_point_name, generate_inputs_hp())
 
     filename_input = HpCalculation.spec().inputs.get_port('metadata.options.input_filename').default
     filename_output = HpCalculation.spec().inputs.get_port('metadata.options.output_filename').default

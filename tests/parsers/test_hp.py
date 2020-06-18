@@ -22,7 +22,7 @@ def generate_inputs_init_only():
 
 
 def test_hp_default(
-    fixture_database, fixture_computer_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
+    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
     data_regression
 ):
     """Test a default `hp.x` calculation."""
@@ -30,7 +30,7 @@ def test_hp_default(
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_computer_localhost, name, generate_inputs_default)
+    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_default)
     parser = generate_parser(entry_point_parser)
     results, calcfunction = parser.parse_from_node(node, store_provenance=False)
 
@@ -49,7 +49,7 @@ def test_hp_default(
 
 
 def test_hp_initialization_only(
-    fixture_database, fixture_computer_localhost, generate_calc_job_node, generate_parser, generate_inputs_init_only,
+    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_init_only,
     data_regression
 ):
     """Test an initialization only `hp.x` calculation."""
@@ -57,7 +57,7 @@ def test_hp_initialization_only(
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_computer_localhost, name, generate_inputs_init_only)
+    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_init_only)
     parser = generate_parser(entry_point_parser)
     results, calcfunction = parser.parse_from_node(node, store_provenance=False)
 
@@ -73,7 +73,7 @@ def test_hp_initialization_only(
 
 
 def test_hp_failed_invalid_namelist(
-    fixture_database, fixture_computer_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
+    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
     data_regression
 ):
     """Test an `hp.x` calculation that fails because of an invalid namelist."""
@@ -81,7 +81,7 @@ def test_hp_failed_invalid_namelist(
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_computer_localhost, name, generate_inputs_default)
+    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_default)
     parser = generate_parser(entry_point_parser)
     _, calcfunction = parser.parse_from_node(node, store_provenance=False)
 

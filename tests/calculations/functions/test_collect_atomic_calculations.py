@@ -50,7 +50,7 @@ def create_retrieved_folder(tree):
     return retrieved
 
 
-def test_collect_atomic_calculations(fixture_database, fixture_computer_localhost):
+def test_collect_atomic_calculations(fixture_database, fixture_localhost):
     """Test the `collect_atomic_calculations` calculation function."""
     number_perturbations = 2
 
