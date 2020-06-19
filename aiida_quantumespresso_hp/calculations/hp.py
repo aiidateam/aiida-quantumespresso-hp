@@ -32,9 +32,6 @@ class HpCalculation(CalcJob):
     _prefix = 'aiida'
     _default_input_file = '{}.in'.format(_prefix)
     _default_output_file = '{}.out'.format(_prefix)
-    _dirname_output = 'out'
-    _filename_input_hubbard_parameters = 'parameters.in'
-    _filename_output_hubbard_parameters = 'parameters.out'
 
     @classmethod
     def define(cls, spec):
@@ -110,19 +107,19 @@ class HpCalculation(CalcJob):
         return '{}.Hubbard_parameters.dat'.format(cls._prefix)
 
     @classproperty
-    def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
+    def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
         """Return the relative output filename that all Hubbard parameters."""
-        return cls._filename_output_hubbard_parameters
+        return 'parameters.out'
 
     @classproperty
-    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
+    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
         """Return the relative input filename that all Hubbard parameters."""
-        return cls._filename_input_hubbard_parameters
+        return 'parameters.in'
 
     @classproperty
-    def dirname_output(cls):  # pylint: disable=no-self-argument
+    def dirname_output(cls):  # pylint: disable=no-self-argument,no-self-use
         """Return the relative directory name that contains raw output data."""
-        return cls._dirname_output
+        return 'out'
 
     @classproperty
     def dirname_output_hubbard(cls):  # pylint: disable=no-self-argument
@@ -168,8 +165,8 @@ class HpCalculation(CalcJob):
         following folders and files:
 
             * Perturbation files: by default in dirname_output_hubbard/_prefix.chi.pert_*.dat
-            * QE save directory: by default in _dirname_output/_prefix.save
-            * The occupations file: by default in _dirname_output/_prefix.occup
+            * QE save directory: by default in dirname_output/_prefix.save
+            * The occupations file: by default in dirname_output/_prefix.occup
 
         :returns: list of resource retrieval instructions
         """
@@ -178,13 +175,13 @@ class HpCalculation(CalcJob):
         # Default output files that are written after a completed or post-processing HpCalculation
         retrieve_list.append(self.options.output_filename)
         retrieve_list.append(self.filename_output_hubbard)
-        retrieve_list.append(self.filename_output_hubbard_chi)
         retrieve_list.append(self.filename_output_hubbard_parameters)
+        retrieve_list.append(os.path.join(self.dirname_output_hubbard, self.filename_output_hubbard_chi))
 
         # Required files and directories for final collection calculations
-        path_save_directory = os.path.join(self._dirname_output, self._prefix + '.save')
-        path_occup_file = os.path.join(self._dirname_output, self._prefix + '.occup')
-        path_paw_file = os.path.join(self._dirname_output, self._prefix + '.paw')
+        path_save_directory = os.path.join(self.dirname_output, self._prefix + '.save')
+        path_occup_file = os.path.join(self.dirname_output, self._prefix + '.occup')
+        path_paw_file = os.path.join(self.dirname_output, self._prefix + '.paw')
 
         retrieve_list.append([path_save_directory, path_save_directory, 0])
         retrieve_list.append([path_occup_file, path_occup_file, 0])
@@ -226,8 +223,8 @@ class HpCalculation(CalcJob):
 
         if isinstance(parent_folder, orm.RemoteData):
             computer_uuid = parent_folder.computer.uuid
-            folder_src = os.path.join(parent_folder.get_remote_path(), self._dirname_output)
-            folder_dst = self._dirname_output
+            folder_src = os.path.join(parent_folder.get_remote_path(), self.dirname_output)
+            folder_dst = self.dirname_output
             remote_copy_list.append((computer_uuid, folder_src, folder_dst))
 
         return remote_copy_list
@@ -301,7 +298,7 @@ class HpCalculation(CalcJob):
             raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')
 
         result['INPUTHP']['iverbosity'] = 2
-        result['INPUTHP']['outdir'] = self._dirname_output
+        result['INPUTHP']['outdir'] = self.dirname_output
         result['INPUTHP']['prefix'] = self._prefix
         result['INPUTHP']['nq1'] = mesh[0]
         result['INPUTHP']['nq2'] = mesh[1]
