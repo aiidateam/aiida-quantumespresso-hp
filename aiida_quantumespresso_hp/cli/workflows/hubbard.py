@@ -38,6 +38,7 @@ from . import cmd_launch
 @options_qe.CLEAN_WORKDIR()
 @options_qe.MAX_NUM_MACHINES()
 @options_qe.MAX_WALLCLOCK_SECONDS()
+@options_qe.WITH_MPI()
 @options_qe.DAEMON()
 @click.option(
     '--meta-convergence',
@@ -55,7 +56,7 @@ from . import cmd_launch
 def launch_workflow(
     code_pw, code_hp, structure, sssp_family, kpoints_mesh, qpoints_mesh, ecutwfc, ecutrho, hubbard_u,
     starting_magnetization, automatic_parallelization, clean_workdir, max_num_machines, max_wallclock_seconds, daemon,
-    meta_convergence, parallelize_atoms
+    meta_convergence, parallelize_atoms, with_mpi
 ):
     """Run the `SelfConsistentHubbardWorkChain` for a given input structure."""
     from aiida import orm
@@ -112,7 +113,7 @@ def launch_workflow(
                 'pseudos': sssp_family.get_pseudos(structure),
                 'parameters': orm.Dict(dict=parameters),
                 'metadata': {
-                    'options': get_default_options(max_num_machines, max_wallclock_seconds)
+                    'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
                 }
             },
         },
@@ -125,7 +126,7 @@ def launch_workflow(
                     'pseudos': sssp_family.get_pseudos(structure),
                     'parameters': orm.Dict(dict=parameters),
                     'metadata': {
-                        'options': get_default_options(max_num_machines, max_wallclock_seconds)
+                        'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
                     }
                 }
             }
@@ -137,7 +138,7 @@ def launch_workflow(
                 'pseudos': sssp_family.get_pseudos(structure),
                 'parameters': orm.Dict(dict=parameters),
                 'metadata': {
-                    'options': get_default_options(max_num_machines, max_wallclock_seconds)
+                    'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
                 }
             }
         },
@@ -147,7 +148,7 @@ def launch_workflow(
                 'qpoints': qpoints_mesh,
                 'parameters': orm.Dict(dict=parameters_hp),
                 'metadata': {
-                    'options': get_default_options(max_num_machines, max_wallclock_seconds),
+                    'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
                 }
             },
             'parallelize_atoms': orm.Bool(parallelize_atoms),
