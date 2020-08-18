@@ -8,15 +8,23 @@ repos:
     -   id: mixed-line-ending
     -   id: trailing-whitespace
 
--   repo: https://github.com/PyCQA/prospector
-    rev: 1.2.0
+-   repo: https://github.com/pre-commit/mirrors-yapf
+    rev: v0.30.0
     hooks:
-    -   id: prospector
-        language: system
-        exclude: &exclude_files >
-            (?x)^(
-                utils/fastentrypoints.py
-            )$
+    -   id: yapf
+        name: yapf
+        types: [python]
+        args: [
+            '-i',
+            '--style={
+                based_on_style: google,
+                column_limit: 120,
+                align_closing_bracket_with_visual_indent: true,
+                coalesce_brackets: true,
+                dedent_closing_brackets: true,
+                indent_dictionary_value: false
+            }',
+        ]
 
 -   repo: https://github.com/PyCQA/pydocstyle
     rev: 5.0.2
@@ -24,30 +32,38 @@ repos:
     -   id: pydocstyle
         exclude: >
             (?x)^(
-                utils/fastentrypoints.py|
                 aiida_quantumespresso_hp/workflows/hubbard.py|
             )$
         args: ['--ignore=D104,D203,D213']
 
 -   repo: local
     hooks:
-    -   id: yapf
-        name: yapf
-        entry: yapf
-        language: system
+    -   id: pylint
+        name: pylint
+        entry: pylint
         types: [python]
-        args: ['-i']
-        exclude: *exclude_files
+        language: system
+        args: [
+            '--max-line-length=120',
+            '--disable=bad-continuation',
+            '--disable=duplicate-code',
+            '--disable=import-outside-toplevel',
+            '--disable=inconsistent-return-statements',
+            '--disable=invalid-name',
+            '--disable=no-member',
+            '--disable=too-many-arguments',
+            '--disable=too-many-branches',
+            '--disable=too-many-locals',
+        ]
 
     -   id: version-number
-        name: Check consistency in version number
+        name: Check version numbers
         entry: python ./.ci/validate_version_number.py
-        args: ['version']
         language: system
         pass_filenames: false
         files: >-
             (?x)^(
                 setup.json|
-                aiida_quantumespresso_hp/__init__.py|
-                ./.ci/validate_version_number.py|
+                .ci/validate_consistency.py|
+                aiida_quantumespresso_hp/__init__.py
             )$

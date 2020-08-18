@@ -5,8 +5,13 @@
 def setup_package():
     """Install the `aiida-quantumespresso-hp` package."""
     import json
-    from utils import fastentrypoints  # pylint: disable=unused-import
     from setuptools import setup, find_packages
+    try:
+        import fastentrypoints  # pylint: disable=unused-import
+    except ImportError:
+        # This should only occur when building the package, i.e. when
+        # executing 'python setup.py sdist' or 'python setup.py bdist_wheel'
+        pass
 
     filename_setup_json = 'setup.json'
     filename_description = 'README.md'

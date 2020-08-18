@@ -80,7 +80,7 @@ class HpParser(Parser):
         else:
             self.out('parameters', orm.Dict(dict=parsed_data))
 
-        exit_status = [
+        exit_statuses = [
             'ERROR_INVALID_NAMELIST',
             'ERROR_OUTPUT_STDOUT_INCOMPLETE',
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
@@ -89,7 +89,7 @@ class HpParser(Parser):
             'ERROR_OUTPUT_STDOUT_INCOMPLETE',
         ]
 
-        for exit_status in exit_status:
+        for exit_status in exit_statuses:
             if exit_status in logs['error']:
                 return self.exit_codes.get(exit_status)
 

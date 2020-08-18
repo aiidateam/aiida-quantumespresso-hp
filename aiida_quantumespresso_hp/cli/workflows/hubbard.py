@@ -34,8 +34,6 @@ from . import cmd_launch
 @options_qe.ECUTRHO()
 @options_qe.HUBBARD_U(required=True)
 @options_qe.STARTING_MAGNETIZATION()
-@options_qe.AUTOMATIC_PARALLELIZATION()
-@options_qe.CLEAN_WORKDIR()
 @options_qe.MAX_NUM_MACHINES()
 @options_qe.MAX_WALLCLOCK_SECONDS()
 @options_qe.WITH_MPI()
@@ -55,8 +53,8 @@ from . import cmd_launch
 @decorators.with_dbenv()
 def launch_workflow(
     code_pw, code_hp, structure, sssp_family, kpoints_mesh, qpoints_mesh, ecutwfc, ecutrho, hubbard_u,
-    starting_magnetization, automatic_parallelization, clean_workdir, max_num_machines, max_wallclock_seconds, daemon,
-    meta_convergence, parallelize_atoms, with_mpi
+    starting_magnetization, max_num_machines, max_wallclock_seconds, daemon, meta_convergence, parallelize_atoms,
+    with_mpi
 ):
     """Run the `SelfConsistentHubbardWorkChain` for a given input structure."""
     from aiida import orm
