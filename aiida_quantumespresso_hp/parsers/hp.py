@@ -44,9 +44,8 @@ class HpParser(Parser):
 
         A complete run means that all perturbations were calculation and the final matrices were computerd
         """
-        return any([
-            key.startswith('do_one_only') for key in self.node.inputs.parameters.get_attribute('INPUTHP', {}).keys()
-        ])
+        card = self.node.inputs.parameters.get_attribute('INPUTHP', {})
+        return any([key.startswith('perturb_only_atom') for key in card.keys()])
 
     @property
     def is_complete_calculation(self):

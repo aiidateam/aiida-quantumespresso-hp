@@ -67,7 +67,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
         for site_index, site_kind in hubbard_sites.items():
 
-            do_only_key = 'do_one_only({})'.format(site_index)
+            do_only_key = 'perturb_only_atom({})'.format(site_index)
 
             inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
             inputs.hp.parameters = inputs.hp.parameters.get_dict()
@@ -105,7 +105,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         """Perform the final HpCalculation to collect the various components of the chi matrices."""
         inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
         inputs.hp.parameters = inputs.hp.parameters.get_dict()
-        inputs.hp.parameters['INPUTHP']['collect_chi'] = True
+        inputs.hp.parameters['INPUTHP']['compute_hp'] = True
         inputs.hp.parameters = orm.Dict(dict=inputs.hp.parameters)
         inputs.hp.parent_folder = self.ctx.merged_retrieved
 
