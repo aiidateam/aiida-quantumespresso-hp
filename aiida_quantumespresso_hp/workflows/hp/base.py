@@ -13,6 +13,11 @@ class HpBaseWorkChain(BaseRestartWorkChain):
 
     _process_class = HpCalculation
 
+    defaults = AttributeDict({
+        'delta_factor_alpha_mix': 0.5,
+        'delta_factor_niter_max': 2,
+    })
+
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
@@ -69,3 +74,41 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         if node.is_failed and node.exit_status < 400:
             self.report_error_handled(node, 'unrecoverable error, aborting...')
             return ProcessHandlerReport(True, self.exit_codes.ERROR_UNRECOVERABLE_FAILURE)
+
+    @process_handler(priority=500, exit_codes=HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED)
+    def handle_convergence_not_reached(self, _):
+        """Handle `ERROR_CONVERGENCE_NOT_REACHED`: decrease `alpha_mix`, increase `niter_max`, and restart.
+
+        Since `hp.x` does not support restarting from incomplete calculations, the entire calculation will have to be
+        restarted from scratch. By increasing the `niter_max` and decreasing `alpha_mix` there is a chance that the next
+        run will converge. If these keys are present in the input parameters, they will be scaled by a default factor,
+        otherwise, a hardcoded default value will be set that is lower/higher than that of the code's default.
+        """
+        parameters = self.ctx.inputs.parameters['INPUTHP']
+        changes = []
+
+        # The `alpha_mix` parameter is an array and so all keys matching `alpha_mix(i)` with `i` some integer should
+        # be corrected accordingly. If no such key exists, the default `alpha_mix(1)` is set.
+        if any([parameter.startswith('alpha_mix(') for parameter in parameters.keys()]):
+            for parameter in parameters.keys():
+                if parameter.startswith('alpha_mix('):
+                    parameters[parameter] *= self.defaults.delta_factor_alpha_mix
+                    changes.append('changed `{}` to {}'.format(parameter, parameters[parameter]))
+        else:
+            parameter = 'alpha_mix(1)'
+            parameters[parameter] = 0.20
+            changes.append('set `{}` to {}'.format(parameter, parameters[parameter]))
+
+        if 'niter_max' in parameters:
+            parameters['niter_max'] *= self.defaults.delta_factor_niter_max
+        else:
+            parameters['niter_max'] = 200
+
+        changes.append('changed `niter_max` to {}'.format(parameters['niter_max']))
+
+        if changes:
+            self.report('convergence not reached: {}'.format(', '.join(changes)))
+        else:
+            self.report('convergence not reached, restarting')
+
+        return ProcessHandlerReport(True)

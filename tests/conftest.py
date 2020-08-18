@@ -305,7 +305,7 @@ def generate_inputs_hp(
 ):
     """Generate default inputs for a `HpCalculation."""
 
-    def _generate_inputs_hp():
+    def _generate_inputs_hp(inputs=None):
         """Generate default inputs for a `HpCalculation."""
         from aiida.orm import Dict
         from aiida_quantumespresso.utils.resources import get_default_options
@@ -316,7 +316,7 @@ def generate_inputs_hp(
             'code': fixture_code('quantumespresso.hp'),
             'parent_folder': parent.outputs.remote_folder,
             'qpoints': generate_kpoints_mesh(2),
-            'parameters': Dict(dict={'INPUTHP': {}}),
+            'parameters': Dict(dict={'INPUTHP': inputs or {}}),
             'metadata': {
                 'options': get_default_options()
             }

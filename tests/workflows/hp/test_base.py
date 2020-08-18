@@ -16,9 +16,9 @@ from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
 def generate_workchain_hp(generate_workchain, generate_inputs_hp, generate_calc_job_node):
     """Generate an instance of a `HpBaseWorkChain`."""
 
-    def _generate_workchain_hp(exit_code=None):
+    def _generate_workchain_hp(exit_code=None, inputs=None):
         entry_point = 'quantumespresso.hp.base'
-        inputs = generate_inputs_hp()
+        inputs = generate_inputs_hp(inputs=inputs)
         process = generate_workchain(entry_point, {'hp': inputs})
 
         if exit_code is not None:
@@ -57,3 +57,27 @@ def test_handle_unrecoverable_failure(generate_workchain_hp):
 
     result = process.inspect_process()
     assert result == HpBaseWorkChain.exit_codes.ERROR_UNRECOVERABLE_FAILURE
+
+
+@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.parametrize(
+    ('inputs', 'expected'),
+    (
+        ({}, {'alpha_mix(1)': 0.2, 'niter_max': 200}),
+        ({'niter_max': 5}, {'alpha_mix(1)': 0.2, 'niter_max': 10}),
+        ({'alpha_mix(5)': 0.5}, {'alpha_mix(5)': 0.25, 'niter_max': 200}),
+        ({'alpha_mix(5)': 0.5, 'alpha_mix(10)': 0.4}, {'alpha_mix(5)': 0.25, 'alpha_mix(10)': 0.2, 'niter_max': 200}),
+        ({'niter_max': 1, 'alpha_mix(2)': 0.3}, {'niter_max': 2, 'alpha_mix(2)': 0.15}),
+    ),
+)  # yapf: disable
+def test_handle_convergence_not_reached(generate_workchain_hp, inputs, expected):
+    """Test `HpBaseWorkChain.handle_convergence_not_reached`."""
+    process = generate_workchain_hp(HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED, inputs)
+    process.setup()
+    process.validate_parameters()
+
+    result = process.handle_convergence_not_reached(process.ctx.children[-1])
+    assert isinstance(result, ProcessHandlerReport)
+    assert result.do_break
+
+    assert process.ctx.inputs.parameters['INPUTHP'] == expected
