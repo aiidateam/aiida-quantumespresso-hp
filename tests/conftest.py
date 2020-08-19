@@ -2,6 +2,7 @@
 # pylint: disable=redefined-outer-name
 """Initialise a text database and profile for pytest."""
 import collections
+import io
 import os
 import shutil
 import tempfile
@@ -314,7 +315,7 @@ def generate_inputs_hp(
         parent = generate_calc_job_node('quantumespresso.pw', fixture_localhost, inputs=parent_inputs)
         inputs = {
             'code': fixture_code('quantumespresso.hp'),
-            'parent_folder': parent.outputs.remote_folder,
+            'parent_scf': parent.outputs.remote_folder,
             'qpoints': generate_kpoints_mesh(2),
             'parameters': Dict(dict={'INPUTHP': inputs or {}}),
             'metadata': {
@@ -325,3 +326,25 @@ def generate_inputs_hp(
         return inputs
 
     return _generate_inputs_hp
+
+
+@pytest.fixture
+def generate_hp_retrieved():
+    """Generate a `FolderData` that acts as the `retrieved` output of a partial `HpCalculation."""
+    from aiida.common import LinkType
+    from aiida.orm import CalcJobNode, FolderData
+    from aiida.plugins import CalculationFactory
+    from aiida.plugins.entry_point import format_entry_point_string
+
+    HpCalculation = CalculationFactory('quantumespresso.hp')
+
+    process_type = format_entry_point_string('aiida.calculations', 'quantumespresso.hp')
+    filename = os.path.join(HpCalculation.dirname_output_hubbard, 'aiida.chi.pert_1.dat')
+
+    calcjob = CalcJobNode(process_type=process_type).store()
+    retrieved = FolderData()
+    retrieved.put_object_from_filelike(io.StringIO('pert'), filename)
+    retrieved.add_incoming(calcjob, link_type=LinkType.CREATE, link_label='retrieved')
+    retrieved.store()
+
+    return retrieved

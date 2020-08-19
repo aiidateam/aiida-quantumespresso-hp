@@ -45,7 +45,7 @@ def launch_workflow(
             'code': code,
             'qpoints': kpoints_mesh,
             'parameters': orm.Dict(dict=parameters),
-            'parent_folder': parent_folder,
+            'parent_scf': parent_folder,
             'metadata': {
                 'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi),
             },

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Command line scripts to launch a `HpCalculation` for testing and demonstration purposes."""
-
 import click
 
 from aiida.cmdline.params import options, types
@@ -14,7 +13,7 @@ from . import cmd_launch
 @cmd_launch.command('hp')
 @options.CODE(required=True, type=types.CodeParamType(entry_point='quantumespresso.hp'))
 @options_qe.KPOINTS_MESH(default=[1, 1, 1])
-@options_qe.PARENT_FOLDER(type=types.DataParamType(sub_classes=('aiida.data:folder', 'aiida.data:remote')))
+@options_qe.PARENT_FOLDER(type=types.DataParamType(sub_classes=('aiida.data:remote',)))
 @options_qe.MAX_NUM_MACHINES()
 @options_qe.MAX_WALLCLOCK_SECONDS()
 @options_qe.WITH_MPI()
@@ -35,7 +34,7 @@ def launch_calculation(
         'code': code,
         'qpoints': kpoints_mesh,
         'parameters': Dict(dict=parameters),
-        'parent_folder': parent_folder,
+        'parent_scf': parent_folder,
         'metadata': {
             'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi),
         }

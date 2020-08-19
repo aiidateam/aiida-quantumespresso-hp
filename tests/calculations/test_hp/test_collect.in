@@ -1,0 +1,9 @@
+&INPUTHP
+  compute_hp = .true.
+  iverbosity = 2
+  nq1 = 2
+  nq2 = 2
+  nq3 = 2
+  outdir = 'out'
+  prefix = 'aiida'
+/

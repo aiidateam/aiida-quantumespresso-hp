@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Command line scripts to launch a `HpBaseWorkChain` for testing and demonstration purposes."""
-
 import click
 
 from aiida.cmdline.params import options, types
@@ -37,7 +36,7 @@ def launch_workflow(
             'code': code,
             'qpoints': kpoints_mesh,
             'parameters': orm.Dict(dict=parameters),
-            'parent_folder': parent_folder,
+            'parent_scf': parent_folder,
             'metadata': {
                 'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi),
             },

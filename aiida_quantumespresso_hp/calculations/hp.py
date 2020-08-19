@@ -4,7 +4,6 @@ import os
 
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
-from aiida.common.exceptions import InputValidationError
 from aiida.common.utils import classproperty
 from aiida.engine import CalcJob
 from aiida.plugins import CalculationFactory
@@ -15,11 +14,85 @@ from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 PwCalculation = CalculationFactory('quantumespresso.pw')
 
 
+def validate_parent_scf(parent_scf, _):
+    """Validate the `parent_scf` input.
+
+    Make sure that it is created by a `PwCalculation` that was run with the `lda_plus_u` switch turned on.
+    """
+    creator = parent_scf.creator
+
+    if not creator:
+        return 'could not determine the creator of {}'.format(parent_scf)
+
+    if creator.process_class is not PwCalculation:
+        return 'creator of `parent_scf` {} is not a `PwCalculation`'.format(creator)
+
+    try:
+        parameters = creator.inputs.parameters.get_dict()
+    except AttributeError:
+        return 'could not retrieve the input parameters node from the parent calculation {}'.format(creator)
+
+    lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
+
+    if not lda_plus_u:
+        return 'parent calculation {} was not run with `lda_plus_u`'.format(creator)
+
+
+def validate_parent_hp(parent_hp, _):
+    """Validate the `parent_hp` input.
+
+    Each entry in the `parent_hp` mapping should be a retrieved folder of a `HpCalculation`.
+    """
+    for label, retrieved in parent_hp.items():
+        creator = retrieved.creator
+
+        if not creator:
+            return 'could not determine the creator of {}'.format(retrieved)
+
+        if creator.process_class is not HpCalculation:
+            return 'creator of `parent_hp.{}` {} is not a `HpCalculation`'.format(label, creator)
+
+
+def validate_parameters(parameters, _):
+    """Validate the `parameters` input."""
+    result = _uppercase_dict(parameters.get_dict(), dict_name='parameters')
+    result = {key: _lowercase_dict(value, dict_name=key) for key, value in result.items()}
+
+    # Check that required namelists are present
+    for namelist in HpCalculation.compulsory_namelists:
+        if namelist not in result:
+            return 'the required namelist `{}` was not defined'.format(namelist)
+
+    # Check for presence of blocked keywords
+    for namelist, flag in HpCalculation.blocked_keywords:
+        if namelist in result and flag in result[namelist]:
+            return 'explicit definition of flag `{}` in namelist `{}` is not allowed'.format(flag, namelist)
+
+
+def validate_qpoints(qpoints, _):
+    """Validate the `qpoints` input."""
+    try:
+        _, offset = qpoints.get_kpoints_mesh()
+    except AttributeError:
+        return 'support for explicit qpoints is not implemented, only meshes'
+
+    if any([i != 0. for i in offset]):
+        return 'support for qpoint meshes with non-zero offsets is not implemented'
+
+
+def validate_inputs(inputs, _):
+    """Validate inputs that depend on one another."""
+    compute_hp = inputs['parameters'].get_dict().get('INPUTHP', {}).get('compute_hp', False)
+
+    if compute_hp and 'parent_hp' not in inputs:
+        return 'parameter `INPUTHP.compute_hp` is `True` but no parent folders defined in `parent_hp`.'
+
+
 class HpCalculation(CalcJob):
     """`CalcJob` implementation for the hp.x code of Quantum ESPRESSO."""
 
     # Keywords that cannot be set manually, only by the plugin
-    _blocked_keywords = [
+    blocked_keywords = [
         ('INPUTHP', 'iverbosity'),
         ('INPUTHP', 'prefix'),
         ('INPUTHP', 'outdir'),
@@ -27,29 +100,26 @@ class HpCalculation(CalcJob):
         ('INPUTHP', 'nq2'),
         ('INPUTHP', 'nq3'),
     ]
-    _compulsory_namelists = ['INPUTHP']
-
-    _prefix = 'aiida'
-    _default_input_file = '{}.in'.format(_prefix)
-    _default_output_file = '{}.out'.format(_prefix)
+    compulsory_namelists = ['INPUTHP']
+    prefix = 'aiida'
 
     @classmethod
     def define(cls, spec):
         """Define the process specification."""
         # yapf: disable
         super().define(spec)
-        spec.inputs['metadata']['options']['input_filename'].default = cls._default_input_file
-        spec.inputs['metadata']['options']['output_filename'].default = cls._default_output_file
+        spec.inputs['metadata']['options']['input_filename'].default = '{}.in'.format(cls.prefix)
+        spec.inputs['metadata']['options']['output_filename'].default = '{}.out'.format(cls.prefix)
         spec.inputs['metadata']['options']['parser_name'].default = 'quantumespresso.hp'
         spec.inputs['metadata']['options']['withmpi'].default = True
-        spec.input('parameters', valid_type=orm.Dict,
+        spec.input('parameters', valid_type=orm.Dict, validator=validate_parameters,
             help='The input parameters for the namelists.')
-        spec.input('parent_folder', valid_type=(orm.FolderData, orm.RemoteData),
-            help='The remote folder of a completed `PwCalculation` with `lda_plus_u` switch turned on')
-        spec.input('qpoints', valid_type=orm.KpointsData,
+        spec.input('qpoints', valid_type=orm.KpointsData, validator=validate_qpoints,
             help='The q-point grid on which to perform the perturbative calculation.')
         spec.input('settings', valid_type=orm.Dict, required=False,
             help='Optional node for special settings.')
+        spec.input('parent_scf', valid_type=orm.RemoteData, validator=validate_parent_scf)
+        spec.input_namespace('parent_hp', valid_type=orm.FolderData, validator=validate_parent_hp)
         spec.output('parameters', valid_type=orm.Dict,
             help='')
         spec.output('hubbard', valid_type=orm.Dict, required=False,
@@ -60,6 +130,7 @@ class HpCalculation(CalcJob):
             help='')
         spec.output('hubbard_parameters', valid_type=orm.SinglefileData, required=False,
             help='')
+        spec.inputs.validator = validate_inputs
         spec.default_output_node = 'parameters'
 
         # Unrecoverable errors: resources like the retrieved folder or its expected contents are missing
@@ -99,12 +170,12 @@ class HpCalculation(CalcJob):
     @classproperty
     def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
         """Return the relative output filename that contains chi."""
-        return '{}.chi.dat'.format(cls._prefix)
+        return '{}.chi.dat'.format(cls.prefix)
 
     @classproperty
     def filename_output_hubbard(cls):  # pylint: disable=no-self-argument
         """Return the relative output filename that contains the Hubbard values and matrices."""
-        return '{}.Hubbard_parameters.dat'.format(cls._prefix)
+        return '{}.Hubbard_parameters.dat'.format(cls.prefix)
 
     @classproperty
     def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
@@ -137,23 +208,19 @@ class HpCalculation(CalcJob):
         else:
             settings = {}
 
-        parent_folder = self.validate_input_parent_folder(self.inputs.parent_folder)
-        parameters = self.validate_input_parameters(self.inputs.parameters, self.inputs.qpoints)
-
-        self.write_input_files(folder, parameters)
-
-        cmdline_params = settings.pop('cmdline', [])  # Empty command line by default
+        parameters = self.prepare_parameters()
+        provenance_exclude_list = self.write_input_files(folder, parameters)
 
         codeinfo = CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
         codeinfo.stdout_name = self.options.output_filename
-        codeinfo.cmdline_params = (list(cmdline_params) + ['-in', self.options.input_filename])
+        codeinfo.cmdline_params = (list(settings.pop('cmdline', [])) + ['-in', self.options.input_filename])
 
         calcinfo = CalcInfo()
         calcinfo.codes_info = [codeinfo]
         calcinfo.retrieve_list = self.get_retrieve_list()
-        calcinfo.local_copy_list = self.get_local_copy_list(parent_folder)
-        calcinfo.remote_copy_list = self.get_remote_copy_list(parent_folder)
+        calcinfo.remote_copy_list = self.get_remote_copy_list()
+        calcinfo.provenance_exclude_list = provenance_exclude_list
 
         return calcinfo
 
@@ -161,12 +228,8 @@ class HpCalculation(CalcJob):
         """Return the `retrieve_list`.
 
         A `HpCalculation` can be parallelized over atoms by running individual calculations, but a final post-processing
-        calculation will have to be performed to compute the final matrices. The current version of hp.x requires the
-        following folders and files:
-
-            * Perturbation files: by default in dirname_output_hubbard/_prefix.chi.pert_*.dat
-            * QE save directory: by default in dirname_output/_prefix.save
-            * The occupations file: by default in dirname_output/_prefix.occup
+        calculation will have to be performed to compute the final matrices. The final calculation that computes chi
+        requires the perturbation files for all
 
         :returns: list of resource retrieval instructions
         """
@@ -178,128 +241,42 @@ class HpCalculation(CalcJob):
         retrieve_list.append(self.filename_output_hubbard_parameters)
         retrieve_list.append(os.path.join(self.dirname_output_hubbard, self.filename_output_hubbard_chi))
 
-        # Required files and directories for final collection calculations
-        path_save_directory = os.path.join(self.dirname_output, self._prefix + '.save')
-        path_occup_file = os.path.join(self.dirname_output, self._prefix + '.occup')
-        path_paw_file = os.path.join(self.dirname_output, self._prefix + '.paw')
-
-        retrieve_list.append([path_save_directory, path_save_directory, 0])
-        retrieve_list.append([path_occup_file, path_occup_file, 0])
-        retrieve_list.append([path_paw_file, path_paw_file, 0])
-
-        src_perturbation_files = os.path.join(self.dirname_output_hubbard, '{}.chi.pert_*.dat'.format(self._prefix))
+        # The perturbation files that are necessary for a final `compute_hp` calculation in case this is an incomplete
+        # calculation that computes just a subset of all kpoints and/or all perturbed atoms.
+        src_perturbation_files = os.path.join(self.dirname_output_hubbard, '{}.*.pert_*.dat'.format(self.prefix))
         dst_perturbation_files = '.'
         retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 
         return retrieve_list
 
-    @staticmethod
-    def get_local_copy_list(parent_folder):
-        """Return the `local_copy_list`.
-
-        Build the local copy list, which amounts to copying the output subfolder of the specified `parent_folder` input
-        node if it is a local `FolderData` object.
-
-        :param parent_folder: the `parent_folder` input node.
-        :returns: list of resource copy instructions
-        """
-        local_copy_list = []
-
-        if isinstance(parent_folder, orm.FolderData):
-            local_copy_list.append((parent_folder.uuid, 'out', '.'))
-
-        return local_copy_list
-
-    def get_remote_copy_list(self, parent_folder):
+    def get_remote_copy_list(self):
         """Return the `remote_copy_list`.
 
-        Build the remote copy list, which amounts to copying the output subfolder of the specified `parent_folder` input
-        node if it is a remote `RemoteData` object.
-
-        :param parent_folder: the `parent_folder` input node.
         :returns: list of resource copy instructions
         """
-        remote_copy_list = []
+        parent_scf = self.inputs.parent_scf
+        folder_src = os.path.join(parent_scf.get_remote_path(), self.dirname_output)
+        return [(parent_scf.computer.uuid, folder_src, '.')]
 
-        if isinstance(parent_folder, orm.RemoteData):
-            computer_uuid = parent_folder.computer.uuid
-            folder_src = os.path.join(parent_folder.get_remote_path(), self.dirname_output)
-            folder_dst = self.dirname_output
-            remote_copy_list.append((computer_uuid, folder_src, folder_dst))
-
-        return remote_copy_list
-
-    @staticmethod
-    def validate_input_parent_folder(parent_folder):
-        """Validate the `parent_folder` input.
-
-        Make sure that it belongs to either a:
-
-            * PwCalculation that was run with the `lda_plus_u` switch turned on
-            * HpCalculation indicating a restart from unconverged calculation
-            * WorkFunctionNode which may be used in workchains for collecting chi matrix calculations
-
-        :param parent_folder: the `parent_folder` input node
-        :returns: the `parent_folder` input node if valid
-        :raises: if the `parent_folder` does not correspond to `PwCalculation` with `lda_plus_u=True`
-        """
-        creator = parent_folder.creator
-
-        if not creator:
-            raise ValueError('could not determine the creator of {}'.format(parent_folder))
-
-        if isinstance(creator, orm.CalcJobNode) and creator.process_class not in {PwCalculation, HpCalculation}:
-            raise ValueError('creator of `parent_folder` {} input node has incorrect type'.format(creator))
-
-        if creator.process_class == PwCalculation:
-            try:
-                parameters = creator.inputs.parameters.get_dict()
-            except KeyError as exc:
-                raise ValueError('could not retrieve the input parameters node from the parent calculation') from exc
-
-            lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
-
-            if not lda_plus_u:
-                raise ValueError('parent calculation {} was not run with `lda_plus_u`'.format(creator))
-
-        return parent_folder
-
-    def validate_input_parameters(self, parameters, qpoints):
-        """Validate the parameters and qpoints input nodes and create from it the input parameter dictionary.
+    def prepare_parameters(self):
+        """Prepare the parameters based on the input parameters.
 
         The returned input dictionary will contain all the necessary namelists and their flags that should be written to
         the input file of the calculation.
 
-        :param parameters: the `parameters` input node
-        :param qpoints: the `qpoints` input node
         :returns: a dictionary with input namelists and their flags
         """
-        # Transform first-level keys (i.e. namelist and card names) to uppercase and second-level to lowercase
-        result = _uppercase_dict(parameters.get_dict(), dict_name='parameters')
+        result = _uppercase_dict(self.inputs.parameters.get_dict(), dict_name='parameters')
         result = {key: _lowercase_dict(value, dict_name=key) for key, value in result.items()}
 
-        # Check that required namelists are present
-        for namelist in self._compulsory_namelists:
-            if namelist not in result:
-                raise InputValidationError("the required namelist '{}' was not defined".format(namelist))
+        mesh, _ = self.inputs.qpoints.get_kpoints_mesh()
 
-        # Check for presence of blocked keywords
-        for namelist, flag in self._blocked_keywords:
-            if namelist in result and flag in result[namelist]:
-                raise InputValidationError(
-                    "explicit definition of flag '{}' in namelist '{}' is not allowed".format(flag, namelist))
-
-        try:
-            mesh, offset = qpoints.get_kpoints_mesh()
-        except AttributeError as exc:
-            raise NotImplementedError('support for explicit qpoints is not implemented, only uniform meshes') from exc
-
-        if any([i != 0. for i in offset]):
-            raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')
+        if 'parent_hp' in self.inputs:
+            result['INPUTHP']['compute_hp'] = True
 
         result['INPUTHP']['iverbosity'] = 2
         result['INPUTHP']['outdir'] = self.dirname_output
-        result['INPUTHP']['prefix'] = self._prefix
+        result['INPUTHP']['prefix'] = self.prefix
         result['INPUTHP']['nq1'] = mesh[0]
         result['INPUTHP']['nq2'] = mesh[1]
         result['INPUTHP']['nq3'] = mesh[2]
@@ -309,17 +286,33 @@ class HpCalculation(CalcJob):
     def write_input_files(self, folder, parameters):
         """Write the prepared `parameters` to the input file in the sandbox folder.
 
-        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
-        :param parameters: a dictionary with input namelists and their flags
+        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk.
+        :param parameters: a dictionary with input namelists and their flags.
+        :return: list of files that need to be excluded from the provenance.
         """
+        provenance_exclude_list = []
+
+        # Write the main input file
         with folder.open(self.options.input_filename, 'w') as handle:
-            for namelist_name in self._compulsory_namelists:
+            for namelist_name in self.compulsory_namelists:
                 namelist = parameters.pop(namelist_name)
-                handle.write(u'&{0}\n'.format(namelist_name))
+                handle.write('&{0}\n'.format(namelist_name))
                 for key, value in sorted(namelist.items()):
                     handle.write(convert_input_to_namelist_entry(key, value))
-                handle.write(u'/\n')
+                handle.write('/\n')
 
-        if parameters:
-            invalid = ', '.join(list(parameters.keys()))
-            raise InputValidationError('these specified namelists are invalid: {}'.format(invalid))
+        # Copy perturbation files from previous `HpCalculation` if defined as inputs.
+        if 'parent_hp' in self.inputs:
+
+            # Need to manually create the subdirectory first or the write will fail.
+            os.makedirs(os.path.join(folder.abspath, self.dirname_output_hubbard), exist_ok=True)
+
+            for retrieved in self.inputs.get('parent_hp', {}).values():
+                for filename in retrieved.list_object_names(self.dirname_output_hubbard):
+                    filepath = os.path.join(self.dirname_output_hubbard, filename)
+                    provenance_exclude_list.append(filepath)
+                    with open(os.path.join(folder.abspath, filepath), 'wb') as handle:
+                        with retrieved.open(filepath, 'rb') as source:
+                            handle.write(source.read())
+
+        return provenance_exclude_list
