@@ -85,7 +85,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             namespace_options={'required': False, 'populate_defaults': False,
             'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'})
         spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('pw.structure',))
-        spec.expose_inputs(HpWorkChain, namespace='hubbard', exclude=('hp.parent_folder',))
+        spec.expose_inputs(HpWorkChain, namespace='hubbard', exclude=('hp.parent_scf',))
         spec.outline(
             cls.setup,
             cls.validate_inputs,
@@ -391,7 +391,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_scf[-1]
 
         inputs = AttributeDict(self.exposed_inputs(HpWorkChain, namespace='hubbard'))
-        inputs.hp.parent_folder = workchain.outputs.remote_folder
+        inputs.hp.parent_scf = workchain.outputs.remote_folder
 
         running = self.submit(HpWorkChain, **inputs)
 
