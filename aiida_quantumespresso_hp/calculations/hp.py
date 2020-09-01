@@ -254,8 +254,8 @@ class HpCalculation(CalcJob):
         if creator.process_class == PwCalculation:
             try:
                 parameters = creator.inputs.parameters.get_dict()
-            except KeyError:
-                raise ValueError('could not retrieve the input parameters node from the parent calculation')
+            except KeyError as exc:
+                raise ValueError('could not retrieve the input parameters node from the parent calculation') from exc
 
             lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
 
@@ -291,8 +291,8 @@ class HpCalculation(CalcJob):
 
         try:
             mesh, offset = qpoints.get_kpoints_mesh()
-        except AttributeError:
-            raise NotImplementedError('support for explicit qpoints is not implemented, only uniform meshes')
+        except AttributeError as exc:
+            raise NotImplementedError('support for explicit qpoints is not implemented, only uniform meshes') from exc
 
         if any([i != 0. for i in offset]):
             raise NotImplementedError('support for qpoint meshes with non-zero offsets is not implemented')

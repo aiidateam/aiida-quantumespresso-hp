@@ -12,13 +12,13 @@ def validate_parent_calculation(calculation):
 
     PwCalculation = CalculationFactory('quantumespresso.pw')
 
-    if calculation.process_class is not PwCalculation:
-        raise ValueError('the parent calculation should be of type PwCalculation')
+    if not hasattr(calculation, 'process_class') or calculation.process_class is not PwCalculation:
+        raise ValueError('parent calculation is not of type `PwCalculation` but {}'.format(calculation))
 
     try:
         parameters = calculation.inputs.parameters.get_dict()
-    except KeyError:
-        raise ValueError('could not retrieve the input parameters node')
+    except AttributeError as exception:
+        raise ValueError('could not retrieve the input parameters node') from exception
 
     lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', None)
     hubbard_u = parameters.get('SYSTEM', {}).get('hubbard_u', {})
@@ -33,8 +33,8 @@ def validate_parent_calculation(calculation):
 
     try:
         structure = calculation.inputs.structure
-    except KeyError:
-        raise ValueError('could not retrieve the input structure node')
+    except AttributeError as exception:
+        raise ValueError('could not retrieve the input structure node') from exception
 
     validate_structure_kind_order(structure, list(hubbard_u.keys()))
 
