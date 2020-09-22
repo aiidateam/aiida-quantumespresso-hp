@@ -145,7 +145,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             validate_structure_kind_order(structure, list(hubbard_u.get_dict().keys()))
         except ValueError:
             self.report('structure has incorrect kind order, reordering...')
-            structure = structure_reorder_kinds(structure, hubbard_u)
+            self.ctx.current_structure = structure_reorder_kinds(structure, hubbard_u)
             self.report('reordered StructureData<{}>'.format(structure.pk))
 
         # Determine whether the system is to be treated as magnetic
@@ -204,7 +204,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         parameters.setdefault('SYSTEM', {}).pop('lda_plus_u', None)
 
         inputs.pw.parameters = orm.Dict(dict=parameters)
-        inputs.pw.structure = self.inputs.structure
+        inputs.pw.structure = self.ctx.current_structure
 
         running = self.submit(PwBaseWorkChain, **inputs)
 

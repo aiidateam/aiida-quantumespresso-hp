@@ -224,15 +224,18 @@ def generate_code_localhost():
 def generate_structure():
     """Return a `StructureData` representing bulk silicon."""
 
-    def _generate_structure():
+    def _generate_structure(sites=None):
         """Return a `StructureData` representing bulk silicon."""
         from aiida.orm import StructureData
 
-        param = 5.43
-        cell = [[param / 2., param / 2., 0], [param / 2., 0, param / 2.], [0, param / 2., param / 2.]]
+        if sites is None:
+            sites = [('Si', 'Si')]
+
+        cell = [[1., 1., 0], [1., 0, 1.], [0, 1., 1.]]
         structure = StructureData(cell=cell)
-        structure.append_atom(position=(0., 0., 0.), symbols='Si', name='Si')
-        structure.append_atom(position=(param / 4., param / 4., param / 4.), symbols='Si', name='Si')
+
+        for kind, symbol in sites:
+            structure.append_atom(position=(0., 0., 0.), symbols=symbol, name=kind)
 
         return structure
 
@@ -326,6 +329,44 @@ def generate_inputs_hp(
         return inputs
 
     return _generate_inputs_hp
+
+
+@pytest.fixture
+def generate_inputs_hubbard(generate_inputs_pw, generate_inputs_hp, generate_structure):
+    """Generate default inputs for a `SelfConsistentHubbardWorkChain."""
+
+    def _generate_inputs_hubbard(structure=None, hubbard_u=None):
+        """Generate default inputs for a `SelfConsistentHubbardWorkChain."""
+        from aiida.orm import Dict
+
+        structure = structure or generate_structure()
+        hubbard_u = hubbard_u or Dict(dict={kind.name: 1.0 for kind in structure.kinds})
+        inputs_pw = generate_inputs_pw()
+        inputs_hp = generate_inputs_hp()
+
+        kpoints = inputs_pw.pop('kpoints')
+        inputs_pw.pop('structure')
+        inputs_hp.pop('parent_scf')
+
+        inputs = {
+            'structure': structure,
+            'hubbard_u': hubbard_u,
+            'recon': {
+                'pw': inputs_pw,
+                'kpoints': kpoints,
+            },
+            'scf': {
+                'pw': inputs_pw,
+                'kpoints': kpoints,
+            },
+            'hubbard': {
+                'hp': inputs_hp,
+            }
+        }
+
+        return inputs
+
+    return _generate_inputs_hubbard
 
 
 @pytest.fixture
