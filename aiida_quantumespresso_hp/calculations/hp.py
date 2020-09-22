@@ -142,8 +142,6 @@ class HpCalculation(CalcJob):
             message='The retrieved folder did not contain the required hubbard output file.')
         spec.exit_code(212, 'ERROR_OUTPUT_HUBBARD_CHI_MISSING',
             message='The retrieved folder did not contain the required hubbard chi output file.')
-        spec.exit_code(213, 'ERROR_OUTPUT_HUBBARD_PARAMETERS_MISSING',
-            message='The retrieved folder did not contain the required hubbard parameters output file.')
 
         # Unrecoverable errors: required retrieved files could not be read, parsed or are otherwise incomplete
         spec.exit_code(300, 'ERROR_OUTPUT_FILES',

@@ -88,3 +88,53 @@ def test_hp_failed_invalid_namelist(
     assert calcfunction.is_finished, calcfunction.exception
     assert calcfunction.is_failed, calcfunction.exit_status
     assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_INVALID_NAMELIST.status
+
+
+@pytest.mark.usefixtures('fixture_database')
+def test_failed_stdout_incomplete(generate_calc_job_node, generate_parser, generate_inputs_default, data_regression):
+    """Test calculation that exited prematurely and so the stdout is incomplete."""
+    name = 'failed_stdout_incomplete'
+    entry_point_calc_job = 'quantumespresso.hp'
+    entry_point_parser = 'quantumespresso.hp'
+
+    node = generate_calc_job_node(entry_point_calc_job, test_name=name, inputs=generate_inputs_default)
+    parser = generate_parser(entry_point_parser)
+    _, calcfunction = parser.parse_from_node(node, store_provenance=False)
+
+    assert calcfunction.is_finished, calcfunction.exception
+    assert calcfunction.is_failed, calcfunction.exit_status
+    assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE.status
+
+
+@pytest.mark.usefixtures('fixture_database')
+def test_failed_no_hubbard_parameters(
+    generate_calc_job_node, generate_parser, generate_inputs_default, data_regression
+):
+    """Test calculation that did not generate the Hubbard parameters output file."""
+    name = 'failed_no_hubbard_parameters'
+    entry_point_calc_job = 'quantumespresso.hp'
+    entry_point_parser = 'quantumespresso.hp'
+
+    node = generate_calc_job_node(entry_point_calc_job, test_name=name, inputs=generate_inputs_default)
+    parser = generate_parser(entry_point_parser)
+    _, calcfunction = parser.parse_from_node(node, store_provenance=False)
+
+    assert calcfunction.is_finished, calcfunction.exception
+    assert calcfunction.is_failed, calcfunction.exit_status
+    assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_OUTPUT_HUBBARD_MISSING.status
+
+
+@pytest.mark.usefixtures('fixture_database')
+def test_failed_no_hubbard_chi(generate_calc_job_node, generate_parser, generate_inputs_default, data_regression):
+    """Test calculation that did not generate the Hubbard chi output file."""
+    name = 'failed_no_hubbard_chi'
+    entry_point_calc_job = 'quantumespresso.hp'
+    entry_point_parser = 'quantumespresso.hp'
+
+    node = generate_calc_job_node(entry_point_calc_job, test_name=name, inputs=generate_inputs_default)
+    parser = generate_parser(entry_point_parser)
+    _, calcfunction = parser.parse_from_node(node, store_provenance=False)
+
+    assert calcfunction.is_finished, calcfunction.exception
+    assert calcfunction.is_failed, calcfunction.exit_status
+    assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_OUTPUT_HUBBARD_CHI_MISSING.status

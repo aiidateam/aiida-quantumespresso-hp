@@ -85,7 +85,6 @@ class HpParser(Parser):
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             'ERROR_MISSING_PERTURBATION_FILE',
             'ERROR_CONVERGENCE_NOT_REACHED',
-            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
         ]
 
         for exit_status in exit_statuses:
@@ -213,7 +212,7 @@ class HpParser(Parser):
                 parsed_data['hubbard_sites'] = hubbard_sites
 
         if is_prematurely_terminated:
-            logs.error.append('ERROR_PREMATURE_TERMINATION')
+            logs.error.append('ERROR_OUTPUT_STDOUT_INCOMPLETE')
 
         return parsed_data, logs
 
