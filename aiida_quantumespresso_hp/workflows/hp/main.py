@@ -42,19 +42,19 @@ class HpWorkChain(WorkChain):
     def run_base_workchain(self):
         """Run the `HpBaseWorkChain`."""
         running = self.submit(HpBaseWorkChain, **self.exposed_inputs(HpBaseWorkChain))
-        self.report('running in serial, launching HpBaseWorkChain<{}>'.format(running.pk))
+        self.report(f'running in serial, launching HpBaseWorkChain<{running.pk}>')
         return ToContext(workchain=running)
 
     def run_parallel_workchain(self):
         """Run the `HpParallelizeAtomsWorkChain`."""
         running = self.submit(HpParallelizeAtomsWorkChain, **self.exposed_inputs(HpBaseWorkChain))
-        self.report('running in parallel, launching HpParallelizeAtomsWorkChain<{}>'.format(running.pk))
+        self.report(f'running in parallel, launching HpParallelizeAtomsWorkChain<{running.pk}>')
         return ToContext(workchain=running)
 
     def inspect_workchain(self):
         """Verify that the child workchain has finished successfully."""
         if not self.ctx.workchain.is_finished_ok:
-            self.report('the {} workchain did not finish successfully'.format(self.ctx.workchain.process_label))
+            self.report(f'the {self.ctx.workchain.process_label} workchain did not finish successfully')
             return self.exit_codes.ERROR_CHILD_WORKCHAIN_FAILED
 
     def results(self):

@@ -13,14 +13,13 @@
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8"
     ],
-    "python_requires": ">=3.5",
+    "python_requires": ">=3.6",
     "install_requires": [
-        "aiida-core~=1.2",
+        "aiida-core~=1.4",
         "aiida-quantumespresso~=3.0",
         "aiida-sssp~=0.1",
         "click~=7.0",

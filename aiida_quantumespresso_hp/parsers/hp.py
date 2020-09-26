@@ -242,7 +242,7 @@ class HpParser(Parser):
 
         if not all(sum(list(blocks.values()), [])):
             raise ValueError(
-                "could not determine beginning and end of all blocks in '{}'".format(os.path.basename(handle.name))
+                f"could not determine beginning and end of all blocks in '{os.path.basename(handle.name)}'"
             )
 
         for matrix_name in ('chi0', 'chi'):
@@ -315,9 +315,7 @@ class HpParser(Parser):
 
         if not all(sum(list(blocks.values()), [])):
             raise ValueError(
-                "could not determine beginning and end of all matrix blocks in '{}'".format(
-                    os.path.basename(handle.name)
-                )
+                f'could not determine beginning and end of all matrix blocks in `{os.path.basename(handle.name)}`'
             )
 
         for matrix_name in ('chi0', 'chi', 'chi0_inv', 'chi_inv', 'hubbard'):
@@ -326,10 +324,9 @@ class HpParser(Parser):
             matrix = self.parse_hubbard_matrix(matrix_data)
 
             if len(set(matrix.shape)) != 1:
+                filename = os.path.basename(handle.name)
                 raise ValueError(
-                    "the matrix '{}' in '{}'' is not square but has shape {}: {}".format(
-                        matrix_name, os.path.basename(handle.name), matrix.shape, matrix
-                    )
+                    f'matrix `{matrix_name}` in `{filename}` is not square but has shape {matrix.shape}: {matrix}'
                 )
 
             result[matrix_name] = matrix

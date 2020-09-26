@@ -22,20 +22,20 @@ def validate_parent_scf(parent_scf, _):
     creator = parent_scf.creator
 
     if not creator:
-        return 'could not determine the creator of {}'.format(parent_scf)
+        return f'could not determine the creator of {parent_scf}'
 
     if creator.process_class is not PwCalculation:
-        return 'creator of `parent_scf` {} is not a `PwCalculation`'.format(creator)
+        return f'creator of `parent_scf` {creator} is not a `PwCalculation`'
 
     try:
         parameters = creator.inputs.parameters.get_dict()
     except AttributeError:
-        return 'could not retrieve the input parameters node from the parent calculation {}'.format(creator)
+        return f'could not retrieve the input parameters node from the parent calculation {creator}'
 
     lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
 
     if not lda_plus_u:
-        return 'parent calculation {} was not run with `lda_plus_u`'.format(creator)
+        return f'parent calculation {creator} was not run with `lda_plus_u`'
 
 
 def validate_parent_hp(parent_hp, _):
@@ -47,10 +47,10 @@ def validate_parent_hp(parent_hp, _):
         creator = retrieved.creator
 
         if not creator:
-            return 'could not determine the creator of {}'.format(retrieved)
+            return f'could not determine the creator of {retrieved}'
 
         if creator.process_class is not HpCalculation:
-            return 'creator of `parent_hp.{}` {} is not a `HpCalculation`'.format(label, creator)
+            return f'creator of `parent_hp.{label}` {creator} is not a `HpCalculation`'
 
 
 def validate_parameters(parameters, _):
@@ -61,12 +61,12 @@ def validate_parameters(parameters, _):
     # Check that required namelists are present
     for namelist in HpCalculation.compulsory_namelists:
         if namelist not in result:
-            return 'the required namelist `{}` was not defined'.format(namelist)
+            return f'the required namelist `{namelist}` was not defined'
 
     # Check for presence of blocked keywords
     for namelist, flag in HpCalculation.blocked_keywords:
         if namelist in result and flag in result[namelist]:
-            return 'explicit definition of flag `{}` in namelist `{}` is not allowed'.format(flag, namelist)
+            return f'explicit definition of flag `{flag}` in namelist `{namelist}` is not allowed'
 
 
 def validate_qpoints(qpoints, _):
@@ -108,8 +108,8 @@ class HpCalculation(CalcJob):
         """Define the process specification."""
         # yapf: disable
         super().define(spec)
-        spec.inputs['metadata']['options']['input_filename'].default = '{}.in'.format(cls.prefix)
-        spec.inputs['metadata']['options']['output_filename'].default = '{}.out'.format(cls.prefix)
+        spec.inputs['metadata']['options']['input_filename'].default = f'{cls.prefix}.in'
+        spec.inputs['metadata']['options']['output_filename'].default = f'{cls.prefix}.out'
         spec.inputs['metadata']['options']['parser_name'].default = 'quantumespresso.hp'
         spec.inputs['metadata']['options']['withmpi'].default = True
         spec.input('parameters', valid_type=orm.Dict, validator=validate_parameters,
@@ -168,12 +168,12 @@ class HpCalculation(CalcJob):
     @classproperty
     def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
         """Return the relative output filename that contains chi."""
-        return '{}.chi.dat'.format(cls.prefix)
+        return f'{cls.prefix}.chi.dat'
 
     @classproperty
     def filename_output_hubbard(cls):  # pylint: disable=no-self-argument
         """Return the relative output filename that contains the Hubbard values and matrices."""
-        return '{}.Hubbard_parameters.dat'.format(cls.prefix)
+        return f'{cls.prefix}.Hubbard_parameters.dat'
 
     @classproperty
     def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
@@ -241,7 +241,7 @@ class HpCalculation(CalcJob):
 
         # The perturbation files that are necessary for a final `compute_hp` calculation in case this is an incomplete
         # calculation that computes just a subset of all kpoints and/or all perturbed atoms.
-        src_perturbation_files = os.path.join(self.dirname_output_hubbard, '{}.*.pert_*.dat'.format(self.prefix))
+        src_perturbation_files = os.path.join(self.dirname_output_hubbard, f'{self.prefix}.*.pert_*.dat')
         dst_perturbation_files = '.'
         retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 
@@ -294,7 +294,7 @@ class HpCalculation(CalcJob):
         with folder.open(self.options.input_filename, 'w') as handle:
             for namelist_name in self.compulsory_namelists:
                 namelist = parameters.pop(namelist_name)
-                handle.write('&{0}\n'.format(namelist_name))
+                handle.write(f'&{namelist_name}\n')
                 for key, value in sorted(namelist.items()):
                     handle.write(convert_input_to_namelist_entry(key, value))
                 handle.write('/\n')

@@ -30,7 +30,7 @@ def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, 
     retrieve_list.append(HpCalculation.filename_output_hubbard_parameters)
     retrieve_list.append(os.path.join(HpCalculation.dirname_output_hubbard, HpCalculation.filename_output_hubbard_chi))
 
-    src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, '{}.*.pert_*.dat'.format(prefix))
+    src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, f'{prefix}.*.pert_*.dat')
     dst_perturbation_files = '.'
     retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
 

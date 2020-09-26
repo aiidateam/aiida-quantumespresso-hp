@@ -81,8 +81,8 @@ def launch_workflow(
 
     if not set(hubbard_u_kinds).issubset(structure_kinds):
         raise click.BadParameter(
-            'the kinds in the specified starting Hubbard U values {} is not a strict subset of the kinds in the '
-            'structure {}'.format(hubbard_u_kinds, structure_kinds),
+            f'the kinds in the specified starting Hubbard U values {hubbard_u_kinds} is not a strict subset of the '
+            f'kinds in the structure {structure_kinds}',
             param_hint='hubbard_u'
         )
 
@@ -94,8 +94,7 @@ def launch_workflow(
 
             if kind not in structure_kinds:
                 raise click.BadParameter(
-                    'the provided structure does not contain the kind {}'.format(kind),
-                    param_hint='starting_magnetization'
+                    f'the provided structure does not contain the kind {kind}', param_hint='starting_magnetization'
                 )
 
             parameters['SYSTEM'].setdefault('starting_magnetization', {})[kind] = magnetization

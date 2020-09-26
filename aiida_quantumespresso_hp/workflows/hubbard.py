@@ -146,7 +146,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         except ValueError:
             self.report('structure has incorrect kind order, reordering...')
             self.ctx.current_structure = structure_reorder_kinds(structure, hubbard_u)
-            self.report('reordered StructureData<{}>'.format(structure.pk))
+            self.report(f'reordered StructureData<{structure.pk}>')
 
         # Determine whether the system is to be treated as magnetic
         parameters = self.inputs.scf.pw.parameters.get_dict()
@@ -208,7 +208,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching reconnaissance PwBaseWorkChain<{}>'.format(running.pk))
+        self.report(f'launching reconnaissance PwBaseWorkChain<{running.pk}>')
 
         return ToContext(workchain_recon=running)
 
@@ -217,7 +217,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchain_recon
 
         if not workchain.is_finished_ok:
-            self.report('reconnaissance PwBaseWorkChain failed with exit status {}'.format(workchain.exit_status))
+            self.report(f'reconnaissance PwBaseWorkChain failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RECON.format(iteration=self.ctx.iteration)
 
         bands = workchain.outputs.output_band
@@ -246,8 +246,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         if u_projection_type_relax != self.defaults.u_projection_type_relax:
             self.report(
-                "warning: you specified 'u_projection_type = {}' in the input parameters, but this will crash "
-                "pw.x, changing it to '{}'".format(u_projection_type_relax, self.defaults.u_projection_type_relax)
+                f'warning: you specified `u_projection_type = {u_projection_type_relax}` in the input parameters, but '
+                r'this will crash pw.x, changing it to `{self.defaults.u_projection_type_relax}`'
             )
 
         inputs.base.pw.parameters = orm.Dict(dict=parameters)
@@ -255,7 +255,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         running = self.submit(PwRelaxWorkChain, **inputs)
 
-        self.report('launching PwRelaxWorkChain<{}> iteration #{}'.format(running.pk, self.ctx.iteration))
+        self.report(f'launching PwRelaxWorkChain<{running.pk}> iteration #{self.ctx.iteration}')
 
         return ToContext(workchains_relax=append_(running))
 
@@ -264,7 +264,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_relax[-1]
 
         if not workchain.is_finished_ok:
-            self.report('reconnaissance PwBaseWorkChain failed with exit status {}'.format(workchain.exit_status))
+            self.report(f'reconnaissance PwBaseWorkChain failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX.format(iteration=self.ctx.iteration)
 
         self.ctx.current_structure = workchain.outputs.output_structure
@@ -294,7 +294,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with fixed occupations'.format(running.pk))
+        self.report(f'launching PwBaseWorkChain<{running.pk}> with fixed occupations')
 
         return ToContext(workchains_scf=append_(running))
 
@@ -328,7 +328,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
-        self.report('launching PwBaseWorkChain<{}> with smeared occupations'.format(running.pk))
+        self.report(f'launching PwBaseWorkChain<{running.pk}> with smeared occupations')
 
         return ToContext(workchains_scf=append_(running))
 
@@ -370,7 +370,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         running = self.submit(PwBaseWorkChain, **inputs)
 
         self.report(
-            'launching PwBaseWorkChain<{}> with fixed occupations, bands and total magnetization'.format(running.pk)
+            f'launching PwBaseWorkChain<{running.pk}> with fixed occupations, bands and total magnetization'
         )
 
         return ToContext(workchains_scf=append_(running))
@@ -380,8 +380,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_scf[-1]
 
         if not workchain.is_finished_ok:
-            args = [self.ctx.iteration, workchain.exit_status]
-            self.report('scf PwBaseWorkChain in iteration {} failed with exit status {}'.format(*args))
+            self.report(f'scf in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_SCF.format(iteration=self.ctx.iteration)
 
     def run_hp(self):
@@ -395,7 +394,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         running = self.submit(HpWorkChain, **inputs)
 
-        self.report('launching HpWorkChain<{}> iteration #{}'.format(running.pk, self.ctx.iteration))
+        self.report(f'launching HpWorkChain<{running.pk}> iteration #{self.ctx.iteration}')
 
         return ToContext(workchains_hp=append_(running))
 
@@ -408,8 +407,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_hp[-1]
 
         if not workchain.is_finished_ok:
-            args = [self.ctx.iteration, workchain.exit_status]
-            self.report('HpWorkChain in iteration {} failed with exit status {}'.format(*args))
+            self.report(f'hp.x in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_HP.format(iteration=self.ctx.iteration)
 
         hubbard = workchain.outputs.hubbard
@@ -440,14 +438,14 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 self.report('Hubbard U parameters are not converged')
 
             self.report(
-                'values from previous iteration: {}'.format(' '.join([str(v) for v in prev_hubbard_u.values()]))
+                f"values from previous iteration: {' '.join([str(v) for v in prev_hubbard_u.values()])}"
             )
-            self.report('values from current iteration: {}'.format(' '.join([str(v) for v in curr_hubbard_u.values()])))
+            self.report(f"values from current iteration: {' '.join([str(v) for v in curr_hubbard_u.values()])}")
 
         return
 
     def run_results(self):
         """Attach the final converged Hubbard U parameters and the corresponding structure."""
-        self.report('Hubbard U parameters self-consistently converged in {} iterations'.format(self.ctx.iteration))
+        self.report(f'Hubbard U parameters self-consistently converged in {self.ctx.iteration} iterations')
         self.out('structure', self.ctx.current_structure)
         self.out('hubbard', self.ctx.workchains_hp[-1].outputs.hubbard)

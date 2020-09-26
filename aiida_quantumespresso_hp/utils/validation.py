@@ -13,7 +13,7 @@ def validate_parent_calculation(calculation):
     PwCalculation = CalculationFactory('quantumespresso.pw')
 
     if not hasattr(calculation, 'process_class') or calculation.process_class is not PwCalculation:
-        raise ValueError('parent calculation is not of type `PwCalculation` but {}'.format(calculation))
+        raise ValueError(f'parent calculation is not of type `PwCalculation` but {calculation}')
 
     try:
         parameters = calculation.inputs.parameters.get_dict()

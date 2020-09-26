@@ -44,15 +44,14 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
         node = self.submit(HpBaseWorkChain, **inputs)
         self.to_context(initialization=node)
-        self.report('launched initialization HpBaseWorkChain<{}>'.format(node.pk))
+        self.report(f'launched initialization HpBaseWorkChain<{node.pk}>')
 
     def run_atoms(self):
         """Run a separate `HpBaseWorkChain` for each of the defined Hubbard atoms."""
         workchain = self.ctx.initialization
 
         if not workchain.is_finished_ok:
-            args = (workchain.__class__.__name__, workchain.pk, workchain.exit_status)
-            self.report('initialization work chain {}<{}> failed with finish status {}, aborting...'.format(*args))
+            self.report(f'initialization work chain {workchain} failed with status {workchain.exit_status}, aborting.')
             return self.exit_codes.ERROR_INITIALIZATION_WORKCHAIN_FAILED
 
         output_params = workchain.outputs.parameters.get_dict()
@@ -60,8 +59,8 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
         for site_index, site_kind in hubbard_sites.items():
 
-            do_only_key = 'perturb_only_atom({})'.format(site_index)
-            key = 'atom_{}'.format(site_index)
+            do_only_key = f'perturb_only_atom({site_index})'
+            key = f'atom_{site_index}'
 
             inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
             inputs.hp.parameters = inputs.hp.parameters.get_dict()
@@ -71,8 +70,8 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
             node = self.submit(HpBaseWorkChain, **inputs)
             self.to_context(**{key: node})
-            args = (HpBaseWorkChain.__name__, node.pk, site_index, site_kind)
-            self.report('launched {}<{}> for atomic site {} of kind {}'.format(*args))
+            name = HpBaseWorkChain.__name__
+            self.report(f'launched {name}<{node.pk}> for atomic site {site_index} of kind {site_kind}')
 
     def run_final(self):
         """Perform the final HpCalculation to collect the various components of the chi matrices."""
@@ -83,7 +82,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
 
         node = self.submit(HpBaseWorkChain, **inputs)
         self.to_context(compute_hp=node)
-        self.report('launched HpBaseWorkChain<{}> to collect matrices'.format(node.pk))
+        self.report(f'launched HpBaseWorkChain<{node.pk}> to collect matrices')
 
     def results(self):
         """Retrieve the results from the final matrix collection workchain."""

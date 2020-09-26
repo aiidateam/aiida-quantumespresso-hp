@@ -64,9 +64,8 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         :param node: the failed calculation node
         :param action: a string message with the action taken
         """
-        arguments = [node.process_label, node.pk, node.exit_status, node.exit_message]
-        self.report('{}<{}> failed with exit status {}: {}'.format(*arguments))
-        self.report('Action taken: {}'.format(action))
+        self.report(f'{node.process_label}<{node.pk}> failed with exit status {node.exit_status}: {node.exit_message}')
+        self.report(f'Action taken: {action}')
 
     @process_handler(priority=600)
     def handle_unrecoverable_failure(self, node):
@@ -93,21 +92,21 @@ class HpBaseWorkChain(BaseRestartWorkChain):
             for parameter in parameters.keys():
                 if parameter.startswith('alpha_mix('):
                     parameters[parameter] *= self.defaults.delta_factor_alpha_mix
-                    changes.append('changed `{}` to {}'.format(parameter, parameters[parameter]))
+                    changes.append(f'changed `{parameter}` to {parameters[parameter]}')
         else:
             parameter = 'alpha_mix(1)'
             parameters[parameter] = 0.20
-            changes.append('set `{}` to {}'.format(parameter, parameters[parameter]))
+            changes.append(f'set `{parameter}` to {parameters[parameter]}')
 
         if 'niter_max' in parameters:
             parameters['niter_max'] *= self.defaults.delta_factor_niter_max
         else:
             parameters['niter_max'] = 200
 
-        changes.append('changed `niter_max` to {}'.format(parameters['niter_max']))
+        changes.append(f"changed `niter_max` to {parameters['niter_max']}")
 
         if changes:
-            self.report('convergence not reached: {}'.format(', '.join(changes)))
+            self.report(f"convergence not reached: {', '.join(changes)}")
         else:
             self.report('convergence not reached, restarting')
 
