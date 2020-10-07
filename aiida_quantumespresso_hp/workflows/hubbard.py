@@ -205,7 +205,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.pw.parameters = orm.Dict(dict=parameters)
         inputs.pw.structure = self.ctx.current_structure
-
+        inputs.metadata.call_link_label = 'recon'
         running = self.submit(PwBaseWorkChain, **inputs)
 
         self.report(f'launching reconnaissance PwBaseWorkChain<{running.pk}>')
@@ -252,6 +252,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs.base.pw.parameters = orm.Dict(dict=parameters)
         inputs.structure = self.ctx.current_structure
+        inputs.metadata.call_link_label = 'iteration_{:02d}_relax'.format(self.ctx.iteration)
 
         running = self.submit(PwRelaxWorkChain, **inputs)
 
@@ -291,6 +292,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         parameters['SYSTEM']['hubbard_u'] = self.ctx.current_hubbard_u
         inputs.pw.parameters = orm.Dict(dict=parameters)
         inputs.pw.structure = self.ctx.current_structure
+        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_fixed'.format(self.ctx.iteration)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -325,6 +327,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         parameters['SYSTEM']['hubbard_u'] = self.ctx.current_hubbard_u
         inputs.pw.parameters = orm.Dict(dict=parameters)
         inputs.pw.structure = self.ctx.current_structure
+        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_smearing'.format(self.ctx.iteration)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -366,6 +369,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         parameters['SYSTEM']['hubbard_u'] = self.ctx.current_hubbard_u
         inputs.pw.parameters = orm.Dict(dict=parameters)
         inputs.pw.parameters = orm.Dict(dict=parameters)
+        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_fixed_magnetic'.format(self.ctx.iteration)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -391,6 +395,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs = AttributeDict(self.exposed_inputs(HpWorkChain, namespace='hubbard'))
         inputs.hp.parent_scf = workchain.outputs.remote_folder
+        inputs.metadata.call_link_label = 'iteration_{:02d}_hp'.format(self.ctx.iteration)
 
         running = self.submit(HpWorkChain, **inputs)
 
