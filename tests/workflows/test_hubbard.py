@@ -23,6 +23,22 @@ def generate_workchain_hubbard(generate_workchain, generate_inputs_hubbard):
     return _generate_workchain_hubbard
 
 
+@pytest.fixture
+def generate_scf_workchain_node():
+    """Generate an instance of `WorkflowNode`."""
+    from aiida.common import LinkType
+    from aiida.orm import WorkflowNode
+
+    node = WorkflowNode().store()
+    parameters = Dict(dict={
+        'number_of_bands': 1,
+        'total_magnetization': 1,
+    }).store()
+    parameters.add_incoming(node, link_type=LinkType.RETURN, link_label='output_parameters')
+
+    return node
+
+
 @pytest.mark.usefixtures('aiida_profile')
 def test_setup(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.setup`."""
@@ -65,3 +81,20 @@ def test_validate_inputs_valid_structure(generate_workchain_hubbard, generate_in
     process.validate_inputs()
 
     assert process.ctx.current_structure == inputs['structure']
+
+
+@pytest.mark.usefixtures('aiida_profile')
+def test_run_scf_fixed_magnetic(
+    generate_workchain_hubbard, generate_inputs_hubbard, generate_structure, generate_scf_workchain_node
+):
+    """Test `SelfConsistentHubbardWorkChain.run_scf_fixed_magnetic`."""
+    structure = generate_structure((('Co', 'Co'), ('Li', 'Li')))
+    inputs = generate_inputs_hubbard(structure)
+    inputs['hubbard_u'] = Dict(dict={'Co': 1})
+
+    process = generate_workchain_hubbard(inputs=inputs)
+    process.setup()
+
+    # Mock the `workchains_scf` context variable as if a `PwBaseWorkChain` has been run in
+    process.ctx.workchains_scf = [generate_scf_workchain_node]
+    process.run_scf_fixed_magnetic()
