@@ -374,7 +374,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         run with smeared occupations.
         """
         previous_workchain = self.ctx.workchains_scf[-1]
-        previous_parameters = previous_workchain.out.output_parameters
+        previous_parameters = previous_workchain.outputs.output_parameters
 
         inputs = self.get_inputs(PwBaseWorkChain, 'scf')
         inputs.pw.parameters['CONTROL']['calculation'] = 'scf'
