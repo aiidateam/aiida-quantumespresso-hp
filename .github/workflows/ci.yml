@@ -79,6 +79,7 @@ jobs:
             run: |
                 pip install --upgrade setuptools
                 pip install -e .[tests]
+                pip install git+https://github.com/aiidateam/aiida-quantumespresso.git@develop
                 reentry scan
 
         -   name: Run pytest

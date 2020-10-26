@@ -274,11 +274,65 @@ def generate_parser():
     return _generate_parser
 
 
+@pytest.fixture(scope='session')
+def generate_upf_data(tmp_path_factory):
+    """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
+
+    def _generate_upf_data(element):
+        """Return `UpfData` node."""
+        from aiida.orm.nodes.data.upf import UpfData
+
+        with open(tmp_path_factory.mktemp('pseudos') / f'{element}.upf', 'w+b') as handle:
+            handle.write(f'<UPF version="2.0.1"><PP_HEADER element="{element}"/></UPF>'.encode('utf-8'))
+            handle.flush()
+            return UpfData(file=handle.name)
+
+    return _generate_upf_data
+
+
+@pytest.fixture(scope='session')
+def generate_upf_family(tmp_path_factory, generate_upf_data):
+    """Return a factory for a `UpfFamily` instance."""
+
+    def _generate_upf_family(label='family'):
+        """Return an instance of `UpfFamily` or subclass containing the given elements.
+
+        :param elements: optional list of elements to include instead of all the available ones
+        :return: the pseudo family
+        """
+        from aiida.common import exceptions
+        from aiida.common.constants import elements
+        from aiida.orm.groups import UpfFamily
+
+        try:
+            family = UpfFamily.objects.get(label=label)
+        except exceptions.NotExistent:
+            pass
+        else:
+            return family
+
+        pseudos = []
+
+        for element in elements.values():
+            upf = generate_upf_data(element['symbol'])
+            with open(os.path.join(tmp_path_factory.mktemp('family'), f"{element['symbol']}.upf"), 'wb') as handle:
+                with upf.open(mode='rb') as source:
+                    handle.write(source.read())
+            pseudos.append(upf.store())
+
+        family = UpfFamily(label=label).store()
+        family.add_nodes(pseudos)
+
+        return family
+
+    return _generate_upf_family
+
+
 @pytest.fixture
 def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, generate_upf_family):
     """Generate default inputs for a `PwCalculation."""
 
-    def _generate_inputs_pw(parameters=None, structure=None):
+    def _generate_inputs_pw(parameters=None, **kwargs):
         """Generate default inputs for a `PwCalculation."""
         from aiida.orm import Dict
         from aiida.orm.nodes.data.upf import get_pseudos_from_structure
@@ -291,7 +345,7 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
 
         inputs = {
             'code': fixture_code('quantumespresso.pw'),
-            'structure': structure or generate_structure(),
+            'structure': kwargs.pop('structure', generate_structure()),
             'kpoints': generate_kpoints_mesh(2),
             'parameters': Dict(dict=parameters_base),
             'metadata': {
@@ -299,8 +353,9 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
             }
         }
 
-        family = generate_upf_family(inputs['structure'])
+        family = generate_upf_family()
         inputs['pseudos'] = get_pseudos_from_structure(inputs['structure'], family.label)
+        inputs.update(**kwargs)
 
         return inputs
 
@@ -393,50 +448,3 @@ def generate_hp_retrieved():
     retrieved.store()
 
     return retrieved
-
-
-@pytest.fixture(scope='session')
-def generate_upf_data(tmp_path_factory):
-    """Return a `UpfData` instance for the given element a file for which should exist in `tests/fixtures/pseudos`."""
-
-    def _generate_upf_data(element):
-        """Return `UpfData` node."""
-        from aiida.orm import UpfData
-
-        with open(tmp_path_factory.mktemp('pseudos') / f'{element}.upf', 'w+b') as handle:
-            handle.write(f'<UPF version="2.0.1"><PP_HEADER element="{element}"/></UPF>'.encode('utf-8'))
-            handle.flush()
-            return UpfData(file=handle.name)
-
-    return _generate_upf_data
-
-
-@pytest.fixture(scope='session')
-def generate_upf_family(generate_upf_data):
-    """Return a `UpfFamily` that serves as a pseudo family."""
-
-    def _generate_upf_family(structure, label='SSSP-testing2'):
-        from aiida.common import exceptions
-        from aiida.orm import UpfFamily
-
-        try:
-            existing = UpfFamily.objects.get(label=label)
-        except exceptions.NotExistent:
-            pass
-        else:
-            UpfFamily.objects.delete(existing.pk)
-
-        family = UpfFamily(label=label)
-
-        pseudos = {}
-
-        for kind in structure.kinds:
-            pseudo = generate_upf_data(kind.symbol).store()
-            pseudos[pseudo.element] = pseudo
-
-        family.store()
-        family.add_nodes(list(pseudos.values()))
-
-        return family
-
-    return _generate_upf_family
