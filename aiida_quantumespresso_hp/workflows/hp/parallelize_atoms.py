@@ -3,8 +3,11 @@
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida.plugins import DataFactory, CalculationFactory, WorkflowFactory
 
+from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
+
+KpointsData = DataFactory('array.kpoints')
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
 HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
@@ -30,6 +33,29 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             message='A child work chain failed.')
         spec.exit_code(301, 'ERROR_INITIALIZATION_WORKCHAIN_FAILED',
             message='The child work chain failed.')
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        code,
+        parent_scf_folder,
+        protocol=None,
+        overrides=None,
+        **_
+    ):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol."""
+        inputs = cls.get_protocol_inputs(protocol, overrides)
+
+        qpoints = KpointsData()
+        qpoints.set_kpoints_mesh(inputs['qpoints_mesh'])
+
+        builder = cls.get_builder()
+        builder.hp.code = code
+        builder.hp.parameters = orm.Dict(dict=inputs['hp']['parameters'])
+        builder.hp.parent_scf = parent_scf_folder
+        builder.hp.qpoints = qpoints
+
+        return builder
 
     def run_init(self):
         """Run an initialization `HpBaseWorkChain` to that will determine which kinds need to be perturbed.

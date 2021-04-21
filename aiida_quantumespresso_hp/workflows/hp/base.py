@@ -3,12 +3,14 @@
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import while_, BaseRestartWorkChain, process_handler, ProcessHandlerReport
-from aiida.plugins import CalculationFactory
+from aiida.plugins import DataFactory, CalculationFactory
 
+from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
+
+KpointsData = DataFactory('array.kpoints')
 HpCalculation = CalculationFactory('quantumespresso.hp')
 
-
-class HpBaseWorkChain(BaseRestartWorkChain):
+class HpBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
     """Workchain to run a Quantum ESPRESSO hp.x calculation with automated error handling and restarts."""
 
     _process_class = HpCalculation
@@ -37,6 +39,31 @@ class HpBaseWorkChain(BaseRestartWorkChain):
         spec.expose_outputs(HpCalculation)
         spec.exit_code(300, 'ERROR_UNRECOVERABLE_FAILURE',
             message='The calculation failed with an unrecoverable error.')
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        code,
+        parent_scf_folder,
+        protocol=None,
+        overrides=None,
+        **_
+    ):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol.
+
+        """
+        inputs = cls.get_protocol_inputs(protocol, overrides)
+
+        qpoints = KpointsData()
+        qpoints.set_kpoints_mesh(inputs['qpoints_mesh'])
+
+        builder = cls.get_builder()
+        builder.hp.code = code
+        builder.hp.parameters = orm.Dict(dict=inputs['hp']['parameters'])
+        builder.hp.parent_scf = parent_scf_folder
+        builder.hp.qpoints = qpoints
+
+        return builder
 
     def setup(self):
         """Call the `setup` of the `BaseRestartWorkChain` and then create the inputs dictionary in `self.ctx.inputs`.

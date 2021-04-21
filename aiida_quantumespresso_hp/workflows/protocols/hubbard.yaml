@@ -1,0 +1,12 @@
+default_inputs:
+  tolerance: 0.1
+default_protocol: moderate
+protocols:
+  moderate:
+      description: 'Protocol to perform the computation at normal precision at moderate computational cost.'
+  precise:
+      description: 'Protocol to perform the computation at high precision at higher computational cost.'
+      tolerance: 0.05
+  fast:
+      description: 'Protocol to perform the computation at low precision at minimal computational cost for testing purposes.'
+      tolerance: 0.2

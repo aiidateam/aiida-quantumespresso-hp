@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Turn-key solution to automatically compute the self-consistent Hubbard parameters for a given structure."""
+import yaml
+from importlib_resources import files
+
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import WorkChain, ToContext, while_, if_, append_
@@ -7,6 +10,7 @@ from aiida.orm.nodes.data.array.bands import find_bandgap
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
+from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
 from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
 from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
 from aiida_quantumespresso_hp.utils.validation import validate_structure_kind_order
@@ -29,7 +33,7 @@ def validate_inputs(inputs, _):
         return 'kinds specified in starting Hubbard U values is not a strict subset of the structure kinds.'
 
 
-class SelfConsistentHubbardWorkChain(WorkChain):
+class SelfConsistentHubbardWorkChain(ProtocolMixin, WorkChain):
     """
     Workchain that for a given input structure will compute the self-consistent Hubbard U parameters
     by iteratively relaxing the structure with the PwRelaxWorkChain and computing the Hubbard U
@@ -130,6 +134,63 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             message='The scf PwBaseWorkChain sub process failed in iteration {iteration}')
         spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_HP',
             message='The HpWorkChain sub process failed in iteration {iteration}')
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        pw_code,
+        hp_code,
+        structure,
+        protocol=None,
+        overrides=None,
+        **kwargs
+    ):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol.
+
+        """
+        pw_args = (pw_code, structure, protocol)
+        inputs = cls.get_protocol_inputs(protocol, overrides)
+
+        recon = PwBaseWorkChain.get_builder_from_protocol(*pw_args, overrides=inputs.get('recon', None), **kwargs)
+        recon.pw.pop('structure', None)
+        relax = PwRelaxWorkChain.get_builder_from_protocol(*pw_args, overrides=inputs.get('relax', None), **kwargs)
+        relax.pop('structure', None)
+        scf = PwBaseWorkChain.get_builder_from_protocol(*pw_args, overrides=inputs.get('scf', None), **kwargs)
+        scf.pw.pop('structure', None)
+
+        hubbard = HpWorkChain.get_builder_from_protocol(
+            code=hp_code,
+            protocol=protocol,
+            overrides=inputs.get('scf', None), 
+            **kwargs
+        )
+
+        hubbard_u = inputs.get('hubbard_u', None)
+        hubbard_u = hubbard_u or cls._load_hubbard_u(structure)
+
+        builder = cls.get_builder()
+        builder.structure = structure
+        builder.hubbard_u = hubbard_u
+        builder.recon = recon
+        builder.relax = relax
+        builder.scf = scf
+        builder.hubbard = hubbard
+
+        return builder
+
+    def _load_hubbard_u(structure):
+        """Load the default values for the initial hubbard U setting."""
+        import aiida_quantumespresso_hp.workflows.protocols
+
+        with files(aiida_quantumespresso_hp.workflows.protocols).joinpath('hubbard_u.yaml').open() as file:
+            hubbard_values = yaml.safe_load(file)
+
+        hubbard_u = {}
+
+        for kind in structure.kinds:
+            hubbard_u[kind.symbol] = hubbard_values.get(kind.symbol, 0)
+
+        return orm.Dict(dict=hubbard_u)
 
     def setup(self):
         """Set up the context."""

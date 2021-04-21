@@ -1,0 +1,17 @@
+default_inputs:
+  hp:
+    parameters:
+      INPUTHP:
+        conv_thr_chi: 1e-5
+  qpoints_mesh:
+    - 2
+    - 2
+    - 2
+default_protocol: moderate
+protocols:
+  moderate:
+      description: 'Protocol to perform the computation at normal precision at moderate computational cost.'
+  precise:
+      description: 'Protocol to perform the computation at high precision at higher computational cost.'
+  fast:
+      description: 'Protocol to perform the computation at low precision at minimal computational cost for testing purposes.'

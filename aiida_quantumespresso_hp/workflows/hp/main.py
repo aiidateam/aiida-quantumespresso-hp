@@ -2,13 +2,15 @@
 """Work chain to run a Quantum ESPRESSO hp.x calculation."""
 from aiida import orm
 from aiida.engine import WorkChain, ToContext, if_
-from aiida.plugins import WorkflowFactory
+from aiida.plugins import DataFactory, WorkflowFactory
+from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
 
+KpointsData = DataFactory('array.kpoints')
 HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')
 HpParallelizeAtomsWorkChain = WorkflowFactory('quantumespresso.hp.parallelize_atoms')
 
 
-class HpWorkChain(WorkChain):
+class HpWorkChain(ProtocolMixin, WorkChain):
     """Work chain to run a Quantum ESPRESSO hp.x calculation.
 
     If the `parallelize_atoms` input is set to `True`, the calculation will be parallelized over the Hubbard atoms by
@@ -34,6 +36,33 @@ class HpWorkChain(WorkChain):
         )
         spec.expose_outputs(HpBaseWorkChain)
         spec.exit_code(300, 'ERROR_CHILD_WORKCHAIN_FAILED', message='A child work chain failed.')
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        code,
+        parent_scf_folder=None,
+        protocol=None,
+        overrides=None,
+        **_
+    ):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol.
+
+        """
+        inputs = cls.get_protocol_inputs(protocol, overrides)
+
+        qpoints = KpointsData()
+        qpoints.set_kpoints_mesh(inputs['qpoints_mesh'])
+
+        builder = cls.get_builder()
+        builder.hp.code = code
+        builder.hp.parameters = orm.Dict(dict=inputs['hp']['parameters'])
+        if parent_scf_folder is not None:
+            builder.hp.parent_scf = parent_scf_folder
+        builder.hp.qpoints = qpoints
+        builder.parallelize_atoms = orm.Bool(inputs['parallelize_atoms'])
+
+        return builder
 
     def should_parallelize_atoms(self):
         """Return whether the calculation should be parallelized over atoms."""
