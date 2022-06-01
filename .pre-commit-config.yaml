@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
+    rev: 'v4.2.0'
     hooks:
     -   id: double-quote-string-fixer
     -   id: end-of-file-fixer
@@ -9,32 +9,23 @@ repos:
     -   id: trailing-whitespace
 
 -   repo: https://github.com/pre-commit/mirrors-yapf
-    rev: v0.30.0
+    rev: 'v0.32.0'
     hooks:
     -   id: yapf
         name: yapf
         types: [python]
-        args: [
-            '-i',
-            '--style={
-                based_on_style: google,
-                column_limit: 120,
-                align_closing_bracket_with_visual_indent: true,
-                coalesce_brackets: true,
-                dedent_closing_brackets: true,
-                indent_dictionary_value: false
-            }',
-        ]
+        args: ['-i']
+        additional_dependencies: ['toml']
 
 -   repo: https://github.com/PyCQA/pydocstyle
-    rev: 5.0.2
+    rev: '6.1.1'
     hooks:
     -   id: pydocstyle
         exclude: >
             (?x)^(
                 aiida_quantumespresso_hp/workflows/hubbard.py|
             )$
-        args: ['--ignore=D104,D203,D213']
+        additional_dependencies: ['toml']
 
 -   repo: local
     hooks:
@@ -46,6 +37,7 @@ repos:
         args: [
             '--max-line-length=120',
             '--disable=bad-continuation',
+            '--disable=consider-using-f-string',
             '--disable=duplicate-code',
             '--disable=import-outside-toplevel',
             '--disable=inconsistent-return-statements',
@@ -55,15 +47,3 @@ repos:
             '--disable=too-many-branches',
             '--disable=too-many-locals',
         ]
-
-    -   id: version-number
-        name: Check version numbers
-        entry: python ./.ci/validate_version_number.py
-        language: system
-        pass_filenames: false
-        files: >-
-            (?x)^(
-                setup.json|
-                .ci/validate_consistency.py|
-                aiida_quantumespresso_hp/__init__.py
-            )$

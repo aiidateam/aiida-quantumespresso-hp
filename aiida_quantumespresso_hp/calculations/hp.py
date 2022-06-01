@@ -75,7 +75,7 @@ def validate_qpoints(qpoints, _):
     except AttributeError:
         return 'support for explicit qpoints is not implemented, only meshes'
 
-    if any([i != 0. for i in offset]):
+    if any(i != 0. for i in offset):
         return 'support for qpoint meshes with non-zero offsets is not implemented'
 
 
