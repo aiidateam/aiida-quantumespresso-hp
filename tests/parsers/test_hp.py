@@ -2,9 +2,9 @@
 # pylint: disable=unused-argument,redefined-outer-name
 """Tests for the `HpParser`."""
 
-import pytest
 from aiida import orm
 from aiida.common import AttributeDict
+import pytest
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Tests for the :mod:`aiida_quantumespresso_hp.utils.validation` module."""
+from aiida import orm
 import pytest
 
-from aiida import orm
 from aiida_quantumespresso_hp.utils.validation import validate_parent_calculation
 
 

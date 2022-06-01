@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-member,redefined-outer-name
 """Tests for the `HpBaseWorkChain` class."""
-import pytest
-
-from plumpy import ProcessState
-
 from aiida.common import AttributeDict
 from aiida.engine import ProcessHandlerReport
+from plumpy import ProcessState
+import pytest
 
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain

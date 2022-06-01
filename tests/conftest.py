@@ -7,8 +7,8 @@ import os
 import shutil
 import tempfile
 
-import pytest
 from aiida.manage.fixtures import fixture_manager
+import pytest
 
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']  # pylint: disable=invalid-name
 

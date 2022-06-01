@@ -8,6 +8,16 @@ repos:
     -   id: mixed-line-ending
     -   id: trailing-whitespace
 
+-   repo: https://github.com/ikamensh/flynt/
+    rev: '0.76'
+    hooks:
+    -   id: flynt
+
+-   repo: https://github.com/pycqa/isort
+    rev: '5.10.1'
+    hooks:
+    -   id: isort
+
 -   repo: https://github.com/pre-commit/mirrors-yapf
     rev: 'v0.32.0'
     hooks:
@@ -34,16 +44,3 @@ repos:
         entry: pylint
         types: [python]
         language: system
-        args: [
-            '--max-line-length=120',
-            '--disable=bad-continuation',
-            '--disable=consider-using-f-string',
-            '--disable=duplicate-code',
-            '--disable=import-outside-toplevel',
-            '--disable=inconsistent-return-statements',
-            '--disable=invalid-name',
-            '--disable=no-member',
-            '--disable=too-many-arguments',
-            '--disable=too-many-branches',
-            '--disable=too-many-locals',
-        ]

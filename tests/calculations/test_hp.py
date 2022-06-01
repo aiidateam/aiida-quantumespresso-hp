@@ -2,11 +2,10 @@
 """Tests for the `HpCalculation` class."""
 import os
 
-import pytest
-
 from aiida import orm
 from aiida.common import datastructures
 from aiida.plugins import CalculationFactory
+import pytest
 
 HpCalculation = CalculationFactory('quantumespresso.hp')
 

@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """Command line scripts to launch a `SelfConsistentHubbardWorkChain` for testing and demonstration purposes."""
-import click
-
 from aiida.cmdline.params import types
 from aiida.cmdline.utils import decorators
-
-from aiida_sssp.cli import options as options_sssp
 from aiida_quantumespresso.cli.utils import launch
 from aiida_quantumespresso.cli.utils import options as options_qe
+from aiida_sssp.cli import options as options_sssp
+import click
+
 from . import cmd_launch
 
 
