@@ -28,7 +28,7 @@
     "extras_require": {
         "pre-commit": [
             "pre-commit~=2.2",
-            "pylint~=2.5"
+            "pylint==2.5"
         ],
         "tests": [
             "pgtest~=1.3",
