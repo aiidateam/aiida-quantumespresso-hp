@@ -9,7 +9,7 @@ authors = [
     {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'}
 ]
 readme = 'README.md'
-license = {file = 'LICENSE'}
+license = {file = 'LICENSE.txt'}
 classifiers = [
     'Development Status :: 4 - Beta',
     'Framework :: AiiDA',
