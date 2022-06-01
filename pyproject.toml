@@ -1,3 +1,85 @@
 [build-system]
-requires = [ "setuptools>=40.8.0", "wheel", "reentry~=1.3", "fastentrypoints~=0.12",]
-build-backend = "setuptools.build_meta:__legacy__"
+requires = ['flit_core>=3.4,<4']
+build-backend = 'flit_core.buildapi'
+
+[project]
+name = 'aiida-quantumespresso-hp'
+dynamic = ['description', 'version']
+authors = [
+    {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'}
+]
+readme = 'README.md'
+license = {file = 'LICENSE'}
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Framework :: AiiDA',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: POSIX :: Linux',
+    'Operating System :: MacOS :: MacOS X',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+]
+keywords = ['aiida', 'workflows']
+requires-python = '>=3.6'
+dependencies = [
+    'aiida-core~=1.4',
+    'aiida-quantumespresso~=3.0',
+    'aiida-sssp~=0.1',
+    'click~=7.0',
+    'click-completion~=0.5',
+]
+
+[project.urls]
+Source = 'https://github.com/aiidateam/aiida-quantumespresso-hp'
+
+[project.optional-dependencies]
+pre-commit = [
+    'pre-commit~=2.2',
+    'pylint==2.13.7',
+]
+tests = [
+    'pgtest~=1.3',
+    'pytest~=5.4',
+    'pytest-regressions~=1.0',
+]
+
+[project.entry-points.'aiida.calculations']
+'quantumespresso.hp' = 'aiida_quantumespresso_hp.calculations.hp:HpCalculation'
+
+[project.entry-points.'aiida.parsers']
+'quantumespresso.hp' = 'aiida_quantumespresso_hp.parsers.hp:HpParser'
+
+[project.entry-points.'aiida.workflows']
+'quantumespresso.hp.main' = 'aiida_quantumespresso_hp.workflows.hp.main:HpWorkChain'
+'quantumespresso.hp.parallelize_atoms' = 'aiida_quantumespresso_hp.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain'
+'quantumespresso.hp.base' = 'aiida_quantumespresso_hp.workflows.hp.base:HpBaseWorkChain'
+'quantumespresso.hp.hubbard' = 'aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain'
+
+[tool.flit.module]
+name = 'aiida_quantumespresso_hp'
+
+[tool.flit.sdist]
+exclude = [
+    '.github/',
+    'tests/',
+    '.gitignore',
+    '.pre-commit-config.yaml',
+]
+
+[tool.pydocstyle]
+ignore = [
+    'D104',
+    'D203',
+    'D213'
+]
+
+[tool.yapf]
+align_closing_bracket_with_visual_indent = true
+based_on_style = 'google'
+coalesce_brackets = true
+column_limit = 120
+dedent_closing_brackets = true
+indent_dictionary_value = false
+split_arguments_when_comma_terminated = true

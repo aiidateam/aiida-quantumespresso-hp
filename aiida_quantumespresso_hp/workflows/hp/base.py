@@ -88,7 +88,7 @@ class HpBaseWorkChain(BaseRestartWorkChain):
 
         # The `alpha_mix` parameter is an array and so all keys matching `alpha_mix(i)` with `i` some integer should
         # be corrected accordingly. If no such key exists, the default `alpha_mix(1)` is set.
-        if any([parameter.startswith('alpha_mix(') for parameter in parameters.keys()]):
+        if any(parameter.startswith('alpha_mix(') for parameter in parameters.keys()):
             for parameter in parameters.keys():
                 if parameter.startswith('alpha_mix('):
                     parameters[parameter] *= self.defaults.delta_factor_alpha_mix
