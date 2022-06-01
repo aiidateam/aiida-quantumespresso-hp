@@ -33,7 +33,7 @@ repos:
     -   id: pydocstyle
         exclude: >
             (?x)^(
-                aiida_quantumespresso_hp/workflows/hubbard.py|
+                src/aiida_quantumespresso_hp/workflows/hubbard.py|
             )$
         additional_dependencies: ['toml']
 
