@@ -2,11 +2,11 @@
 """Turn-key solution to automatically compute the self-consistent Hubbard parameters for a given structure."""
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
-from aiida.engine import WorkChain, ToContext, while_, if_, append_
+from aiida.engine import ToContext, WorkChain, append_, if_, while_
 from aiida.orm.nodes.data.array.bands import find_bandgap
 from aiida.plugins import CalculationFactory, WorkflowFactory
-
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
+
 from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
 from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
 from aiida_quantumespresso_hp.utils.validation import validate_structure_kind_order
@@ -240,7 +240,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         for kind in self.ctx.current_structure.kinds:
             for key, pseudo in pseudos.items():
                 symbol = re.sub(r'\d', '', key)
-                if re.match(r'{}[0-9]*'.format(kind.symbol), symbol):
+                if re.match(fr'{kind.symbol}[0-9]*', symbol):
                     results[kind.name] = pseudo
                     break
             else:
@@ -300,7 +300,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
         inputs.base.pw.parameters = orm.Dict(dict=parameters)
-        inputs.metadata.call_link_label = 'iteration_{:02d}_relax'.format(self.ctx.iteration)
+        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_relax'
 
         if u_projection_type_relax != self.defaults.u_projection_type_relax:
             self.report(
@@ -335,7 +335,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         conv_thr = inputs.pw.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
         inputs.pw.parameters['ELECTRONS']['conv_thr'] = conv_thr
         inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
-        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_fixed'.format(self.ctx.iteration)
+        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed'
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
@@ -359,7 +359,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         inputs.pw.parameters['ELECTRONS']['conv_thr'] = inputs.pw.parameters['ELECTRONS'].get(
             'conv_thr', self.defaults.conv_thr_preconverge
         )
-        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_smearing'.format(self.ctx.iteration)
+        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_smearing'
         inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
@@ -393,7 +393,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         )
 
         inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
-        inputs.metadata.call_link_label = 'iteration_{:02d}_scf_fixed_magnetic'.format(self.ctx.iteration)
+        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed_magnetic'
 
         running = self.submit(PwBaseWorkChain, **inputs)
         self.report(
@@ -417,7 +417,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
 
         inputs = self.get_inputs(HpWorkChain, 'hubbard')
         inputs.hp.parent_scf = workchain.outputs.remote_folder
-        inputs.metadata.call_link_label = 'iteration_{:02d}_hp'.format(self.ctx.iteration)
+        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_hp'
 
         running = self.submit(HpWorkChain, **inputs)
 

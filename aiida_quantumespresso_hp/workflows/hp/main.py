@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Work chain to run a Quantum ESPRESSO hp.x calculation."""
 from aiida import orm
-from aiida.engine import WorkChain, ToContext, if_
+from aiida.engine import ToContext, WorkChain, if_
 from aiida.plugins import WorkflowFactory
 
 HpBaseWorkChain = WorkflowFactory('quantumespresso.hp.base')

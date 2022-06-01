@@ -6,7 +6,6 @@ from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.common.utils import classproperty
 from aiida.plugins import CalculationFactory
-
 from aiida_quantumespresso.calculations import CalcJob, _lowercase_dict, _uppercase_dict
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 

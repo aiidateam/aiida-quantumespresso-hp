@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Test the automatic ``invalidates_cache`` attribute for exit codes."""
 import inspect
-import pytest
 
 from aiida.engine import CalcJob
 from aiida.plugins import CalculationFactory
+import pytest
 
 
 @pytest.mark.parametrize('entry_point_name', ['quantumespresso.hp'])

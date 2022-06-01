@@ -2,13 +2,13 @@
 """Parser implementation for the `HpCalculation` plugin."""
 import os
 import re
-import numpy
 
 from aiida import orm
 from aiida.common import exceptions
 from aiida.parsers import Parser
-
 from aiida_quantumespresso.utils.mapping import get_logging_container
+import numpy
+
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 
 

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-member,redefined-outer-name
 """Tests for the `SelfConsistentHubbardWorkChain` class."""
-import pytest
-
 from aiida.orm import Dict
+import pytest
 
 
 @pytest.fixture
