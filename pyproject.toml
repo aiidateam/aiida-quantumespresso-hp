@@ -25,7 +25,6 @@ requires-python = '>=3.8'
 dependencies = [
     'aiida-core~=1.4',
     'aiida-quantumespresso~=3.0',
-    'aiida-sssp~=0.1',
     'click~=7.0',
     'click-completion~=0.5',
 ]

@@ -4,7 +4,6 @@ from aiida.cmdline.params import types
 from aiida.cmdline.utils import decorators
 from aiida_quantumespresso.cli.utils import launch
 from aiida_quantumespresso.cli.utils import options as options_qe
-from aiida_sssp.cli import options as options_sssp
 import click
 
 from . import cmd_launch
@@ -26,7 +25,7 @@ from . import cmd_launch
     help='The code to use for the hp.x executable.'
 )
 @options_qe.STRUCTURE()
-@options_sssp.SSSP_FAMILY()
+@options_qe.PSEUDO_FAMILY()
 @options_qe.KPOINTS_MESH(required=True, help='The k-point mesh to use for the SCF calculations.')
 @options_qe.QPOINTS_MESH(required=True, help='The q-point mesh to use for the linear response calculation.')
 @options_qe.ECUTWFC()
@@ -51,7 +50,7 @@ from . import cmd_launch
 )
 @decorators.with_dbenv()
 def launch_workflow(
-    code_pw, code_hp, structure, sssp_family, kpoints_mesh, qpoints_mesh, ecutwfc, ecutrho, hubbard_u,
+    code_pw, code_hp, structure, pseudo_family, kpoints_mesh, qpoints_mesh, ecutwfc, ecutrho, hubbard_u,
     starting_magnetization, max_num_machines, max_wallclock_seconds, daemon, meta_convergence, parallelize_atoms,
     with_mpi
 ):
@@ -60,7 +59,7 @@ def launch_workflow(
     from aiida.plugins import WorkflowFactory
     from aiida_quantumespresso.utils.resources import get_default_options
 
-    cutoff_wfc, cutoff_rho = sssp_family.get_cutoffs(structure=structure)
+    cutoff_wfc, cutoff_rho = pseudo_family.get_recommended_cutoffs(structure=structure)
 
     parameters = {
         'SYSTEM': {
@@ -106,7 +105,7 @@ def launch_workflow(
             'kpoints': kpoints_mesh,
             'pw': {
                 'code': code_pw,
-                'pseudos': sssp_family.get_pseudos(structure),
+                'pseudos': pseudo_family.get_pseudos(structure=structure),
                 'parameters': orm.Dict(dict=parameters),
                 'metadata': {
                     'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
@@ -119,7 +118,7 @@ def launch_workflow(
                 'kpoints': kpoints_mesh,
                 'pw': {
                     'code': code_pw,
-                    'pseudos': sssp_family.get_pseudos(structure),
+                    'pseudos': pseudo_family.get_pseudos(structure=structure),
                     'parameters': orm.Dict(dict=parameters),
                     'metadata': {
                         'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
@@ -131,7 +130,7 @@ def launch_workflow(
             'kpoints': kpoints_mesh,
             'pw': {
                 'code': code_pw,
-                'pseudos': sssp_family.get_pseudos(structure),
+                'pseudos': pseudo_family.get_pseudos(structure=structure),
                 'parameters': orm.Dict(dict=parameters),
                 'metadata': {
                     'options': get_default_options(max_num_machines, max_wallclock_seconds, with_mpi)
