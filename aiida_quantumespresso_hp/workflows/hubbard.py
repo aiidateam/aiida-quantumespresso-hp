@@ -161,11 +161,10 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         spec.input('tolerance_v', valid_type=orm.Float, default=lambda: orm.Float(0.01),
                    help='Tolerance value for self-consistent DFT+U+V calculation. '\
                    'It refers to the only off-diagonal elements V.')
-        spec.input('cut_on_file', valid_type=orm.Float, required=False,
-                   help='Cut value on hubbard_file. Meant to be used with small values to cut '\
-                   'negligible (or negative) inter-site Hubbard parameters in the hubbard_file on each iteration.')
         spec.input('skip_first_relax', valid_type=orm.Bool, default=lambda: orm.Bool(False),
                    help='if True, skip the first relaxation')
+        spec.input('same_init_structure', valid_type=orm.Bool, default=lambda: orm.Bool(False),
+                   help='if True, it starts each relaxation with the original input structure')
         spec.input('max_iterations', valid_type=orm.Int, default=lambda: orm.Int(5))
         spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.inputs.validator = validate_inputs
@@ -175,6 +174,9 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'})
         spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('pw.structure',))
         spec.expose_inputs(HpWorkChain, namespace='hubbard', exclude=('hp.parent_scf',))
+        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
+            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.'
+        )
         
         # Outline of the workflow
         spec.outline(
@@ -188,9 +190,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 ),
                 cls.run_scf_smearing,
                 cls.recon_scf,
-                if_(cls.is_insulator)(
-                    cls.run_scf_fixed,
-                ),
+                cls.run_scf_fixed,
                 cls.inspect_scf,
                 cls.run_hp,
                 cls.inspect_hp,
@@ -226,6 +226,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
     def setup(self):
         """Set up the context."""
         self.ctx.current_structure = self.inputs.structure
+        self.ctx.init_structure = self.inputs.structure
         
         if 'hubbard_u' in self.inputs:
             self.ctx.current_hubbard_u = self.inputs.hubbard_u.get_dict()
@@ -262,6 +263,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             except ValueError:
                 self.report('structure has incorrect kind order, reordering...')
                 self.ctx.current_structure = structure_reorder_kinds(structure, hubbard_u)
+                self.ctx.init_structure = self.ctx.current_structure
         # .. U+V 
         elif 'hubbard_start' in self.inputs:
             try:
@@ -275,6 +277,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 hubbard_start = self.inputs.hubbard_start
                 self.report('structure has incorrect kind order, reordering...')
                 self.ctx.current_structure = structure_reorder_kinds_v_start(structure, hubbard_start)
+                self.ctx.init_structure = self.ctx.current_structure
                 self.ctx.hubbard_start_ = create_hubbard_v_from_distance(hubbard_start,
                                                                      self.ctx.current_structure).get_list()
             self.ctx.is_U_V = True
@@ -630,9 +633,18 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         for site in workchain.outputs.hubbard.get_attribute('sites'):
             if site['type'] != site['new_type']:
                 self.report('new types have been determined: relabeling the structure and starting new iteration.')
-                result = structure_relabel_kinds(self.ctx.current_structure, 
-                                                 workchain.outputs.hubbard, 
-                                                 self.ctx.current_magnetic_moments)
+                result = structure_relabel_kinds(
+                    self.ctx.current_structure, 
+                    workchain.outputs.hubbard, 
+                    self.ctx.current_magnetic_moments
+                )
+                if self.inputs.same_init_structure.value:
+                    result_new_init = structure_relabel_kinds(
+                        self.ctx.init_structure, 
+                        workchain.outputs.hubbard, 
+                        self.ctx.current_magnetic_moments
+                    )
+                    self.ctx.init_structure = result_new_init['structure']
                 self.ctx.current_structure = result['structure']
                 self.ctx.current_hubbard_u = result['hubbard_u'].get_dict()
                 self.ctx.current_magnetic_moments = result['starting_magnetization']
@@ -650,6 +662,8 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             current_value = float(entry['value'])
             previous_value = float(prev_hubbard_u[kind])
             if abs(current_value - previous_value) > tolerance:
+                if self.inputs.same_init_structure.value:
+                    self.ctx.current_structure = self.ctx.init_structure
                 msg = f'parameters not converged for site {index}: {current_value} - {previous_value} > {tolerance}'
                 self.report(msg)
                 break
@@ -731,7 +745,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                     return self.exit_codes.ERROR_NON_COMPARABLE_FILES.format(iteration=self.ctx.iteration)
             else:
                 self.report('Hubbard U and V parameters are converged.')
-                self.ctx.is_converged = True         
+                self.ctx.is_converged = True
         
     
     def run_results(self):
@@ -742,3 +756,24 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             self.out('hubbard', self.ctx.workchains_hp[-1].outputs.hubbard)
         elif self.is_U_V():
             self.out('hubbard_parameters', self.ctx.workchains_hp[-1].outputs.hubbard_parameters)
+            
+    def on_terminated(self):
+        """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
+        super().on_terminated()
+
+        if self.inputs.clean_workdir.value is False:
+            self.report('remote folders will not be cleaned')
+            return
+
+        cleaned_calcs = []
+
+        for called_descendant in self.node.called_descendants:
+            if isinstance(called_descendant, orm.CalcJobNode):
+                try:
+                    called_descendant.outputs.remote_folder._clean()  # pylint: disable=protected-access
+                    cleaned_calcs.append(called_descendant.pk)
+                except (IOError, OSError, KeyError):
+                    pass
+
+        if cleaned_calcs:
+            self.report(f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}")
