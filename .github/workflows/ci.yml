@@ -35,6 +35,9 @@ jobs:
 
         runs-on: ubuntu-latest
 
+        env:
+            AIIDA_WARN_v3: 1
+
         strategy:
             matrix:
                 python-version: ['3.8', '3.9']
