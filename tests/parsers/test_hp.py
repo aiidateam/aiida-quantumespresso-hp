@@ -21,16 +21,14 @@ def generate_inputs_init_only():
     return AttributeDict({'parameters': orm.Dict(dict=parameters)})
 
 
-def test_hp_default(
-    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
-    data_regression
-):
+@pytest.mark.usefixtures('aiida_profile_clean')
+def test_hp_default(aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_default, data_regression):
     """Test a default `hp.x` calculation."""
     name = 'default'
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_default)
+    node = generate_calc_job_node(entry_point_calc_job, aiida_localhost, name, generate_inputs_default)
     parser = generate_parser(entry_point_parser)
     results, calcfunction = parser.parse_from_node(node, store_provenance=False)
 
@@ -48,16 +46,16 @@ def test_hp_default(
     })
 
 
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_hp_initialization_only(
-    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_init_only,
-    data_regression
+    aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_init_only, data_regression
 ):
     """Test an initialization only `hp.x` calculation."""
     name = 'initialization_only'
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_init_only)
+    node = generate_calc_job_node(entry_point_calc_job, aiida_localhost, name, generate_inputs_init_only)
     parser = generate_parser(entry_point_parser)
     results, calcfunction = parser.parse_from_node(node, store_provenance=False)
 
@@ -72,16 +70,14 @@ def test_hp_initialization_only(
     })
 
 
-def test_hp_failed_invalid_namelist(
-    fixture_database, fixture_localhost, generate_calc_job_node, generate_parser, generate_inputs_default,
-    data_regression
-):
+@pytest.mark.usefixtures('aiida_profile_clean')
+def test_hp_failed_invalid_namelist(aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_default):
     """Test an `hp.x` calculation that fails because of an invalid namelist."""
     name = 'failed_invalid_namelist'
     entry_point_calc_job = 'quantumespresso.hp'
     entry_point_parser = 'quantumespresso.hp'
 
-    node = generate_calc_job_node(entry_point_calc_job, fixture_localhost, name, generate_inputs_default)
+    node = generate_calc_job_node(entry_point_calc_job, aiida_localhost, name, generate_inputs_default)
     parser = generate_parser(entry_point_parser)
     _, calcfunction = parser.parse_from_node(node, store_provenance=False)
 
@@ -90,7 +86,7 @@ def test_hp_failed_invalid_namelist(
     assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_INVALID_NAMELIST.status
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_failed_stdout_incomplete(generate_calc_job_node, generate_parser, generate_inputs_default, data_regression):
     """Test calculation that exited prematurely and so the stdout is incomplete."""
     name = 'failed_stdout_incomplete'
@@ -106,7 +102,7 @@ def test_failed_stdout_incomplete(generate_calc_job_node, generate_parser, gener
     assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE.status
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_failed_no_hubbard_parameters(
     generate_calc_job_node, generate_parser, generate_inputs_default, data_regression
 ):
@@ -124,7 +120,7 @@ def test_failed_no_hubbard_parameters(
     assert calcfunction.exit_status == node.process_class.exit_codes.ERROR_OUTPUT_HUBBARD_MISSING.status
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_failed_no_hubbard_chi(generate_calc_job_node, generate_parser, generate_inputs_default, data_regression):
     """Test calculation that did not generate the Hubbard chi output file."""
     name = 'failed_no_hubbard_chi'

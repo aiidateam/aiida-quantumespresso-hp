@@ -7,7 +7,6 @@ import os
 import shutil
 import tempfile
 
-from aiida.manage.fixtures import fixture_manager
 import pytest
 
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']  # pylint: disable=invalid-name
@@ -31,13 +30,6 @@ def filepath_fixtures(filepath_tests):
 
 
 @pytest.fixture(scope='session')
-def fixture_environment():
-    """Set up a complete AiiDA test environment, with configuration, profile, database and repository."""
-    with fixture_manager() as manager:
-        yield manager
-
-
-@pytest.fixture(scope='session')
 def fixture_work_directory():
     """Return a temporary folder that can be used as for example a computer's work directory."""
     dirpath = tempfile.mkdtemp()
@@ -54,29 +46,14 @@ def fixture_sandbox_folder():
 
 
 @pytest.fixture
-def fixture_localhost(aiida_localhost):
-    """Return a localhost `Computer`."""
-    localhost = aiida_localhost
-    localhost.set_default_mpiprocs_per_machine(1)
-    return localhost
-
-
-@pytest.fixture
-def fixture_code(fixture_localhost):
+def fixture_code(aiida_localhost):
     """Return a `Code` instance configured to run calculations of given entry point on localhost `Computer`."""
 
     def _fixture_code(entry_point_name):
         from aiida.orm import Code
-        return Code(input_plugin_name=entry_point_name, remote_computer_exec=[fixture_localhost, '/bin/true'])
+        return Code(input_plugin_name=entry_point_name, remote_computer_exec=[aiida_localhost, '/bin/true'])
 
     return _fixture_code
-
-
-@pytest.fixture(scope='function')
-def fixture_database(fixture_environment):
-    """Clear the database after each test."""
-    yield
-    fixture_environment.reset_db()
 
 
 @pytest.fixture
@@ -107,7 +84,7 @@ def generate_calc_job():
 
 
 @pytest.fixture
-def generate_calc_job_node(fixture_localhost):
+def generate_calc_job_node(aiida_localhost):
     """Fixture to generate a mock `CalcJobNode` for testing parsers."""
 
     def flatten_inputs(inputs, prefix=''):
@@ -135,7 +112,7 @@ def generate_calc_job_node(fixture_localhost):
         from aiida.plugins.entry_point import format_entry_point_string
 
         if computer is None:
-            computer = fixture_localhost
+            computer = aiida_localhost
 
         entry_point = format_entry_point_string('aiida.calculations', entry_point_name)
 
@@ -293,7 +270,7 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
             'code': fixture_code('quantumespresso.pw'),
             'structure': structure or generate_structure(),
             'kpoints': generate_kpoints_mesh(2),
-            'parameters': Dict(dict=parameters_base),
+            'parameters': Dict(parameters_base),
             'metadata': {
                 'options': get_default_options()
             }
@@ -309,7 +286,7 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
 
 @pytest.fixture
 def generate_inputs_hp(
-    fixture_code, fixture_localhost, generate_calc_job_node, generate_inputs_pw, generate_kpoints_mesh
+    fixture_code, aiida_localhost, generate_calc_job_node, generate_inputs_pw, generate_kpoints_mesh
 ):
     """Generate default inputs for a `HpCalculation."""
 
@@ -319,12 +296,12 @@ def generate_inputs_hp(
         from aiida_quantumespresso.utils.resources import get_default_options
 
         parent_inputs = generate_inputs_pw(parameters={'SYSTEM': {'lda_plus_u': True}})
-        parent = generate_calc_job_node('quantumespresso.pw', fixture_localhost, inputs=parent_inputs)
+        parent = generate_calc_job_node('quantumespresso.pw', aiida_localhost, inputs=parent_inputs)
         inputs = {
             'code': fixture_code('quantumespresso.hp'),
             'parent_scf': parent.outputs.remote_folder,
             'qpoints': generate_kpoints_mesh(2),
-            'parameters': Dict(dict={'INPUTHP': inputs or {}}),
+            'parameters': Dict({'INPUTHP': inputs or {}}),
             'metadata': {
                 'options': get_default_options()
             }
@@ -344,7 +321,7 @@ def generate_inputs_hubbard(generate_inputs_pw, generate_inputs_hp, generate_str
         from aiida.orm import Dict
 
         structure = structure or generate_structure()
-        hubbard_u = hubbard_u or Dict(dict={kind.name: 1.0 for kind in structure.kinds})
+        hubbard_u = hubbard_u or Dict({kind.name: 1.0 for kind in structure.kinds})
         inputs_pw = generate_inputs_pw(structure=structure)
         inputs_hp = generate_inputs_hp()
 

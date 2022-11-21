@@ -38,7 +38,7 @@ def generate_scf_workchain_node():
     return node
 
 
-@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_setup(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.setup`."""
     inputs = generate_inputs_hubbard()
@@ -54,12 +54,12 @@ def test_setup(generate_workchain_hubbard, generate_inputs_hubbard):
     assert process.ctx.iteration == 0
 
 
-@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_validate_inputs_invalid_structure(generate_workchain_hubbard, generate_inputs_hubbard, generate_structure):
     """Test `SelfConsistentHubbardWorkChain.validate_inputs`."""
     inputs = generate_inputs_hubbard()
     inputs['structure'] = generate_structure((('Li', 'Li'), ('Co', 'Co')))
-    inputs['hubbard_u'] = Dict(dict={'Co': 1})
+    inputs['hubbard_u'] = Dict({'Co': 1})
 
     process = generate_workchain_hubbard(inputs=inputs)
     process.setup()
@@ -68,12 +68,12 @@ def test_validate_inputs_invalid_structure(generate_workchain_hubbard, generate_
     assert process.ctx.current_structure != inputs['structure']
 
 
-@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_validate_inputs_valid_structure(generate_workchain_hubbard, generate_inputs_hubbard, generate_structure):
     """Test `SelfConsistentHubbardWorkChain.validate_inputs`."""
     inputs = generate_inputs_hubbard()
     inputs['structure'] = generate_structure((('Co', 'Co'), ('Li', 'Li')))
-    inputs['hubbard_u'] = Dict(dict={'Co': 1})
+    inputs['hubbard_u'] = Dict({'Co': 1})
 
     process = generate_workchain_hubbard(inputs=inputs)
     process.setup()
@@ -82,14 +82,14 @@ def test_validate_inputs_valid_structure(generate_workchain_hubbard, generate_in
     assert process.ctx.current_structure == inputs['structure']
 
 
-@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_run_scf_fixed_magnetic(
     generate_workchain_hubbard, generate_inputs_hubbard, generate_structure, generate_scf_workchain_node
 ):
     """Test `SelfConsistentHubbardWorkChain.run_scf_fixed_magnetic`."""
     structure = generate_structure((('Co', 'Co'), ('Li', 'Li')))
     inputs = generate_inputs_hubbard(structure)
-    inputs['hubbard_u'] = Dict(dict={'Co': 1})
+    inputs['hubbard_u'] = Dict({'Co': 1})
 
     process = generate_workchain_hubbard(inputs=inputs)
     process.setup()

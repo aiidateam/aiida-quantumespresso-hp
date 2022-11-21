@@ -43,4 +43,4 @@ def structure_relabel_kinds(structure, hubbard):
     for site in sites[len(relabeled.sites):]:
         relabeled.append_atom(position=site.position, symbols=structure.get_kind(site.kind_name).symbols)
 
-    return {'structure': relabeled, 'hubbard_u': Dict(dict=hubbard_u)}
+    return {'structure': relabeled, 'hubbard_u': Dict(hubbard_u)}
