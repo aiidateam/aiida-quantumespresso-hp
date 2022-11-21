@@ -4,10 +4,6 @@
 
 from aiida.cmdline.params import options, types
 import click
-import click_completion
-
-# Activate the completion of parameter types provided by the click_completion package
-click_completion.init()
 
 
 @click.group('aiida-quantumespresso-hp', context_settings={'help_option_names': ['-h', '--help']})
