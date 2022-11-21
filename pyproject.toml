@@ -42,6 +42,9 @@ tests = [
     'pytest-regressions~=1.0',
 ]
 
+[project.scripts]
+aiida-quantumespresso-hp = 'aiida_quantumespresso_hp.cli:cmd_root'
+
 [project.entry-points.'aiida.calculations']
 'quantumespresso.hp' = 'aiida_quantumespresso_hp.calculations.hp:HpCalculation'
 
