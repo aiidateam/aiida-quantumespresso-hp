@@ -41,8 +41,8 @@ def test_hp_default(aiida_localhost, generate_calc_job_node, generate_parser, ge
     data_regression.check({
         'parameters': results['parameters'].get_dict(),
         'hubbard': results['hubbard'].get_dict(),
-        'hubbard_chi': results['hubbard_chi'].attributes,
-        'hubbard_matrices': results['hubbard_matrices'].attributes,
+        'hubbard_chi': results['hubbard_chi'].base.attributes.all,
+        'hubbard_matrices': results['hubbard_matrices'].base.attributes.all,
     })
 
 

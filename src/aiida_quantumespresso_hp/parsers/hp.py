@@ -36,7 +36,7 @@ class HpParser(Parser):
         This is the case if the `determin_num_pert_only` flag was set to `True` in the `INPUTHP` namelist.
         In this case, there will only be a stdout file. All other output files will be missing, but that is expected.
         """
-        return self.node.inputs.parameters.get_attribute('INPUTHP', {}).get('determine_num_pert_only', False)
+        return self.node.inputs.parameters.base.attributes.get('INPUTHP', {}).get('determine_num_pert_only', False)
 
     @property
     def is_partial_site(self):
@@ -44,7 +44,7 @@ class HpParser(Parser):
 
         A complete run means that all perturbations were calculation and the final matrices were computerd
         """
-        card = self.node.inputs.parameters.get_attribute('INPUTHP', {})
+        card = self.node.inputs.parameters.base.attributes.get('INPUTHP', {})
         return any(key.startswith('perturb_only_atom') for key in card.keys())
 
     @property
@@ -62,13 +62,13 @@ class HpParser(Parser):
 
         :return: optional exit code in case of an error
         """
-        filename = self.node.get_attribute('output_filename')
+        filename = self.node.base.attributes.get('output_filename')
 
-        if filename not in self.retrieved.list_object_names():
+        if filename not in self.retrieved.base.repository.list_object_names():
             return self.exit_codes.ERROR_OUTPUT_STDOUT_MISSING
 
         try:
-            stdout = self.retrieved.get_object_content(filename)
+            stdout = self.retrieved.base.repository.get_object_content(filename)
         except IOError:
             return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 
@@ -99,7 +99,7 @@ class HpParser(Parser):
         filename = HpCalculation.filename_output_hubbard
 
         try:
-            with self.retrieved.open(filename, 'r') as handle:
+            with self.retrieved.base.repository.open(filename, 'r') as handle:
                 parsed_data = self.parse_hubbard_content(handle)
         except IOError:
             if self.is_complete_calculation:
@@ -123,7 +123,7 @@ class HpParser(Parser):
         filename = HpCalculation.filename_output_hubbard_chi
 
         try:
-            with self.retrieved.open(filename, 'r') as handle:
+            with self.retrieved.base.repository.open(filename, 'r') as handle:
                 parsed_data = self.parse_chi_content(handle)
         except IOError:
             if self.is_complete_calculation:
@@ -143,7 +143,7 @@ class HpParser(Parser):
         filename = HpCalculation.filename_output_hubbard_parameters
 
         try:
-            with self.retrieved.open(filename, 'rb') as handle:
+            with self.retrieved.base.repository.open(filename, 'rb') as handle:
                 self.out('hubbard_parameters', orm.SinglefileData(file=handle))
         except IOError:
             pass  # the file is not required to exist

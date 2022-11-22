@@ -33,7 +33,7 @@ def generate_scf_workchain_node():
         'number_of_bands': 1,
         'total_magnetization': 1,
     }).store()
-    parameters.add_incoming(node, link_type=LinkType.RETURN, link_label='output_parameters')
+    parameters.base.links.add_incoming(node, link_type=LinkType.RETURN, link_label='output_parameters')
 
     return node
 

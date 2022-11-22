@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=redefined-outer-name
 """Initialise a text database and profile for pytest."""
-import collections
+from collections.abc import Mapping
 import io
 import os
 import shutil
@@ -47,11 +47,13 @@ def fixture_sandbox_folder():
 
 @pytest.fixture
 def fixture_code(aiida_localhost):
-    """Return a `Code` instance configured to run calculations of given entry point on localhost `Computer`."""
+    """Return a `InstalledCode` instance configured to run calculations of given entry point on localhost `Computer`."""
 
     def _fixture_code(entry_point_name):
-        from aiida.orm import Code
-        return Code(input_plugin_name=entry_point_name, remote_computer_exec=[aiida_localhost, '/bin/true'])
+        from aiida.orm import InstalledCode
+        return InstalledCode(
+            computer=aiida_localhost, filepath_executable='/bin/true', default_calc_job_plugin=entry_point_name
+        )
 
     return _fixture_code
 
@@ -91,7 +93,7 @@ def generate_calc_job_node(aiida_localhost):
         """Flatten inputs recursively like :meth:`aiida.engine.processes.process::Process._flatten_inputs`."""
         flat_inputs = []
         for key, value in inputs.items():
-            if isinstance(value, collections.Mapping):
+            if isinstance(value, Mapping):
                 flat_inputs.extend(flatten_inputs(value, prefix=prefix + key + '__'))
             else:
                 flat_inputs.append((prefix + key, value))
@@ -117,9 +119,9 @@ def generate_calc_job_node(aiida_localhost):
         entry_point = format_entry_point_string('aiida.calculations', entry_point_name)
 
         node = orm.CalcJobNode(computer=computer, process_type=entry_point)
-        node.set_attribute('input_filename', 'aiida.in')
-        node.set_attribute('output_filename', 'aiida.out')
-        node.set_attribute('error_filename', 'aiida.err')
+        node.base.attributes.set('input_filename', 'aiida.in')
+        node.base.attributes.set('output_filename', 'aiida.out')
+        node.base.attributes.set('error_filename', 'aiida.err')
         node.set_option('resources', {'num_machines': 1, 'num_mpiprocs_per_machine': 1})
         node.set_option('max_wallclock_seconds', 1800)
 
@@ -135,7 +137,7 @@ def generate_calc_job_node(aiida_localhost):
 
             for link_label, input_node in flatten_inputs(inputs):
                 input_node.store()
-                node.add_incoming(input_node, link_type=LinkType.INPUT_CALC, link_label=link_label)
+                node.base.links.add_incoming(input_node, link_type=LinkType.INPUT_CALC, link_label=link_label)
 
         node.store()
 
@@ -146,13 +148,13 @@ def generate_calc_job_node(aiida_localhost):
             filepath = os.path.join(
                 basepath, 'parsers', 'fixtures', entry_point_name[len('quantumespresso.'):], test_name
             )
-            retrieved.put_object_from_tree(filepath)
+            retrieved.base.repository.put_object_from_tree(filepath)
 
-        retrieved.add_incoming(node, link_type=LinkType.CREATE, link_label='retrieved')
+        retrieved.base.links.add_incoming(node, link_type=LinkType.CREATE, link_label='retrieved')
         retrieved.store()
 
         remote_folder = orm.RemoteData(computer=computer, remote_path='/tmp')
-        remote_folder.add_incoming(node, link_type=LinkType.CREATE, link_label='remote_folder')
+        remote_folder.base.links.add_incoming(node, link_type=LinkType.CREATE, link_label='remote_folder')
         remote_folder.store()
 
         return node
@@ -182,19 +184,6 @@ def generate_workchain():
         return process
 
     return _generate_workchain
-
-
-@pytest.fixture
-def generate_code_localhost():
-    """Return a `Code` instance configured to run calculations of given entry point on localhost `Computer`."""
-
-    def _generate_code_localhost(entry_point_name, computer):
-        from aiida.orm import Code
-        plugin_name = entry_point_name
-        remote_computer_exec = [computer, '/bin/true']
-        return Code(input_plugin_name=plugin_name, remote_computer_exec=remote_computer_exec)
-
-    return _generate_code_localhost
 
 
 @pytest.fixture
@@ -365,8 +354,8 @@ def generate_hp_retrieved():
 
     calcjob = CalcJobNode(process_type=process_type).store()
     retrieved = FolderData()
-    retrieved.put_object_from_filelike(io.StringIO('pert'), filename)
-    retrieved.add_incoming(calcjob, link_type=LinkType.CREATE, link_label='retrieved')
+    retrieved.base.repository.put_object_from_filelike(io.StringIO('pert'), filename)
+    retrieved.base.links.add_incoming(calcjob, link_type=LinkType.CREATE, link_label='retrieved')
     retrieved.store()
 
     return retrieved
@@ -397,11 +386,11 @@ def generate_upf_family(generate_upf_data):
         from aiida.orm import UpfFamily
 
         try:
-            existing = UpfFamily.objects.get(label=label)
+            existing = UpfFamily.collection.get(label=label)
         except exceptions.NotExistent:
             pass
         else:
-            UpfFamily.objects.delete(existing.pk)
+            UpfFamily.collection.delete(existing.pk)
 
         family = UpfFamily(label=label)
 

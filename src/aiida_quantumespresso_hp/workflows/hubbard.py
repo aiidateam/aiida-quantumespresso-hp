@@ -444,7 +444,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         prev_hubbard_u = self.ctx.current_hubbard_u
 
         # First check if new types were created, in which case we will have to create a new `StructureData`
-        for site in workchain.outputs.hubbard.get_attribute('sites'):
+        for site in workchain.outputs.hubbard.base.attributes.get('sites'):
             if site['type'] != site['new_type']:
                 self.report('new types have been determined: relabeling the structure and starting new iteration.')
                 result = structure_relabel_kinds(self.ctx.current_structure, workchain.outputs.hubbard)
@@ -457,7 +457,7 @@ class SelfConsistentHubbardWorkChain(WorkChain):
                 self.ctx.current_hubbard_u[entry['kind']] = float(entry['value'])
 
         # Check per site if the new computed value is converged with respect to the last iteration
-        for entry in workchain.outputs.hubbard.get_attribute('sites'):
+        for entry in workchain.outputs.hubbard.base.attributes.get('sites'):
             kind = entry['kind']
             index = entry['index']
             tolerance = self.inputs.tolerance.value
