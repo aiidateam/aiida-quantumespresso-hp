@@ -104,6 +104,12 @@ disable = [
     'too-many-locals',
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    'ignore:Creating AiiDA configuration folder.*:UserWarning'
+]
+testpaths = 'tests'
+
 [tool.yapf]
 align_closing_bracket_with_visual_indent = true
 based_on_style = 'google'
@@ -112,8 +118,3 @@ column_limit = 120
 dedent_closing_brackets = true
 indent_dictionary_value = false
 split_arguments_when_comma_terminated = true
-
-[tool.pytest.ini_options]
-filterwarnings = [
-    'ignore:Creating AiiDA configuration folder.*:UserWarning'
-]
