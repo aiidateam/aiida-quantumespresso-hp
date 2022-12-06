@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=redefined-outer-name
 """Initialise a text database and profile for pytest."""
-import collections
+from collections.abc import Mapping
 import io
 import os
 import shutil
 import tempfile
 
-from aiida.manage.fixtures import fixture_manager
 import pytest
 
 pytest_plugins = ['aiida.manage.tests.pytest_fixtures']  # pylint: disable=invalid-name
@@ -31,13 +30,6 @@ def filepath_fixtures(filepath_tests):
 
 
 @pytest.fixture(scope='session')
-def fixture_environment():
-    """Set up a complete AiiDA test environment, with configuration, profile, database and repository."""
-    with fixture_manager() as manager:
-        yield manager
-
-
-@pytest.fixture(scope='session')
 def fixture_work_directory():
     """Return a temporary folder that can be used as for example a computer's work directory."""
     dirpath = tempfile.mkdtemp()
@@ -54,29 +46,16 @@ def fixture_sandbox_folder():
 
 
 @pytest.fixture
-def fixture_localhost(aiida_localhost):
-    """Return a localhost `Computer`."""
-    localhost = aiida_localhost
-    localhost.set_default_mpiprocs_per_machine(1)
-    return localhost
-
-
-@pytest.fixture
-def fixture_code(fixture_localhost):
-    """Return a `Code` instance configured to run calculations of given entry point on localhost `Computer`."""
+def fixture_code(aiida_localhost):
+    """Return a `InstalledCode` instance configured to run calculations of given entry point on localhost `Computer`."""
 
     def _fixture_code(entry_point_name):
-        from aiida.orm import Code
-        return Code(input_plugin_name=entry_point_name, remote_computer_exec=[fixture_localhost, '/bin/true'])
+        from aiida.orm import InstalledCode
+        return InstalledCode(
+            computer=aiida_localhost, filepath_executable='/bin/true', default_calc_job_plugin=entry_point_name
+        )
 
     return _fixture_code
-
-
-@pytest.fixture(scope='function')
-def fixture_database(fixture_environment):
-    """Clear the database after each test."""
-    yield
-    fixture_environment.reset_db()
 
 
 @pytest.fixture
@@ -107,14 +86,14 @@ def generate_calc_job():
 
 
 @pytest.fixture
-def generate_calc_job_node(fixture_localhost):
+def generate_calc_job_node(aiida_localhost):
     """Fixture to generate a mock `CalcJobNode` for testing parsers."""
 
     def flatten_inputs(inputs, prefix=''):
         """Flatten inputs recursively like :meth:`aiida.engine.processes.process::Process._flatten_inputs`."""
         flat_inputs = []
         for key, value in inputs.items():
-            if isinstance(value, collections.Mapping):
+            if isinstance(value, Mapping):
                 flat_inputs.extend(flatten_inputs(value, prefix=prefix + key + '__'))
             else:
                 flat_inputs.append((prefix + key, value))
@@ -135,14 +114,14 @@ def generate_calc_job_node(fixture_localhost):
         from aiida.plugins.entry_point import format_entry_point_string
 
         if computer is None:
-            computer = fixture_localhost
+            computer = aiida_localhost
 
         entry_point = format_entry_point_string('aiida.calculations', entry_point_name)
 
         node = orm.CalcJobNode(computer=computer, process_type=entry_point)
-        node.set_attribute('input_filename', 'aiida.in')
-        node.set_attribute('output_filename', 'aiida.out')
-        node.set_attribute('error_filename', 'aiida.err')
+        node.base.attributes.set('input_filename', 'aiida.in')
+        node.base.attributes.set('output_filename', 'aiida.out')
+        node.base.attributes.set('error_filename', 'aiida.err')
         node.set_option('resources', {'num_machines': 1, 'num_mpiprocs_per_machine': 1})
         node.set_option('max_wallclock_seconds', 1800)
 
@@ -158,7 +137,7 @@ def generate_calc_job_node(fixture_localhost):
 
             for link_label, input_node in flatten_inputs(inputs):
                 input_node.store()
-                node.add_incoming(input_node, link_type=LinkType.INPUT_CALC, link_label=link_label)
+                node.base.links.add_incoming(input_node, link_type=LinkType.INPUT_CALC, link_label=link_label)
 
         node.store()
 
@@ -169,13 +148,13 @@ def generate_calc_job_node(fixture_localhost):
             filepath = os.path.join(
                 basepath, 'parsers', 'fixtures', entry_point_name[len('quantumespresso.'):], test_name
             )
-            retrieved.put_object_from_tree(filepath)
+            retrieved.base.repository.put_object_from_tree(filepath)
 
-        retrieved.add_incoming(node, link_type=LinkType.CREATE, link_label='retrieved')
+        retrieved.base.links.add_incoming(node, link_type=LinkType.CREATE, link_label='retrieved')
         retrieved.store()
 
         remote_folder = orm.RemoteData(computer=computer, remote_path='/tmp')
-        remote_folder.add_incoming(node, link_type=LinkType.CREATE, link_label='remote_folder')
+        remote_folder.base.links.add_incoming(node, link_type=LinkType.CREATE, link_label='remote_folder')
         remote_folder.store()
 
         return node
@@ -205,19 +184,6 @@ def generate_workchain():
         return process
 
     return _generate_workchain
-
-
-@pytest.fixture
-def generate_code_localhost():
-    """Return a `Code` instance configured to run calculations of given entry point on localhost `Computer`."""
-
-    def _generate_code_localhost(entry_point_name, computer):
-        from aiida.orm import Code
-        plugin_name = entry_point_name
-        remote_computer_exec = [computer, '/bin/true']
-        return Code(input_plugin_name=plugin_name, remote_computer_exec=remote_computer_exec)
-
-    return _generate_code_localhost
 
 
 @pytest.fixture
@@ -293,7 +259,7 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
             'code': fixture_code('quantumespresso.pw'),
             'structure': structure or generate_structure(),
             'kpoints': generate_kpoints_mesh(2),
-            'parameters': Dict(dict=parameters_base),
+            'parameters': Dict(parameters_base),
             'metadata': {
                 'options': get_default_options()
             }
@@ -309,7 +275,7 @@ def generate_inputs_pw(fixture_code, generate_structure, generate_kpoints_mesh, 
 
 @pytest.fixture
 def generate_inputs_hp(
-    fixture_code, fixture_localhost, generate_calc_job_node, generate_inputs_pw, generate_kpoints_mesh
+    fixture_code, aiida_localhost, generate_calc_job_node, generate_inputs_pw, generate_kpoints_mesh
 ):
     """Generate default inputs for a `HpCalculation."""
 
@@ -319,12 +285,12 @@ def generate_inputs_hp(
         from aiida_quantumespresso.utils.resources import get_default_options
 
         parent_inputs = generate_inputs_pw(parameters={'SYSTEM': {'lda_plus_u': True}})
-        parent = generate_calc_job_node('quantumespresso.pw', fixture_localhost, inputs=parent_inputs)
+        parent = generate_calc_job_node('quantumespresso.pw', aiida_localhost, inputs=parent_inputs)
         inputs = {
             'code': fixture_code('quantumespresso.hp'),
             'parent_scf': parent.outputs.remote_folder,
             'qpoints': generate_kpoints_mesh(2),
-            'parameters': Dict(dict={'INPUTHP': inputs or {}}),
+            'parameters': Dict({'INPUTHP': inputs or {}}),
             'metadata': {
                 'options': get_default_options()
             }
@@ -344,7 +310,7 @@ def generate_inputs_hubbard(generate_inputs_pw, generate_inputs_hp, generate_str
         from aiida.orm import Dict
 
         structure = structure or generate_structure()
-        hubbard_u = hubbard_u or Dict(dict={kind.name: 1.0 for kind in structure.kinds})
+        hubbard_u = hubbard_u or Dict({kind.name: 1.0 for kind in structure.kinds})
         inputs_pw = generate_inputs_pw(structure=structure)
         inputs_hp = generate_inputs_hp()
 
@@ -388,8 +354,8 @@ def generate_hp_retrieved():
 
     calcjob = CalcJobNode(process_type=process_type).store()
     retrieved = FolderData()
-    retrieved.put_object_from_filelike(io.StringIO('pert'), filename)
-    retrieved.add_incoming(calcjob, link_type=LinkType.CREATE, link_label='retrieved')
+    retrieved.base.repository.put_object_from_filelike(io.StringIO('pert'), filename)
+    retrieved.base.links.add_incoming(calcjob, link_type=LinkType.CREATE, link_label='retrieved')
     retrieved.store()
 
     return retrieved
@@ -420,11 +386,11 @@ def generate_upf_family(generate_upf_data):
         from aiida.orm import UpfFamily
 
         try:
-            existing = UpfFamily.objects.get(label=label)
+            existing = UpfFamily.collection.get(label=label)
         except exceptions.NotExistent:
             pass
         else:
-            UpfFamily.objects.delete(existing.pk)
+            UpfFamily.collection.delete(existing.pk)
 
         family = UpfFamily(label=label)
 

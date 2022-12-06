@@ -24,7 +24,7 @@ def structure_relabel_kinds(structure, hubbard):
 
     # First do the Hubbard sites, upping the kind name suffix each time a new type is encountered. We do the suffix
     # generation ourselves, because the indexing done by hp.x contains gaps in the sequence.
-    for index, site in enumerate(hubbard.get_attribute('sites')):
+    for index, site in enumerate(hubbard.base.attributes.get('sites')):
 
         symbol = re.search(r'^([A-za-z]+)[0-9]*$', site['kind']).group(1)
 
@@ -43,4 +43,4 @@ def structure_relabel_kinds(structure, hubbard):
     for site in sites[len(relabeled.sites):]:
         relabeled.append_atom(position=site.position, symbols=structure.get_kind(site.kind_name).symbols)
 
-    return {'structure': relabeled, 'hubbard_u': Dict(dict=hubbard_u)}
+    return {'structure': relabeled, 'hubbard_u': Dict(hubbard_u)}

@@ -304,11 +304,11 @@ class HpCalculation(CalcJob):
             os.makedirs(os.path.join(folder.abspath, self.dirname_output_hubbard), exist_ok=True)
 
             for retrieved in self.inputs.get('parent_hp', {}).values():
-                for filename in retrieved.list_object_names(self.dirname_output_hubbard):
+                for filename in retrieved.base.repository.list_object_names(self.dirname_output_hubbard):
                     filepath = os.path.join(self.dirname_output_hubbard, filename)
                     provenance_exclude_list.append(filepath)
                     with open(os.path.join(folder.abspath, filepath), 'wb') as handle:
-                        with retrieved.open(filepath, 'rb') as source:
+                        with retrieved.base.repository.open(filepath, 'rb') as source:
                             handle.write(source.read())
 
         return provenance_exclude_list

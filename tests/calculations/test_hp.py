@@ -10,7 +10,7 @@ import pytest
 HpCalculation = CalculationFactory('quantumespresso.hp')
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, file_regression):
     """Test a default `HpCalculation`."""
     entry_point_name = 'quantumespresso.hp'
@@ -48,7 +48,7 @@ def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, 
     file_regression.check(input_written, encoding='utf-8', extension='.in')
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_parameters(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
     """Test validation of `parameters`."""
     inputs = generate_inputs_hp()
@@ -62,7 +62,7 @@ def test_invalid_parameters(fixture_sandbox_folder, generate_calc_job, generate_
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_qpoints(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
     """Test validation of `qpoints`."""
     qpoints = orm.KpointsData()
@@ -75,7 +75,7 @@ def test_invalid_qpoints(fixture_sandbox_folder, generate_calc_job, generate_inp
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_parent_scf(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_calc_job_node):
     """Test validation of `parent_scf`."""
     inputs = generate_inputs_hp()
@@ -94,7 +94,7 @@ def test_invalid_parent_scf(fixture_sandbox_folder, generate_calc_job, generate_
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_parent_hp(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_calc_job_node):
     """Test validation of `parent_hp`."""
     inputs = generate_inputs_hp()
@@ -104,7 +104,7 @@ def test_invalid_parent_hp(fixture_sandbox_folder, generate_calc_job, generate_i
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_collect_no_parents(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
     """Test a `HpCalculation` performing a `compute_hp` calculation but without parent folder specified."""
     inputs = generate_inputs_hp(inputs={'compute_hp': True})
@@ -113,7 +113,7 @@ def test_collect_no_parents(fixture_sandbox_folder, generate_calc_job, generate_
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('fixture_database')
+@pytest.mark.usefixtures('aiida_profile_clean')
 def test_collect(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_hp_retrieved, file_regression):
     """Test a `HpCalculation` performing a `compute_hp` calculation."""
     entry_point_name = 'quantumespresso.hp'
