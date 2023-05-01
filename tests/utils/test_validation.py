@@ -10,7 +10,6 @@ def test_validate_parent_calculation():
     """Test the `validate_parent_calculation` function for a valid input."""
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_validate_parent_calculation_raises(generate_calc_job_node, generate_structure):
     """Test the `validate_parent_calculation` function for a invalid input."""
     node = orm.Node()
