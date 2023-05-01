@@ -6,7 +6,8 @@ build-backend = 'flit_core.buildapi'
 name = 'aiida-quantumespresso-hp'
 dynamic = ['description', 'version']
 authors = [
-    {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'}
+    {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'},
+    {name = 'Lorenzo Bastonero', email = 'lbastone@uni-bremen.de'}
 ]
 readme = 'README.md'
 license = {file = 'LICENSE.txt'}
@@ -19,27 +20,41 @@ classifiers = [
     'Programming Language :: Python',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
 ]
 keywords = ['aiida', 'workflows']
 requires-python = '>=3.8'
 dependencies = [
-    'aiida-core~=2.0',
-    'aiida-quantumespresso~=4.0',
+    'aiida-core~=2.2',
+    'aiida-quantumespresso~=4.3',
 ]
 
 [project.urls]
+Home = 'https://github.com/aiidateam/aiida-quantumespresso-hp'
 Source = 'https://github.com/aiidateam/aiida-quantumespresso-hp'
+Documentation = 'https://aiida-quantumespresso-hp.readthedocs.io'
 
 [project.optional-dependencies]
+docs = [
+    'sphinx~=4.1',
+    'sphinx-copybutton~=0.5.0',
+    'sphinx-book-theme~=0.3.2',
+    'sphinx-click~=4.0',
+    'sphinx-design~=0.0.13',
+    'sphinxcontrib-details-directive~=0.1.0',
+    'sphinx-autoapi'
+]
 pre-commit = [
     'pre-commit~=2.17',
-    'pylint==2.13.7',
+    'pylint~=2.12.2',
     'pylint-aiida~=0.1.1',
+    'toml'
 ]
 tests = [
     'pgtest~=1.3',
-    'pytest~=6.2',
-    'pytest-regressions~=1.0',
+    'pytest~=6.0',
+    'pytest-regressions~=2.3'
 ]
 
 [project.scripts]
@@ -54,6 +69,7 @@ aiida-quantumespresso-hp = 'aiida_quantumespresso_hp.cli:cmd_root'
 [project.entry-points.'aiida.workflows']
 'quantumespresso.hp.main' = 'aiida_quantumespresso_hp.workflows.hp.main:HpWorkChain'
 'quantumespresso.hp.parallelize_atoms' = 'aiida_quantumespresso_hp.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain'
+'quantumespresso.hp.parallelize_qpoints' = 'aiida_quantumespresso_hp.workflows.hp.parallelize_qpoints:HpParallelizeQpointsWorkChain'
 'quantumespresso.hp.base' = 'aiida_quantumespresso_hp.workflows.hp.base:HpBaseWorkChain'
 'quantumespresso.hp.hubbard' = 'aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain'
 
@@ -93,7 +109,6 @@ max-line-length = 120
 
 [tool.pylint.messages_control]
 disable = [
-    'bad-continuation',
     'duplicate-code',
     'import-outside-toplevel',
     'inconsistent-return-statements',
@@ -102,6 +117,7 @@ disable = [
     'too-many-arguments',
     'too-many-branches',
     'too-many-locals',
+    'too-many-public-methods',
 ]
 
 [tool.pytest.ini_options]
