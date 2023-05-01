@@ -1,0 +1,22 @@
+clean_workdir: true
+hp:
+  code: test.quantumespresso.hp@localhost
+  metadata:
+    options:
+      max_wallclock_seconds: 43200
+      resources:
+        num_machines: 1
+      withmpi: true
+  parameters:
+    INPUTHP:
+      conv_thr_chi: 5.0e-06
+  qpoints:
+  - - 2
+    - 2
+    - 2
+  - - 0.0
+    - 0.0
+    - 0.0
+  settings:
+    parent_folder_symlink: true
+only_initialization: false
