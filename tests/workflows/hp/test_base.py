@@ -14,10 +14,16 @@ from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
 def generate_workchain_hp(generate_workchain, generate_inputs_hp, generate_calc_job_node):
     """Generate an instance of a `HpBaseWorkChain`."""
 
-    def _generate_workchain_hp(exit_code=None, inputs=None):
+    def _generate_workchain_hp(exit_code=None, inputs=None, return_inputs=False):
         entry_point = 'quantumespresso.hp.base'
-        inputs = generate_inputs_hp(inputs=inputs)
-        process = generate_workchain(entry_point, {'hp': inputs})
+
+        if inputs is None:
+            inputs = {'hp': generate_inputs_hp()}
+
+        if return_inputs:
+            return inputs
+
+        process = generate_workchain(entry_point, inputs)
 
         if exit_code is not None:
             node = generate_calc_job_node('quantumespresso.hp')
@@ -40,6 +46,35 @@ def test_setup(generate_workchain_hp):
 
     assert process.ctx.restart_calc is None
     assert isinstance(process.ctx.inputs, AttributeDict)
+
+
+def test_set_max_seconds(generate_workchain_hp):
+    """Test that `max_seconds` gets set in the parameters based on `max_wallclock_seconds` unless already set."""
+    inputs = generate_workchain_hp(return_inputs=True)
+    max_wallclock_seconds = inputs['hp']['metadata']['options']['max_wallclock_seconds']
+
+    process = generate_workchain_hp(inputs=inputs)
+    process.setup()
+    process.validate_parameters()
+    process.prepare_process()
+
+    expected_max_seconds = max_wallclock_seconds * process.defaults.delta_factor_max_seconds
+    assert 'max_seconds' in process.ctx.inputs['parameters']['INPUTHP']
+    assert process.ctx.inputs['parameters']['INPUTHP']['max_seconds'] == expected_max_seconds
+
+    # Now check that if `max_seconds` is already explicitly set in the parameters, it is not overwritten.
+    inputs = generate_workchain_hp(return_inputs=True)
+    max_seconds = 1
+    max_wallclock_seconds = inputs['hp']['metadata']['options']['max_wallclock_seconds']
+    inputs['hp']['parameters']['INPUTHP']['max_seconds'] = max_seconds
+
+    process = generate_workchain_hp(inputs=inputs)
+    process.setup()
+    process.validate_parameters()
+    process.prepare_process()
+
+    assert 'max_seconds' in process.ctx.inputs['parameters']['INPUTHP']
+    assert process.ctx.inputs['parameters']['INPUTHP']['max_seconds'] == max_seconds
 
 
 @pytest.mark.usefixtures('aiida_profile')
@@ -68,9 +103,10 @@ def test_handle_unrecoverable_failure(generate_workchain_hp):
         ({'niter_max': 1, 'alpha_mix(2)': 0.3}, {'niter_max': 2, 'alpha_mix(2)': 0.15}),
     ),
 )  # yapf: disable
-def test_handle_convergence_not_reached(generate_workchain_hp, inputs, expected):
+def test_handle_convergence_not_reached(generate_workchain_hp, generate_inputs_hp, inputs, expected):
     """Test `HpBaseWorkChain.handle_convergence_not_reached`."""
-    process = generate_workchain_hp(HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED, inputs)
+    inputs_hp = {'hp': generate_inputs_hp(inputs=inputs)}
+    process = generate_workchain_hp(exit_code=HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED, inputs=inputs_hp)
     process.setup()
     process.validate_parameters()
 
