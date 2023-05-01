@@ -1,5 +1,5 @@
 
-     Program HP v.7.1 starts on 29Nov2022 at 12:16:21
+     Program HP v.7.2 starts on 30Mar2023 at 14: 8:43
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
@@ -10,12 +10,11 @@
      in publications or presentations arising from this work. More details at
      http://www.quantum-espresso.org/quote
 
-     Parallel version (MPI), running on    10 processors
+     Parallel version (MPI), running on     8 processors
 
      MPI processes distributed on     1 nodes
-     K-points division:     npool     =       2
-     R & G space division:  proc/nbgrp/npool/nimage =       5
-     22133 MiB available memory on the printing compute node when the environment starts
+     R & G space division:  proc/nbgrp/npool/nimage =       8
+     2828 MiB available memory on the printing compute node when the environment starts
 
 
      =---------------------------------------------------------------------------=
@@ -47,8 +46,8 @@
      Parallelization info
      --------------------
      sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
-     Min         303     151     50                 5854     2056     402
-     Max         304     151     51                 5855     2057     404
+     Min         189      94     31                 3658     1285     251
+     Max         190      95     32                 3660     1286     253
      Sum        1517     755    253                29271    10281    2015
 
      Using Slab Decomposition
@@ -60,7 +59,7 @@
 
      bravais-lattice index     =             0
      lattice parameter (alat)  =        9.3705 (a.u.)
-     unit-cell volume          =      217.1091 (a.u.)^3
+     unit-cell volume          =      217.1087 (a.u.)^3
      number of atoms/cell      =             4
      number of atomic types    =             3
      kinetic-energy cut-off    =         50.00 (Ry)
@@ -68,9 +67,14 @@
      conv. thresh. for NSCF    =       1.0E-11
      conv. thresh. for chi     =       1.0E-05
      Input Hubbard parameters (in eV):
-       U ( 1)                     =   1.00000E-05
+       V (  1,   1)  =   0.0000
+       V (  1,   2)  =   0.0000
+       V (  2,   1)  =   0.0000
+       V (  2,   2)  =   0.0000
+       V (  3,   3)  =   0.0000
+       V (  4,   4)  =   0.0000
 
-     celldm(1) =  9.37050  celldm(2) =  0.00000  celldm(3) =  0.00000
+     celldm(1) =  9.37049  celldm(2) =  0.00000  celldm(3) =  0.00000
      celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
 
      crystal axes: (cart. coord. in units of alat)
@@ -86,20 +90,84 @@
      Atoms inside the unit cell (Cartesian axes):
      site n.  atom      mass           positions (alat units)
         1      Co     58.9332   tau(  1) = (  0.00000  0.00000  0.00000  )
-        2      O      15.9990   tau(  2) = (  0.00000  0.00000  0.73827  )
-        3      O      15.9990   tau(  3) = (  0.00000  0.00000  2.09589  )
-        4      Li      6.9400   tau(  4) = (  0.00000  0.00000  1.41708  )
+        2      O      15.9994   tau(  2) = (  0.00000  0.00000  0.73827  )
+        3      O      15.9994   tau(  3) = (  0.00000  0.00000  2.09573  )
+        4      Li      6.9410   tau(  4) = (  0.00000  0.00000  1.41708  )
 
      Atom which will be perturbed:
 
         1      Co     58.9332   tau( 1) = (  0.00000  0.00000  0.00000  )
 
-     HP           :      0.31s CPU      0.33s WALL
+     =====================================================================
 
-     HP           :      0.31s CPU      0.33s WALL
+                          PERTURBED ATOM #    1
+
+     site n.  atom      mass           positions (alat units)
+        1      Co     58.9332   tau( 1) = (  0.00000  0.00000  0.00000  )
+
+     =====================================================================
+
+     The perturbed atom has a type which is unique!
 
 
-   This run was terminated on:  12:16:21  29Nov2022
+     The grid of q-points ( 2, 2, 2)  (  6 q-points ) :
+       N       xq(1)         xq(2)         xq(3)       wq
+       1   0.000000000   0.000000000   0.000000000   0.125000000
+       2   0.880423629   0.508312715  -0.176419028   0.250000000
+       3   0.000000000  -1.016625429  -0.176420113   0.125000000
+       4   0.880423629  -0.508312715  -0.352839140   0.250000000
+       5   0.000000000   1.016625429  -0.352838055   0.125000000
+       6   0.000000000   0.000000000  -0.529258168   0.125000000
+
+     PRINTING TIMING FROM PWSCF ROUTINES:
+
+
+     Called by init_run:
+
+     Called by electrons:
+     v_of_rho     :      0.01s CPU      0.01s WALL (       1 calls)
+     v_h          :      0.00s CPU      0.00s WALL (       1 calls)
+     v_xc         :      0.01s CPU      0.01s WALL (       1 calls)
+     newd         :      0.01s CPU      0.02s WALL (       1 calls)
+     PAW_pot      :      0.01s CPU      0.01s WALL (       1 calls)
+
+     Called by c_bands:
+
+     Called by sum_band:
+
+     Called by *egterg:
+
+     Called by h_psi:
+
+     General routines
+     fft          :      0.00s CPU      0.01s WALL (      12 calls)
+     davcio       :      0.00s CPU      0.00s WALL (      68 calls)
+
+     Parallel routines
+
+     Hubbard U routines
+     alloc_neigh  :      0.00s CPU      0.00s WALL (       1 calls)
+
+     PAW routines
+     PAW_pot      :      0.01s CPU      0.01s WALL (       1 calls)
+
+     init_vloc    :      0.03s CPU      0.03s WALL (       1 calls)
+     init_us_1    :      0.04s CPU      0.04s WALL (       1 calls)
+     newd         :      0.01s CPU      0.02s WALL (       1 calls)
+
+     PRINTING TIMING FROM HP ROUTINES:
+
+
+     PRINTING TIMING FROM LR MODULE:
+
+
+     USPP ROUTINES:
+
+
+     HP           :      0.26s CPU      0.55s WALL
+
+
+   This run was terminated on:  14: 8:43  30Mar2023
 
 =------------------------------------------------------------------------------=
    JOB DONE.

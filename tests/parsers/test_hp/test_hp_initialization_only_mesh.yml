@@ -1,0 +1,4 @@
+parameters:
+  hubbard_sites:
+    '1': Co
+  number_of_qpoints: 6

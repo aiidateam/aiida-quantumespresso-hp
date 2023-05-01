@@ -1,12 +1,13 @@
 hubbard:
   sites:
-  - index: '1'
+  - index: 0
     kind: Co
+    manifold: 3d
     new_kind: Co
-    new_type: '1'
-    spin: '1'
-    type: '1'
-    value: '7.6150'
+    new_type: 1
+    spin: 1
+    type: 1
+    value: 7.8735
 hubbard_chi:
   array|chi:
   - 1
@@ -14,6 +15,20 @@ hubbard_chi:
   array|chi0:
   - 1
   - 1
+hubbard_data:
+  formulation: dudarev
+  parameters:
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: Ueff
+    neighbour_index: 0
+    neighbour_manifold: 3d
+    translation:
+    - 0
+    - 0
+    - 0
+    value: 7.8735
+  projectors: ortho-atomic
 hubbard_matrices:
   array|chi:
   - 1
@@ -33,3 +48,4 @@ hubbard_matrices:
 parameters:
   hubbard_sites:
     '1': Co
+  number_of_qpoints: 1

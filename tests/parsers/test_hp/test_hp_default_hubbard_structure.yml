@@ -1,0 +1,88 @@
+hubbard:
+  sites:
+  - index: 0
+    kind: Co
+    manifold: 3d
+    new_kind: Co
+    new_type: 1
+    spin: 1
+    type: 1
+    value: 6.0775
+  - index: 1
+    kind: O
+    manifold: 2p
+    new_kind: O
+    new_type: 3
+    spin: 1
+    type: 3
+    value: 8.4198
+  - index: 2
+    kind: O
+    manifold: 2p
+    new_kind: O
+    new_type: 3
+    spin: 1
+    type: 3
+    value: 8.4198
+hubbard_chi:
+  array|chi:
+  - 1
+  - 1
+  array|chi0:
+  - 1
+  - 1
+hubbard_data:
+  formulation: dudarev
+  parameters:
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 0
+    neighbour_manifold: 3d
+    translation:
+    - 0
+    - 0
+    - 0
+    value: 6.0775
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 2p
+    translation:
+    - -1
+    - -1
+    - 0
+    value: 0.3768
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 2p
+    translation:
+    - -1
+    - 0
+    - -1
+    value: 0.3768
+  projectors: ortho-atomic
+hubbard_matrices:
+  array|chi:
+  - 3
+  - 3
+  array|chi0:
+  - 3
+  - 3
+  array|chi0_inv:
+  - 3
+  - 3
+  array|chi_inv:
+  - 3
+  - 3
+  array|hubbard:
+  - 3
+  - 3
+parameters:
+  hubbard_sites:
+    '1': Co
+    '2': O
+  number_of_qpoints: 1

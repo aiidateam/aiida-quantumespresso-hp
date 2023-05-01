@@ -1,0 +1,9 @@
+&INPUTHP
+  conv_thr_chi =   1.0000000000d-06
+  iverbosity = 2
+  nq1 = 1
+  nq2 = 1
+  nq3 = 1
+  outdir = 'out'
+  prefix = 'aiida'
+/

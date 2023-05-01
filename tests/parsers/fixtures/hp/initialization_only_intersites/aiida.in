@@ -1,0 +1,6 @@
+&INPUTHP
+  determine_num_pert_only = .true.
+  iverbosity = 2
+  outdir = 'out'
+  prefix = 'aiida'
+/

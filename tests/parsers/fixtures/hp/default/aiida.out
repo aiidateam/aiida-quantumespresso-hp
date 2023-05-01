@@ -1,29 +1,45 @@
 
-     Program HP v.5.1.1 starts on  5Oct2019 at 14:12:46
+     Program HP v.7.1 starts on 29Nov2022 at 12:12:54
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
          "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+         "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
           URL http://www.quantum-espresso.org",
      in publications or presentations arising from this work. More details at
      http://www.quantum-espresso.org/quote
 
-     Parallel version (MPI), running on     1 processors
+     Parallel version (MPI), running on    10 processors
 
-     =--------------------------------------------------------------=
+     MPI processes distributed on     1 nodes
+     K-points division:     npool     =       2
+     R & G space division:  proc/nbgrp/npool/nimage =       5
+     22287 MiB available memory on the printing compute node when the environment starts
 
-               Calculation of Hubbard parameters from
 
-               density functional perturbation theory
+     =---------------------------------------------------------------------------=
 
-     =--------------------------------------------------------------=
+           Calculation of Hubbard parameters using the HP code based on DFPT
 
-   Info: using nr1, nr2, nr3 values from input
+               Please cite the following papers when using this program:
 
-   Info: using nr1s, nr2s, nr3s values from input
+                 - HP code : Comput. Phys. Commun. 279, 108455 (2022).
+
+                 - Theory  : Phys. Rev. B 98,  085127 (2018) and
+
+                             Phys. Rev. B 103, 045141 (2021).
+
+     =-----------------------------------------------------------------------------=
+
+     Reading xml data from directory:
+
+     out/aiida.save/
+     file O.pbe-n-kjpaw_psl.0.1.UPF: wavefunction(s)  2P renormalized
 
      IMPORTANT: XC functional enforced from input :
-     Exchange-correlation      =  SLA  PW   PBX  PBC ( 1  4  3  4 0 0)
+     Exchange-correlation= PBE
+                           (   1   4   3   4   0   0   0)
      Any further DFT definition will be discarded
      Please, verify this is what you really want
 
@@ -37,36 +53,36 @@
 
 
      bravais-lattice index     =             0
-     lattice parameter (alat)  =        9.3664 (a.u.)
-     unit-cell volume          =      216.7049 (a.u.)^3
+     lattice parameter (alat)  =        9.3705 (a.u.)
+     unit-cell volume          =      217.1091 (a.u.)^3
      number of atoms/cell      =             4
      number of atomic types    =             3
-     kinetic-energy cut-off    =         30.00 (Ry)
-     charge density cut-off    =        240.00 (Ry)
+     kinetic-energy cut-off    =         50.00 (Ry)
+     charge density cut-off    =        400.00 (Ry)
      conv. thresh. for NSCF    =       1.0E-11
-     conv. thresh. for chi     =       1.0E-05
+     conv. thresh. for chi     =       1.0E-06
      Input Hubbard parameters (in eV):
-       U ( 1)                     =   3.00000E+00
+       U ( 1)                     =   1.00000E-05
 
-     celldm(1) =  9.36643  celldm(2) =  0.00000  celldm(3) =  0.00000
+     celldm(1) =  9.37050  celldm(2) =  0.00000  celldm(3) =  0.00000
      celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
 
      crystal axes: (cart. coord. in units of alat)
-               a(1) = (  0.2839  0.1639  0.9448 )
-               a(2) = ( -0.2839  0.1639  0.9448 )
-               a(3) = (  0.0000 -0.3278  0.9448 )
+               a(1) = (  0.2840 -0.1639  0.9447 )
+               a(2) = (  0.0000  0.3279  0.9447 )
+               a(3) = ( -0.2840 -0.1639  0.9447 )
 
      reciprocal axes: (cart. coord. in units 2 pi/alat)
-               b(1) = (  1.7614  1.0169  0.3528 )
-               b(2) = ( -1.7614  1.0169  0.3528 )
-               b(3) = (  0.0000 -2.0339  0.3528 )
+               b(1) = (  1.7608 -1.0166  0.3528 )
+               b(2) = (  0.0000  2.0333  0.3528 )
+               b(3) = ( -1.7608 -1.0166  0.3528 )
 
      Atoms inside the unit cell (Cartesian axes):
      site n.  atom      mass           positions (alat units)
-        1      Co     58.9332   tau( 1) = (  0.00000  0.00000  0.00000  )
-        2      Li      6.9410   tau( 2) = ( -0.00000  0.32778  0.47238  )
-        3      O      15.9994   tau( 3) = ( -0.00000 -0.00000  0.64281  )
-        4      O      15.9994   tau( 4) = (  0.28387  0.16389  0.30194  )
+        1      Co     58.9332   tau(  1) = (  0.00000  0.00000  0.00000  )
+        2      O      15.9990   tau(  2) = (  0.00000  0.00000  0.73827  )
+        3      O      15.9990   tau(  3) = (  0.00000  0.00000  2.09589  )
+        4      Li      6.9400   tau(  4) = (  0.00000  0.00000  1.41708  )
 
      Atom which will be perturbed:
 
@@ -116,12 +132,12 @@
 
      isym =  2     180 deg rotation - cart. axis [1,0,0]
 
-     cryst.   s( 2) = (     0         -1          0      )
+     cryst.   s( 2) = (     0          0         -1      )
+                      (     0         -1          0      )
                       (    -1          0          0      )
-                      (     0          0         -1      )
 
      cart.    s( 2) = (  1.0000000  0.0000000  0.0000000 )
-                      (  0.0000000 -1.0000000  0.0000000 )
+                      (  0.0000000 -1.0000000 -0.0000000 )
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
@@ -149,9 +165,9 @@
 
      isym =  5     180 deg rotation - cryst. axis [0,1,0]
 
-     cryst.   s( 5) = (    -1          0          0      )
+     cryst.   s( 5) = (     0         -1          0      )
+                      (    -1          0          0      )
                       (     0          0         -1      )
-                      (     0         -1          0      )
 
      cart.    s( 5) = ( -0.5000000 -0.8660254 -0.0000000 )
                       ( -0.8660254  0.5000000  0.0000000 )
@@ -160,9 +176,9 @@
 
      isym =  6     180 deg rotation - cryst. axis [1,1,0]
 
-     cryst.   s( 6) = (     0          0         -1      )
+     cryst.   s( 6) = (    -1          0          0      )
+                      (     0          0         -1      )
                       (     0         -1          0      )
-                      (    -1          0          0      )
 
      cart.    s( 6) = ( -0.5000000  0.8660254  0.0000000 )
                       (  0.8660254  0.5000000  0.0000000 )
@@ -176,15 +192,15 @@
                       (     0          0         -1      )
 
      cart.    s( 7) = ( -1.0000000  0.0000000  0.0000000 )
-                      (  0.0000000 -1.0000000  0.0000000 )
+                      (  0.0000000 -1.0000000 -0.0000000 )
                       (  0.0000000  0.0000000 -1.0000000 )
 
 
      isym =  8     inv. 180 deg rotation - cart. axis [1,0,0]
 
-     cryst.   s( 8) = (     0          1          0      )
+     cryst.   s( 8) = (     0          0          1      )
+                      (     0          1          0      )
                       (     1          0          0      )
-                      (     0          0          1      )
 
      cart.    s( 8) = ( -1.0000000  0.0000000  0.0000000 )
                       (  0.0000000  1.0000000  0.0000000 )
@@ -215,9 +231,9 @@
 
      isym = 11     inv. 180 deg rotation - cryst. axis [0,1,0]
 
-     cryst.   s(11) = (     1          0          0      )
+     cryst.   s(11) = (     0          1          0      )
+                      (     1          0          0      )
                       (     0          0          1      )
-                      (     0          1          0      )
 
      cart.    s(11) = (  0.5000000  0.8660254  0.0000000 )
                       (  0.8660254 -0.5000000 -0.0000000 )
@@ -226,9 +242,9 @@
 
      isym = 12     inv. 180 deg rotation - cryst. axis [1,1,0]
 
-     cryst.   s(12) = (     0          0          1      )
+     cryst.   s(12) = (     1          0          0      )
+                      (     0          0          1      )
                       (     0          1          0      )
-                      (     1          0          0      )
 
      cart.    s(12) = (  0.5000000 -0.8660254 -0.0000000 )
                       ( -0.8660254 -0.5000000 -0.0000000 )
@@ -248,82 +264,137 @@
                       (  0.0000000  0.0000000  1.0000000 )
 
 
-     G cutoff =  533.3344  (  13597 G-vectors)     FFT grid: ( 48, 48, 48)
-     G cutoff =  266.6672  (   4819 G-vectors)  smooth grid: ( 36, 36, 36)
+     G cutoff =  889.6635  (   5854 G-vectors)     FFT grid: ( 60, 60, 60)
+     G cutoff =  444.8318  (   2057 G-vectors)  smooth grid: ( 45, 45, 45)
 
-     Number of k (and k+q if q/=0) points =     4
+     Number of k (and k+q if q/=0) points =    32
 
                        cart. coord. (in units 2pi/alat)
-        k (    1) = (   0.0000000   0.0000000   0.0000000), wk = 0.2500000
-        k (    2) = (   0.0000000   1.0169286  -0.1764130), wk = 0.7500000
-        k (    3) = (   0.8806860   0.5084643  -0.3528261), wk = 0.7500000
-        k (    4) = (   0.0000000   0.0000000  -0.5292391), wk = 0.2500000
+        k (    1) = (   0.0000000   0.0000000   0.0000000), wk = 0.0092593
+        k (    2) = (  -0.2934745  -0.1694376   0.0588065), wk = 0.0555556
+        k (    3) = (  -0.5869491  -0.3388752   0.1176129), wk = 0.0555556
+        k (    4) = (   0.8804236   0.5083128  -0.1764194), wk = 0.0277778
+        k (    5) = (  -0.2934745   0.1694376   0.1176129), wk = 0.0555556
+        k (    6) = (  -0.5869491   0.0000000   0.1764194), wk = 0.1111111
+        k (    7) = (   0.8804236   0.8471880  -0.1176129), wk = 0.1111111
+        k (    8) = (   0.5869491   0.6777504  -0.0588065), wk = 0.1111111
+        k (    9) = (   0.2934745   0.5083128   0.0000000), wk = 0.0555556
+        k (   10) = (  -0.5869491   0.3388752   0.2352258), wk = 0.0555556
+        k (   11) = (   0.8804236   1.1860632  -0.0588065), wk = 0.1111111
+        k (   12) = (   0.5869491   1.0166256   0.0000000), wk = 0.0555556
+        k (   13) = (   0.8804236  -0.5083128  -0.3528387), wk = 0.0277778
+        k (   14) = (   0.0000000   0.0000000   0.1764194), wk = 0.0185185
+        k (   15) = (  -0.2934745  -0.1694376   0.2352258), wk = 0.0555556
+        k (   16) = (   1.1738981   0.6777504  -0.0588065), wk = 0.0555556
+        k (   17) = (   0.8804236   0.5083128   0.0000000), wk = 0.0555556
+        k (   18) = (   0.5869491   0.3388752   0.0588065), wk = 0.0555556
+        k (   19) = (  -0.2934745   0.1694376   0.2940323), wk = 0.0555556
+        k (   20) = (   1.1738981   1.0166256   0.0000000), wk = 0.1111111
+        k (   21) = (   0.8804236   0.8471880   0.0588065), wk = 0.1111111
+        k (   22) = (   0.5869491   0.6777504   0.1176129), wk = 0.1111111
+        k (   23) = (   1.1738981  -0.6777504  -0.2940323), wk = 0.0555556
+        k (   24) = (   0.8804236  -0.8471880  -0.2352258), wk = 0.1111111
+        k (   25) = (   0.5869491  -1.0166256  -0.1764194), wk = 0.0555556
+        k (   26) = (   0.8804236  -0.5083128  -0.1764194), wk = 0.0555556
+        k (   27) = (   0.0000000   0.0000000   0.3528387), wk = 0.0185185
+        k (   28) = (   1.4673727   0.8471880   0.0588065), wk = 0.0555556
+        k (   29) = (   1.1738981   0.6777504   0.1176129), wk = 0.0555556
+        k (   30) = (   1.4673727  -0.8471880  -0.2352258), wk = 0.0555556
+        k (   31) = (   1.1738981  -1.0166256  -0.1764194), wk = 0.0555556
+        k (   32) = (   0.0000000   0.0000000  -0.5292581), wk = 0.0092593
 
                        cryst. coord.
-        k (    1) = (   0.0000000   0.0000000   0.0000000), wk = 0.2500000
-        k (    2) = (   0.0000000   0.0000000  -0.5000000), wk = 0.7500000
-        k (    3) = (   0.0000000  -0.5000000  -0.5000000), wk = 0.7500000
-        k (    4) = (  -0.5000000  -0.5000000  -0.5000000), wk = 0.2500000
+        k (    1) = (   0.0000000   0.0000000   0.0000000), wk = 0.0092593
+        k (    2) = (  -0.0000000   0.0000000   0.1666667), wk = 0.0555556
+        k (    3) = (   0.0000000   0.0000000   0.3333333), wk = 0.0555556
+        k (    4) = (   0.0000000   0.0000000  -0.5000000), wk = 0.0277778
+        k (    5) = (  -0.0000000   0.1666667   0.1666667), wk = 0.0555556
+        k (    6) = (  -0.0000000   0.1666667   0.3333333), wk = 0.1111111
+        k (    7) = (   0.0000000   0.1666667  -0.5000000), wk = 0.1111111
+        k (    8) = (   0.0000000   0.1666667  -0.3333333), wk = 0.1111111
+        k (    9) = (  -0.0000000   0.1666667  -0.1666667), wk = 0.0555556
+        k (   10) = (  -0.0000000   0.3333333   0.3333333), wk = 0.0555556
+        k (   11) = (   0.0000000   0.3333333  -0.5000000), wk = 0.1111111
+        k (   12) = (  -0.0000000   0.3333333  -0.3333333), wk = 0.0555556
+        k (   13) = (   0.0000000  -0.5000000  -0.5000000), wk = 0.0277778
+        k (   14) = (   0.1666667   0.1666667   0.1666667), wk = 0.0185185
+        k (   15) = (   0.1666667   0.1666667   0.3333333), wk = 0.0555556
+        k (   16) = (   0.1666667   0.1666667  -0.5000000), wk = 0.0555556
+        k (   17) = (   0.1666667   0.1666667  -0.3333333), wk = 0.0555556
+        k (   18) = (   0.1666667   0.1666667  -0.1666667), wk = 0.0555556
+        k (   19) = (   0.1666667   0.3333333   0.3333333), wk = 0.0555556
+        k (   20) = (   0.1666667   0.3333333  -0.5000000), wk = 0.1111111
+        k (   21) = (   0.1666667   0.3333333  -0.3333333), wk = 0.1111111
+        k (   22) = (   0.1666667   0.3333333  -0.1666667), wk = 0.1111111
+        k (   23) = (   0.1666667  -0.5000000  -0.5000000), wk = 0.0555556
+        k (   24) = (   0.1666667  -0.5000000  -0.3333333), wk = 0.1111111
+        k (   25) = (   0.1666667  -0.5000000  -0.1666667), wk = 0.0555556
+        k (   26) = (   0.1666667  -0.3333333  -0.3333333), wk = 0.0555556
+        k (   27) = (   0.3333333   0.3333333   0.3333333), wk = 0.0185185
+        k (   28) = (   0.3333333   0.3333333  -0.5000000), wk = 0.0555556
+        k (   29) = (   0.3333333   0.3333333  -0.3333333), wk = 0.0555556
+        k (   30) = (   0.3333333  -0.5000000  -0.5000000), wk = 0.0555556
+        k (   31) = (   0.3333333  -0.5000000  -0.3333333), wk = 0.0555556
+        k (   32) = (  -0.5000000  -0.5000000  -0.5000000), wk = 0.0092593
 
-     Atomic wfc used for the DFT+U projector are NOT orthogonalized
+     Atomic wfc used for the projector on the Hubbard manifold are orthogonalized
 
      Total time spent up to now is:
-     HP           :     1.86s CPU         1.91s WALL
+     HP           :      0.36s CPU      0.40s WALL
 
       =--------------------------------------------=
-             START SOLVING THE LINEAR SYSTEM
+                 SOLVE THE LINEAR SYSTEM
       =--------------------------------------------=
 
       atom #  1   q point #   1   iter #   1
-      chi:  1  -0.3397343402
-      Average number of iter. in lin. system:   32.8
-      Total CPU time :     6.7 s
+      chi:   1  -0.2708476925
+      Average number of iter. to solve lin. system:   41.8
+      Total CPU time :     3.2 s
 
       atom #  1   q point #   1   iter #   2
-      chi:  1   0.3741883075   residue:    0.7139226477
-      Average number of iter. in lin. system:   12.5
-      Total CPU time :     9.6 s
+      chi:   1   0.1322700817   residue:    0.4031177742
+      Average number of iter. to solve lin. system:   17.6
+      Total CPU time :     4.7 s
 
       atom #  1   q point #   1   iter #   3
-      chi:  1  -0.0996816387   residue:    0.4738699462
-      Average number of iter. in lin. system:   11.8
-      Total CPU time :    12.4 s
+      chi:   1  -0.0940064099   residue:    0.2262764916
+      Average number of iter. to solve lin. system:   16.6
+      Total CPU time :     6.0 s
 
       atom #  1   q point #   1   iter #   4
-      chi:  1  -0.0976775092   residue:    0.0020041295
-      Average number of iter. in lin. system:   14.0
-      Total CPU time :    15.3 s
+      chi:   1  -0.0890151902   residue:    0.0049912197
+      Average number of iter. to solve lin. system:   16.8
+      Total CPU time :     7.4 s
 
       atom #  1   q point #   1   iter #   5
-      chi:  1  -0.0947157712   residue:    0.0029617379
-      Average number of iter. in lin. system:   13.8
-      Total CPU time :    18.4 s
+      chi:   1  -0.0863683184   residue:    0.0026468718
+      Average number of iter. to solve lin. system:   17.7
+      Total CPU time :     9.4 s
 
       atom #  1   q point #   1   iter #   6
-      chi:  1  -0.0945119021   residue:    0.0002038691
-      Average number of iter. in lin. system:   15.0
-      Total CPU time :    21.5 s
+      chi:   1  -0.0864907695   residue:    0.0001224511
+      Average number of iter. to solve lin. system:   18.4
+      Total CPU time :    10.8 s
 
       atom #  1   q point #   1   iter #   7
-      chi:  1  -0.0947269373   residue:    0.0002150352
-      Average number of iter. in lin. system:   12.5
-      Total CPU time :    24.3 s
+      chi:   1  -0.0864609393   residue:    0.0000298302
+      Average number of iter. to solve lin. system:   18.4
+      Total CPU time :    12.4 s
 
       atom #  1   q point #   1   iter #   8
-      chi:  1  -0.0946984919   residue:    0.0000284454
-      Average number of iter. in lin. system:   13.2
-      Total CPU time :    27.2 s
+      chi:   1  -0.0864581379   residue:    0.0000028014
+      Average number of iter. to solve lin. system:   18.4
+      Total CPU time :    13.9 s
 
       atom #  1   q point #   1   iter #   9
-      chi:  1  -0.0947167273   residue:    0.0000182354
-      Average number of iter. in lin. system:   14.0
-      Total CPU time :    30.1 s
+      chi:   1  -0.0864636282   residue:    0.0000054902
+      Average number of iter. to solve lin. system:   18.3
+      Total CPU time :    15.3 s
 
       atom #  1   q point #   1   iter #  10
-      chi:  1  -0.0947109492   residue:    0.0000057781
-      Average number of iter. in lin. system:   13.2
-      Total CPU time :    32.6 s
-
+      chi:   1  -0.0864634399   residue:    0.0000001882
+      Average number of iter. to solve lin. system:   18.8
+      Total CPU time :    17.1 s
       =--------------------------------------------=
              CONVERGENCE HAS BEEN REACHED
       =--------------------------------------------=
@@ -341,39 +412,39 @@
      Called by init_run:
 
      Called by electrons:
-     v_of_rho     :      0.07s CPU      0.08s WALL (       1 calls)
+     v_of_rho     :      0.01s CPU      0.01s WALL (       1 calls)
      v_h          :      0.00s CPU      0.00s WALL (       1 calls)
-     v_xc         :      0.07s CPU      0.08s WALL (       1 calls)
-     newd         :      0.05s CPU      0.06s WALL (       1 calls)
+     v_xc         :      0.01s CPU      0.01s WALL (       1 calls)
+     newd         :      0.01s CPU      0.01s WALL (       1 calls)
+     PAW_pot      :      0.01s CPU      0.01s WALL (       1 calls)
 
      Called by c_bands:
-     init_us_2    :      0.02s CPU      0.03s WALL (      48 calls)
+     init_us_2    :      0.01s CPU      0.01s WALL (     192 calls)
+     init_us_2:cp :      0.01s CPU      0.01s WALL (     192 calls)
 
      Called by sum_band:
 
      Called by *egterg:
-     h_psi        :     16.38s CPU     16.55s WALL (     983 calls)
-     s_psi        :      0.90s CPU      0.96s WALL (    2010 calls)
+     h_psi        :     11.89s CPU     12.33s WALL (    5065 calls)
+     s_psi        :      0.20s CPU      0.21s WALL (   10306 calls)
 
      Called by h_psi:
-     h_psi:vloc   :     15.27s CPU     15.41s WALL (     983 calls)
-     h_psi:vnl    :      0.99s CPU      1.00s WALL (     983 calls)
-     add_vuspsi   :      0.48s CPU      0.47s WALL (     983 calls)
-     vhpsi        :      0.10s CPU      0.12s WALL (     983 calls)
+     h_psi:calbec :      0.22s CPU      0.23s WALL (    5065 calls)
+     vloc_psi     :     11.43s CPU     11.85s WALL (    5065 calls)
+     add_vuspsi   :      0.11s CPU      0.12s WALL (    5065 calls)
+     vhpsi        :      0.09s CPU      0.09s WALL (    5065 calls)
 
      General routines
-     calbec       :      1.16s CPU      1.16s WALL (    3037 calls)
-     fft          :      0.21s CPU      0.27s WALL (     166 calls)
-     ffts         :      0.01s CPU      0.02s WALL (      21 calls)
-     fftw         :     15.16s CPU     15.36s WALL (   22648 calls)
-     interpolate  :      0.00s CPU      0.01s WALL (       1 calls)
-     davcio       :      0.12s CPU      0.22s WALL (    1369 calls)
-
+     calbec       :      0.42s CPU      0.44s WALL (   15547 calls)
+     fft          :      0.06s CPU      0.07s WALL (     166 calls)
+     ffts         :      0.00s CPU      0.00s WALL (      21 calls)
+     fftw         :     10.53s CPU     10.96s WALL (  115144 calls)
+     interpolate  :      0.01s CPU      0.01s WALL (      21 calls)
+     davcio       :      0.08s CPU      0.09s WALL (    6379 calls)
      Parallel routines
-     fft_scatter  :      0.61s CPU      0.66s WALL (   22835 calls)
 
      Hubbard U routines
-     vhpsi        :      0.10s CPU      0.12s WALL (     983 calls)
+     vhpsi        :      0.09s CPU      0.09s WALL (    5065 calls)
 
      PAW routines
      PAW_pot      :      0.09s CPU      0.09s WALL (       1 calls)
@@ -416,7 +487,7 @@
      HP           :    32.00s CPU        32.62s WALL
 
 
-   This run was terminated on:  14:13:19   5Oct2019
+   This run was terminated on:  12:13:11  29Nov2022
 
 =------------------------------------------------------------------------------=
    JOB DONE.

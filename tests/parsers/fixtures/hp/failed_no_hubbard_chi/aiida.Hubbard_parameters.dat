@@ -3,8 +3,8 @@
 
                            Hubbard U parameters:
 
-       site n.  type  label  spin  new_type  new_label  Hubbard U (eV)
-         1        1    Co      1      1         Co         7.6150
+       site n.  type  label  spin  new_type  new_label  manifold  Hubbard U (eV)
+         1        1    Co      1      1         Co         3d       7.6150
 
   =-------------------------------------------------------------------=
 

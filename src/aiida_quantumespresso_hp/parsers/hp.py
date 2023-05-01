@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """Parser implementation for the `HpCalculation` plugin."""
 import os
-import re
 
 from aiida import orm
 from aiida.common import exceptions
 from aiida.parsers import Parser
-from aiida_quantumespresso.utils.mapping import get_logging_container
 import numpy
 
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
@@ -22,12 +20,36 @@ class HpParser(Parser):
         except exceptions.NotExistent:
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
+        # The stdout is always parsed by default.
         for parse_method in [
-            self.parse_stdout, self.parse_hubbard, self.parse_hubbard_chi, self.parse_hubbard_parameters
+            self.parse_stdout,
         ]:
             exit_code = parse_method()
             if exit_code:
                 return exit_code
+
+        # If it only initialized, then we do NOT parse the `{prefix}.Hubbard_parameters.dat``
+        # and the {prefix}.chi.dat files.
+        # This check is needed since the `hp.x` routine will print the `{prefix}.Hubbard_parameters.dat`
+        # also when it is only initialized.
+        if not self.is_initialization_only and not self.is_partial_mesh:
+
+            for parse_method in [
+                self.parse_hubbard,
+                self.parse_hubbard_chi,
+            ]:
+                exit_code = parse_method()
+                if exit_code:
+                    return exit_code
+
+        # If the calculation is `complete`, we try to store the parameters in `HubbardStructureData`.
+        if self.is_complete_calculation:
+            # If the `HUBBARD.dat` is not produced, it means it is an "only Hubbard U" calculation,
+            # thus we set the Hubbard parameters from the ``hubbard`` output, which contains the onsite U.
+            try:
+                self.parse_hubbard_dat(kwargs['retrieved_temporary_folder'])
+            except (KeyError, FileNotFoundError):
+                self.get_hubbard_structure()
 
     @property
     def is_initialization_only(self):
@@ -39,10 +61,19 @@ class HpParser(Parser):
         return self.node.inputs.parameters.base.attributes.get('INPUTHP', {}).get('determine_num_pert_only', False)
 
     @property
+    def is_partial_mesh(self):
+        """Return whether the calculation was a run on a qpoint subset.
+
+        This is the case if the `determine_q_mesh_only` flag was set to `True` in the `INPUTHP` namelist.
+        In this case, there will only be a stdout file. All other output files will be missing, but that is expected.
+        """
+        return self.node.inputs.parameters.base.attributes.get('INPUTHP', {}).get('determine_q_mesh_only', False)
+
+    @property
     def is_partial_site(self):
         """Return whether the calculation computed just a sub set of all sites to be perturbed.
 
-        A complete run means that all perturbations were calculation and the final matrices were computerd
+        A complete run means that all perturbations were calculated and the final matrices were computed.
         """
         card = self.node.inputs.parameters.base.attributes.get('INPUTHP', {})
         return any(key.startswith('perturb_only_atom') for key in card.keys())
@@ -62,6 +93,8 @@ class HpParser(Parser):
 
         :return: optional exit code in case of an error
         """
+        from .parse_raw.hp import parse_raw_output
+
         filename = self.node.base.attributes.get('output_filename')
 
         if filename not in self.retrieved.base.repository.list_object_names():
@@ -73,11 +106,11 @@ class HpParser(Parser):
             return self.exit_codes.ERROR_OUTPUT_STDOUT_READ
 
         try:
-            parsed_data, logs = self.parse_stdout_content(stdout)
+            parsed_data, logs = parse_raw_output(stdout)
         except Exception:  # pylint: disable=broad-except
             return self.exit_codes.ERROR_OUTPUT_STDOUT_PARSE
         else:
-            self.out('parameters', orm.Dict(dict=parsed_data))
+            self.out('parameters', orm.Dict(parsed_data))
 
         exit_statuses = [
             'ERROR_INVALID_NAMELIST',
@@ -85,6 +118,7 @@ class HpParser(Parser):
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             'ERROR_MISSING_PERTURBATION_FILE',
             'ERROR_CONVERGENCE_NOT_REACHED',
+            'ERROR_OUT_OF_WALLTIME',
         ]
 
         for exit_status in exit_statuses:
@@ -112,7 +146,7 @@ class HpParser(Parser):
             matrices.set_array('chi0_inv', parsed_data['chi0_inv'])
             matrices.set_array('hubbard', parsed_data['hubbard'])
 
-            self.out('hubbard', orm.Dict(dict=parsed_data['hubbard_U']))
+            self.out('hubbard', orm.Dict(parsed_data['hubbard_U']))
             self.out('hubbard_matrices', matrices)
 
     def parse_hubbard_chi(self):
@@ -148,73 +182,40 @@ class HpParser(Parser):
         except IOError:
             pass  # the file is not required to exist
 
-    @staticmethod
-    def parse_stdout_content(stdout):
-        """Parse the output parameters from the output of a Hp calculation written to standard out.
+    def parse_hubbard_dat(self, folder_path):
+        """Parse the Hubbard parameters output file.
 
-        :param filepath: path to file containing output written to stdout
-        :returns: boolean representing success status of parsing, True equals parsing was successful
-        :returns: dictionary with the parsed parameters
+        :return: optional exit code in case of an error
         """
-        parsed_data = {}
-        logs = get_logging_container()
-        is_prematurely_terminated = True
+        from aiida_quantumespresso.utils.hubbard import HubbardUtils
+        filename = HpCalculation.filename_output_hubbard_dat
 
-        # Parse the output line by line by creating an iterator of the lines
-        iterator = iter(stdout.split('\n'))
-        for line in iterator:
+        filepath = os.path.join(folder_path, filename)
 
-            # If the output does not contain the line with 'JOB DONE' the program was prematurely terminated
-            if 'JOB DONE' in line:
-                is_prematurely_terminated = False
+        hubbard_structure = self.node.inputs.hubbard_structure.clone()
+        hubbard_structure.clear_hubbard_parameters()
+        hubbard_utils = HubbardUtils(hubbard_structure)
+        hubbard_utils.parse_hubbard_dat(filepath=filepath)
 
-            if 'reading inputhp namelist' in line:
-                logs.error.append('ERROR_INVALID_NAMELIST')
+        self.out('hubbard_structure', hubbard_utils.hubbard_structure)
 
-            # If the atoms were not ordered correctly in the parent calculation
-            if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
-                logs.error.append('ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS')
+    def get_hubbard_structure(self):
+        """Set in output an ``HubbardStructureData`` with standard Hubbard U formulation."""
+        from copy import deepcopy
 
-            # If not all expected perturbation files were found for a chi_collect calculation
-            if 'Error in routine hub_read_chi (1)' in line:
-                logs.error.append('ERROR_MISSING_PERTURBATION_FILE')
+        hubbard_structure = deepcopy(self.node.inputs.hubbard_structure)
+        hubbard_structure.clear_hubbard_parameters()
 
-            # If the run did not convergence we expect to find the following string
-            match = re.search(r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
-            if match:
-                logs.error.append('ERROR_CONVERGENCE_NOT_REACHED')
+        hubbard_sites = self.outputs.hubbard.get_dict()['sites']
 
-            # Determine the atomic sites that will be perturbed, or that the calculation expects
-            # to have been calculated when post-processing the final matrices
-            match = re.search(r'.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
-            if match:
-                hubbard_sites = {}
-                number_of_perturbed_atoms = int(match.group(1))
-                _ = next(iterator)  # skip blank line
-                for _ in range(number_of_perturbed_atoms):
-                    values = next(iterator).split()
-                    index = values[0]
-                    kind = values[1]
-                    hubbard_sites[index] = kind
-                parsed_data['hubbard_sites'] = hubbard_sites
+        for hubbard_site in hubbard_sites:
+            index = int(hubbard_site['index'])
+            manifold = hubbard_site['manifold']
+            value = float(hubbard_site['value'])
+            args = (index, manifold, index, manifold, value, (0, 0, 0), 'Ueff')
+            hubbard_structure.append_hubbard_parameter(*args)
 
-            # A calculation that will only perturb a single atom will only print one line
-            match = re.search(r'.*Atom which will be perturbed.*', line)
-            if match:
-                hubbard_sites = {}
-                number_of_perturbed_atoms = 1
-                _ = next(iterator)  # skip blank line
-                for _ in range(number_of_perturbed_atoms):
-                    values = next(iterator).split()
-                    index = values[0]
-                    kind = values[1]
-                    hubbard_sites[index] = kind
-                parsed_data['hubbard_sites'] = hubbard_sites
-
-        if is_prematurely_terminated:
-            logs.error.append('ERROR_OUTPUT_STDOUT_INCOMPLETE')
-
-        return parsed_data, logs
+        self.out('hubbard_structure', hubbard_structure)
 
     def parse_chi_content(self, handle):
         """Parse the contents of the file {prefix}.chi.dat as written by a HpCalculation.
@@ -254,9 +255,9 @@ class HpParser(Parser):
         return result
 
     def parse_hubbard_content(self, handle):
-        """Parse the contents of the file {prefix}.Hubbard_U.dat as written by a HpCalculation.
+        """Parse the contents of the file {prefix}.Hubbard_parameters.dat as written by a HpCalculation.
 
-        :param filepath: absolute filepath to the Hubbard_U.dat output file
+        :param filepath: absolute filepath to the Hubbard_parameters.dat output file
         :returns: dictionary with parsed contents
         """
         data = handle.readlines()
@@ -281,13 +282,14 @@ class HpParser(Parser):
                         subline_number += 1
                         subdata = subline.split()
                         result['hubbard_U']['sites'].append({
-                            'index': subdata[0],
-                            'type': subdata[1],
+                            'index': int(subdata[0]) - 1,  # QE indices start from 1
+                            'type': int(subdata[1]),
                             'kind': subdata[2],
-                            'spin': subdata[3],
-                            'new_type': subdata[4],
+                            'spin': int(subdata[3]),
+                            'new_type': int(subdata[4]),
                             'new_kind': subdata[5],
-                            'value': subdata[6],
+                            'manifold': subdata[6],
+                            'value': float(subdata[7]),
                         })
                     else:
                         parsed = True
@@ -335,14 +337,14 @@ class HpParser(Parser):
 
     @staticmethod
     def parse_hubbard_matrix(data):
-        """Parse one of the matrices that are written to the {prefix}.Hubbard_U.dat files.
+        """Parse one of the matrices that are written to the {prefix}.Hubbard_parameters.dat files.
 
         Each matrix should be square of size N, which is given by the product of the number of q-points and the number
         of Hubbard species. Each matrix row is printed with a maximum number of 8 elements per line and each line is
         followed by an empty line. In the parsing of the data, we will use the empty line to detect the end of the
         current matrix row.
 
-        :param data: a list of strings representing lines in the Hubbard_U.dat file of a certain matrix
+        :param data: a list of strings representing lines in the Hubbard_parameters.dat file of a certain matrix
         :returns: square numpy matrix of floats representing the parsed matrix
         """
         matrix = []
