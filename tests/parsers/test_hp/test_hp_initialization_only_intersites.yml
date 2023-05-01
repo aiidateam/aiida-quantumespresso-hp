@@ -1,0 +1,4 @@
+parameters:
+  hubbard_sites:
+    '1': Co
+    '2': O

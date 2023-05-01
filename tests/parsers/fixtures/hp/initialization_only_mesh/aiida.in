@@ -1,0 +1,7 @@
+&INPUTHP
+  determine_q_mesh_only = .true.
+  perturb_only_atom(1) = .true.
+  iverbosity = 2
+  outdir = 'out'
+  prefix = 'aiida'
+/

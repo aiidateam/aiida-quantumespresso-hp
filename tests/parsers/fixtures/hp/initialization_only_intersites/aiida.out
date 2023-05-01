@@ -1,5 +1,5 @@
 
-     Program HP v.7.1 starts on 29Nov2022 at 12:16:21
+     Program HP v.7.1 starts on 29Nov2022 at 11:50:13
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
@@ -15,7 +15,7 @@
      MPI processes distributed on     1 nodes
      K-points division:     npool     =       2
      R & G space division:  proc/nbgrp/npool/nimage =       5
-     22133 MiB available memory on the printing compute node when the environment starts
+     22082 MiB available memory on the printing compute node when the environment starts
 
 
      =---------------------------------------------------------------------------=
@@ -43,7 +43,6 @@
      Any further DFT definition will be discarded
      Please, verify this is what you really want
 
-
      Parallelization info
      --------------------
      sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
@@ -68,7 +67,22 @@
      conv. thresh. for NSCF    =       1.0E-11
      conv. thresh. for chi     =       1.0E-05
      Input Hubbard parameters (in eV):
-       U ( 1)                     =   1.00000E-05
+       V (  1,   1)  =   0.0000
+       V (  1,  11)  =   0.0000
+       V (  1,  19)  =   0.0000
+       V (  1,  22)  =   0.0000
+       V (  1,  43)  =   0.0000
+       V (  1,  46)  =   0.0000
+       V (  1,  54)  =   0.0000
+       V (  2,   2)  =   0.0000
+       V (  2,  57)  =   0.0000
+       V (  2,  65)  =   0.0000
+       V (  2,  89)  =   0.0000
+       V (  3,   3)  =   0.0000
+       V (  3,  69)  =   0.0000
+       V (  3,  93)  =   0.0000
+       V (  3, 101)  =   0.0000
+       V (  4,   4)  =   0.0000
 
      celldm(1) =  9.37050  celldm(2) =  0.00000  celldm(3) =  0.00000
      celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
@@ -90,16 +104,18 @@
         3      O      15.9990   tau(  3) = (  0.00000  0.00000  2.09589  )
         4      Li      6.9400   tau(  4) = (  0.00000  0.00000  1.41708  )
 
-     Atom which will be perturbed:
+     List of  2 atoms which will be perturbed (one at a time):
 
         1      Co     58.9332   tau( 1) = (  0.00000  0.00000  0.00000  )
+        2      O      15.9990   tau( 2) = (  0.00000  0.00000  0.73827  )
 
-     HP           :      0.31s CPU      0.33s WALL
-
-     HP           :      0.31s CPU      0.33s WALL
+     Determination of the indices of inter-site couples ...
 
 
-   This run was terminated on:  12:16:21  29Nov2022
+     HP           :      0.29s CPU      0.33s WALL
+
+
+   This run was terminated on:  11:50:13  29Nov2022
 
 =------------------------------------------------------------------------------=
    JOB DONE.

@@ -1,0 +1,20 @@
+
+                 Indices and distances for inter-site couples:
+                      (adapted for a supercell 3x3x3)
+
+            Atom 1     Atom 2    Distance (Bohr)
+
+             1 Co       1 Co        0.000000
+             1 Co      11 O         3.630748
+             1 Co      19 O         3.630748
+
+             2 O        2 O         0.000000
+             2 O       57 Co        3.630748
+             2 O       23 O         4.940654
+
+             3 O        3 O         0.000000
+             3 O       69 Co        3.630748
+             3 O       58 O         4.940654
+
+
+  =-------------------------------------------------------------------=
