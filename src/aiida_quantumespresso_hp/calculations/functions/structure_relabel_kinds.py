@@ -1,46 +1,91 @@
 # -*- coding: utf-8 -*-
-"""Calculation function to reorder the kinds of a structure with the Hubbard sites first."""
-import re
+"""Calculation function to relabel the kinds of a Hubbard structure."""
+from __future__ import annotations
+
+from copy import deepcopy
 
 from aiida.engine import calcfunction
 from aiida.orm import Dict
+from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 
 @calcfunction
-def structure_relabel_kinds(structure, hubbard):
+def structure_relabel_kinds(
+    hubbard_structure: HubbardStructureData, hubbard: Dict, magnetization: Dict | None = None
+) -> Dict:
     """Create a clone of the given structure but with new kinds, based on the new hubbard sites.
 
-    :param structure: ``StructureData`` node.
-    :param hubbard: the ``hubbard`` output node of a ``HpCalculation``.
+    :param hubbard_structure: ``HubbardStructureData`` instance.
+    :param hubbard: the ``hubbard`` output Dict node of a ``HpCalculation``.
+    :param magnetization: Dict instance containing the `starting_magnetization` QuantumESPRESSO inputs.
+    :returns: dict with keys:
+        * ``hubbard_structure``: relabelled ``HubbardStructureData``
+        * ``starting_magnetization``: updated magnetization as :class:`aiida.orm.Dict` (if provided in inputs)
     """
-    relabeled = structure.clone()
+    relabeled = hubbard_structure.clone()
     relabeled.clear_kinds()
     relabeled.clear_sites()
-
-    kind_suffix = -1
-    hubbard_u = {}
     type_to_kind = {}
-    sites = structure.sites
+    sites = hubbard_structure.sites
 
-    # First do the Hubbard sites, upping the kind name suffix each time a new type is encountered. We do the suffix
+    if magnetization:
+        old_magnetization = magnetization.get_dict()
+        new_magnetization = deepcopy(old_magnetization)
+        # Removing old Hubbard spin-polarized atom label.
+        for site in hubbard['sites']:
+            new_magnetization.pop(site['kind'], None)
+
+    kind_set = hubbard_structure.get_site_kindnames()
+    symbol_set = [hubbard_structure.get_kind(kind_name).symbol for kind_name in kind_set]
+    symbol_counter = {key: 0 for key in hubbard_structure.get_symbols_set()}
+
+    # First do the Hubbard sites, popping the kind name suffix each time a new type is encountered. We do the suffix
     # generation ourselves, because the indexing done by hp.x contains gaps in the sequence.
-    for index, site in enumerate(hubbard.base.attributes.get('sites')):
-
-        symbol = re.search(r'^([A-za-z]+)[0-9]*$', site['kind']).group(1)
+    for index, site in enumerate(hubbard['sites']):
+        symbol = symbol_set[index]
 
         try:
-            kind_name = type_to_kind[site['new_type']]
+            # We define a `spin_type`, since ``hp.x`` does not distinguish new types according to spin
+            spin_type = str(int(site['new_type']) * int(site['spin']))
+            kind_name = type_to_kind[spin_type]
         except KeyError:
-            kind_suffix += 1
-            kind_name = f'{symbol}{kind_suffix}'
-            hubbard_u[kind_name] = float(site['value'])
-            type_to_kind[site['new_type']] = kind_name
+            kind_name = get_relabelled_symbol(symbol, symbol_counter[symbol])
+            type_to_kind[spin_type] = kind_name
+            symbol_counter[symbol] += 1
+
+        if magnetization:
+            # filling 'starting magnetization' with input value but new label;
+            # if does not present a starting value, pass.
+            if site['kind'] in old_magnetization:
+                new_magnetization[kind_name] = old_magnetization[site['kind']]
 
         site = sites[index]
         relabeled.append_atom(position=site.position, symbols=symbol, name=kind_name)
 
     # Now add the non-Hubbard sites
     for site in sites[len(relabeled.sites):]:
-        relabeled.append_atom(position=site.position, symbols=structure.get_kind(site.kind_name).symbols)
+        symbols = hubbard_structure.get_kind(site.kind_name).symbols
+        names = hubbard_structure.get_kind(site.kind_name).name
+        relabeled.append_atom(position=site.position, symbols=symbols, name=names)
 
-    return {'structure': relabeled, 'hubbard_u': Dict(hubbard_u)}
+    outputs = {'hubbard_structure': relabeled}
+    if magnetization:
+        outputs.update({'starting_magnetization': Dict(new_magnetization)})
+
+    return outputs
+
+
+def get_relabelled_symbol(symbol: str, counter: int) -> str:
+    """Return a relabelled symbol.
+
+    .. warning:: this function produces up to 36 different chemical symbols.
+
+    :param symbol: a chemical symbol, NOT a kind name
+    :param counter: a integer to assing the new label. Up to 9 an interger
+        is appended, while an *ascii uppercase letter* is used. Lower cases
+        are discarded to avoid possible misleading names
+    returns: a 3 digit length symbol (QuantumESPRESSO allows only up to 3)
+    """
+    from string import ascii_uppercase, digits
+    suffix = (digits + ascii_uppercase)[counter]
+    return f'{symbol}{suffix}'
