@@ -10,7 +10,6 @@ import pytest
 HpCalculation = CalculationFactory('quantumespresso.hp')
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, file_regression):
     """Test a default `HpCalculation`."""
     entry_point_name = 'quantumespresso.hp'
@@ -26,12 +25,12 @@ def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, 
 
     retrieve_list.append(filename_output)
     retrieve_list.append(HpCalculation.filename_output_hubbard)
-    retrieve_list.append(HpCalculation.filename_output_hubbard_parameters)
+    retrieve_list.append(HpCalculation.filename_output_hubbard_dat)
     retrieve_list.append(os.path.join(HpCalculation.dirname_output_hubbard, HpCalculation.filename_output_hubbard_chi))
 
     src_perturbation_files = os.path.join(HpCalculation.dirname_output_hubbard, f'{prefix}.*.pert_*.dat')
     dst_perturbation_files = '.'
-    retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
+    retrieve_list.append((src_perturbation_files, dst_perturbation_files, 3))
 
     # Check the attributes of the returned `CalcInfo`
     assert isinstance(calc_info, datastructures.CalcInfo)
@@ -48,21 +47,71 @@ def test_default(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, 
     file_regression.check(input_written, encoding='utf-8', extension='.in')
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
-def test_invalid_parameters(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
-    """Test validation of `parameters`."""
+def test_settings(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
+    """Test a default `HpCalculation` with `settings` in inputs."""
+    entry_point_name = 'quantumespresso.hp'
+
     inputs = generate_inputs_hp()
+    cmdline_params = ['-nk', '4', '-nband', '2', '-ntg', '3', '-ndiag', '12']
+    inputs['settings'] = orm.Dict({'cmdline': cmdline_params})
+    calc_info = generate_calc_job(fixture_sandbox_folder, entry_point_name, inputs)
 
-    inputs['parameters'] = orm.Dict()
-    with pytest.raises(ValueError, match=r'the required namelist `INPUTHP` was not defined'):
+    # Check that the command-line parameters are as expected.
+    assert calc_info.codes_info[0].cmdline_params == cmdline_params + ['-in', 'aiida.in']
+
+
+@pytest.mark.parametrize(('parameters', 'match'), (
+    ({
+        'nq1': 1
+    }, r'explicit definition of flag `nq1` in namelist `.*` is not allowed'),
+    (
+        {
+            'compute_hp': True,
+            'use_parent_hp': False,
+            'use_hubbard_structure': False
+        },
+        (
+            r'parameter `INPUTHP.compute_hp` is `True` but no parent folders '
+            r'defined in `parent_hp` or no `hubbard_structure` in inputs'
+        ),
+    ),
+    (
+        {
+            'determine_q_mesh_only': True
+        },
+        r'parameter `INPUTHP.determine_q_mesh_only` is `True` but `INPUTHP.perturb_only_atom` is not set',
+    ),
+    ({
+        'determine_q_mesh_only': True,
+        'determine_num_pert_only': True,
+        'use_hubbard_structure': True
+    }, r'parameter `INPUTHP.determine_q_mesh_only` is `True` but `INPUTHP.determine_num_pert_only` is `True` as well'),
+))
+def test_invalid_parameters(
+    fixture_sandbox_folder,
+    generate_calc_job,
+    generate_calc_job_node,
+    generate_hubbard_structure,
+    generate_inputs_hp,
+    parameters,
+    match,
+):
+    """Test validation of `parameters`."""
+    use_hubbard_structure = parameters.pop('use_hubbard_structure', True)
+    use_parent_hp = parameters.pop('use_parent_hp', True)
+
+    inputs = generate_inputs_hp(inputs=parameters)
+
+    if use_hubbard_structure:
+        inputs['hubbard_structure'] = generate_hubbard_structure()
+
+    if use_parent_hp:
+        inputs['parent_hp'] = {'site_01': generate_calc_job_node('quantumespresso.hp').outputs.retrieved}
+
+    with pytest.raises(ValueError, match=match):
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
-    inputs['parameters'] = orm.Dict(dict={'INPUTHP': {'nq1': 1}})
-    with pytest.raises(ValueError, match=r'explicit definition of flag `nq1` in namelist `.*` is not allowed'):
-        generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
-
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_qpoints(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
     """Test validation of `qpoints`."""
     qpoints = orm.KpointsData()
@@ -75,26 +124,24 @@ def test_invalid_qpoints(fixture_sandbox_folder, generate_calc_job, generate_inp
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
-def test_invalid_parent_scf(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_calc_job_node):
+def test_invalid_parent_scf(
+    fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_calc_job_node, generate_structure
+):
     """Test validation of `parent_scf`."""
     inputs = generate_inputs_hp()
+    inputs_pw = {'structure': generate_structure()}
 
-    inputs['parent_scf'] = generate_calc_job_node('quantumespresso.hp').outputs.remote_folder
+    inputs['parent_scf'] = generate_calc_job_node(
+        'quantumespresso.hp', inputs=inputs_pw
+    ).outputs.remote_folder  # note the .hp
     with pytest.raises(ValueError, match=r'creator of `parent_scf` .* is not a `PwCalculation`'):
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
-    inputs['parent_scf'] = generate_calc_job_node('quantumespresso.pw').outputs.remote_folder
-    with pytest.raises(ValueError, match=r'could not retrieve the input parameters node from the parent calculation.*'):
-        generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
-
-    inputs_pw = {'parameters': orm.Dict()}
     inputs['parent_scf'] = generate_calc_job_node('quantumespresso.pw', inputs=inputs_pw).outputs.remote_folder
-    with pytest.raises(ValueError, match=r'parent calculation .* was not run with `lda_plus_u`'):
+    with pytest.raises(ValueError, match=r'parent calculation .* was not run with `HubbardStructureData`'):
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_invalid_parent_hp(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_calc_job_node):
     """Test validation of `parent_hp`."""
     inputs = generate_inputs_hp()
@@ -104,7 +151,6 @@ def test_invalid_parent_hp(fixture_sandbox_folder, generate_calc_job, generate_i
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_collect_no_parents(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp):
     """Test a `HpCalculation` performing a `compute_hp` calculation but without parent folder specified."""
     inputs = generate_inputs_hp(inputs={'compute_hp': True})
@@ -113,7 +159,6 @@ def test_collect_no_parents(fixture_sandbox_folder, generate_calc_job, generate_
         generate_calc_job(fixture_sandbox_folder, 'quantumespresso.hp', inputs)
 
 
-@pytest.mark.usefixtures('aiida_profile_clean')
 def test_collect(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, generate_hp_retrieved, file_regression):
     """Test a `HpCalculation` performing a `compute_hp` calculation."""
     entry_point_name = 'quantumespresso.hp'
@@ -128,5 +173,5 @@ def test_collect(fixture_sandbox_folder, generate_calc_job, generate_inputs_hp, 
     with fixture_sandbox_folder.open(filename_input) as handle:
         input_written = handle.read()
 
-    assert sorted(fixture_sandbox_folder.get_content_list()) == sorted([filename_input, HpCalculation.dirname_output])
+    assert sorted(fixture_sandbox_folder.get_content_list()) == sorted([filename_input])
     file_regression.check(input_written, encoding='utf-8', extension='.in')

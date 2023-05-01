@@ -1,21 +1,26 @@
 # -*- coding: utf-8 -*-
 """`CalcJob` implementation for the hp.x code of Quantum ESPRESSO."""
+from __future__ import annotations
+
 import os
 
 from aiida import orm
 from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.common.utils import classproperty
-from aiida.plugins import CalculationFactory
+from aiida.plugins import CalculationFactory, DataFactory
 from aiida_quantumespresso.calculations import CalcJob, _lowercase_dict, _uppercase_dict
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 
+from aiida_quantumespresso_hp.utils.general import is_perturb_only_atom
+
 PwCalculation = CalculationFactory('quantumespresso.pw')
+HubbardStructureData = DataFactory('quantumespresso.hubbard_structure')
 
 
 def validate_parent_scf(parent_scf, _):
     """Validate the `parent_scf` input.
 
-    Make sure that it is created by a `PwCalculation` that was run with the `lda_plus_u` switch turned on.
+    Make sure that it is created by a ``PwCalculation`` that was run with an ``HubbardStructureData``.
     """
     creator = parent_scf.creator
 
@@ -25,15 +30,9 @@ def validate_parent_scf(parent_scf, _):
     if creator.process_class is not PwCalculation:
         return f'creator of `parent_scf` {creator} is not a `PwCalculation`'
 
-    try:
-        parameters = creator.inputs.parameters.get_dict()
-    except AttributeError:
-        return f'could not retrieve the input parameters node from the parent calculation {creator}'
-
-    lda_plus_u = parameters.get('SYSTEM', {}).get('lda_plus_u', False)
-
-    if not lda_plus_u:
-        return f'parent calculation {creator} was not run with `lda_plus_u`'
+    hubbard_structure = parent_scf.creator.inputs.structure
+    if not isinstance(hubbard_structure, HubbardStructureData):
+        return f'parent calculation {parent_scf} was not run with `HubbardStructureData`'
 
 
 def validate_parent_hp(parent_hp, _):
@@ -80,10 +79,31 @@ def validate_qpoints(qpoints, _):
 
 def validate_inputs(inputs, _):
     """Validate inputs that depend on one another."""
-    compute_hp = inputs['parameters'].get_dict().get('INPUTHP', {}).get('compute_hp', False)
+    parameters = inputs['parameters'].get_dict().get('INPUTHP', {})
 
-    if compute_hp and 'parent_hp' not in inputs:
-        return 'parameter `INPUTHP.compute_hp` is `True` but no parent folders defined in `parent_hp`.'
+    compute_hp = parameters.get('compute_hp', False)
+    determine_atom_only = parameters.get('determine_num_pert_only', False)
+    determine_mesh_only = parameters.get('determine_q_mesh_only', False)
+    perturb_only_atom = bool(is_perturb_only_atom(parameters))
+
+    if compute_hp and 'parent_hp' not in inputs and 'hubbard_structure' not in inputs:
+        return (
+            'parameter `INPUTHP.compute_hp` is `True` but no parent folders '
+            'defined in `parent_hp` or no `hubbard_structure` in inputs'
+        )
+
+    if (determine_atom_only or perturb_only_atom) and 'hubbard_structure' not in inputs:
+        return (
+            'parameter `INPUTHP.determine_num_pert_only` or `INPUTHP.perturb_only_atom` '
+            'are `True`/`not None` but no `hubbard_structure` in inputs'
+        )
+
+    message = 'parameter `INPUTHP.determine_q_mesh_only` is `True` but {}'
+    if determine_mesh_only:
+        if determine_atom_only:
+            return message.format('`INPUTHP.determine_num_pert_only` is `True` as well')
+        if not perturb_only_atom:
+            return message.format('`INPUTHP.perturb_only_atom` is not set')
 
 
 class HpCalculation(CalcJob):
@@ -100,6 +120,9 @@ class HpCalculation(CalcJob):
     ]
     compulsory_namelists = ['INPUTHP']
     prefix = 'aiida'
+
+    # Not using symlink of pw folder to allow multiple hp to run on top of the same folder
+    _default_symlink_usage = False
 
     @classmethod
     def define(cls, spec):
@@ -118,15 +141,17 @@ class HpCalculation(CalcJob):
             help='Optional node for special settings.')
         spec.input('parent_scf', valid_type=orm.RemoteData, validator=validate_parent_scf)
         spec.input_namespace('parent_hp', valid_type=orm.FolderData, validator=validate_parent_hp)
+        spec.input('hubbard_structure', valid_type=HubbardStructureData, required=False)
+
         spec.output('parameters', valid_type=orm.Dict,
             help='')
+        spec.output('hubbard_structure', valid_type=HubbardStructureData, required=False,
+            help='``HubbardStructureData`` containing the new Hubbard parameters.')
         spec.output('hubbard', valid_type=orm.Dict, required=False,
-            help='')
+            help='Parsed Hubbard parameters from the ``Hubbard_parameters.dat`` file.')
         spec.output('hubbard_chi', valid_type=orm.ArrayData, required=False,
             help='')
         spec.output('hubbard_matrices', valid_type=orm.ArrayData, required=False,
-            help='')
-        spec.output('hubbard_parameters', valid_type=orm.SinglefileData, required=False,
             help='')
         spec.inputs.validator = validate_inputs
         spec.default_output_node = 'parameters'
@@ -150,6 +175,8 @@ class HpCalculation(CalcJob):
             message='The stdout output file could not be parsed.')
         spec.exit_code(312, 'ERROR_OUTPUT_STDOUT_INCOMPLETE',
             message='The stdout output file was incomplete.')
+        spec.exit_code(313, 'ERROR_HUBBARD_DAT',
+            message='The `HUBBARD.dat` could not be parsed.')
         spec.exit_code(350, 'ERROR_INVALID_NAMELIST',
             message='The namelist in the input file contained invalid syntax and could not be parsed.')
         spec.exit_code(360, 'ERROR_MISSING_PERTURBATION_FILE',
@@ -174,17 +201,17 @@ class HpCalculation(CalcJob):
         return f'{cls.prefix}.Hubbard_parameters.dat'
 
     @classproperty
-    def filename_output_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
-        """Return the relative output filename that all Hubbard parameters."""
-        return 'parameters.out'
-
-    @classproperty
-    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name,no-self-use
-        """Return the relative input filename that all Hubbard parameters."""
+    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+        """Return the relative input filename for Hubbard parameters, for QuantumESPRESSO version below 7.1."""
         return 'parameters.in'
 
     @classproperty
-    def dirname_output(cls):  # pylint: disable=no-self-argument,no-self-use
+    def filename_output_hubbard_dat(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+        """Return the relative input filename for generalised Hubbard parameters, for QuantumESPRESSO v.7.2 onwards."""
+        return 'HUBBARD.dat'
+
+    @classproperty
+    def dirname_output(cls):  # pylint: disable=no-self-argument, no-self-use
         """Return the relative directory name that contains raw output data."""
         return 'out'
 
@@ -193,6 +220,11 @@ class HpCalculation(CalcJob):
         """Return the relative directory name that contains raw output data written by hp.x."""
         return os.path.join(cls.dirname_output, 'HP')
 
+    @classproperty
+    def dirname_output_scf(cls):  # pylint: disable=no-self-argument
+        """Return the relative directory name that contains raw output data written by pw.x."""
+        return os.path.join(cls.dirname_output, f'{cls.prefix}.save')
+
     def prepare_for_submission(self, folder):
         """Create the input files from the input nodes passed to this instance of the `CalcJob`.
 
@@ -200,27 +232,37 @@ class HpCalculation(CalcJob):
         :return: `aiida.common.datastructures.CalcInfo` instance
         """
         if 'settings' in self.inputs:
-            settings = self.inputs.settings.get_dict()
+            settings = _uppercase_dict(self.inputs.settings.get_dict(), dict_name='settings')
         else:
             settings = {}
 
+        symlink = settings.pop('PARENT_FOLDER_SYMLINK', self._default_symlink_usage)  # a boolean
+
         parameters = self.prepare_parameters()
-        provenance_exclude_list = self.write_input_files(folder, parameters)
+        self.write_input_files(folder, parameters)
 
         codeinfo = CodeInfo()
         codeinfo.code_uuid = self.inputs.code.uuid
         codeinfo.stdout_name = self.options.output_filename
-        codeinfo.cmdline_params = (list(settings.pop('cmdline', [])) + ['-in', self.options.input_filename])
+        codeinfo.cmdline_params = (list(settings.pop('CMDLINE', [])) + ['-in', self.options.input_filename])
 
         calcinfo = CalcInfo()
         calcinfo.codes_info = [codeinfo]
         calcinfo.retrieve_list = self.get_retrieve_list()
-        calcinfo.remote_copy_list = self.get_remote_copy_list()
-        calcinfo.provenance_exclude_list = provenance_exclude_list
+        # No need to keep ``HUBBARD.dat``, as the info is stored in ``aiida.Hubbard_parameters.dat``
+        calcinfo.retrieve_temporary_list = [self.filename_output_hubbard_dat]
+        if symlink:
+            if 'parent_hp' not in self.inputs:
+                folder.get_subfolder(self.dirname_output, create=True)
+            calcinfo.remote_symlink_list = self.get_remote_copy_list(symlink)
+        else:
+            calcinfo.remote_copy_list = self.get_remote_copy_list(symlink)
+        if 'parent_hp' in self.inputs:
+            calcinfo.local_copy_list, calcinfo.provenance_exclude_list = self.get_local_copy_list()
 
         return calcinfo
 
-    def get_retrieve_list(self):
+    def get_retrieve_list(self) -> list[tuple]:
         """Return the `retrieve_list`.
 
         A `HpCalculation` can be parallelized over atoms by running individual calculations, but a final post-processing
@@ -234,27 +276,52 @@ class HpCalculation(CalcJob):
         # Default output files that are written after a completed or post-processing HpCalculation
         retrieve_list.append(self.options.output_filename)
         retrieve_list.append(self.filename_output_hubbard)
-        retrieve_list.append(self.filename_output_hubbard_parameters)
+        retrieve_list.append(self.filename_output_hubbard_dat)
         retrieve_list.append(os.path.join(self.dirname_output_hubbard, self.filename_output_hubbard_chi))
 
         # The perturbation files that are necessary for a final `compute_hp` calculation in case this is an incomplete
-        # calculation that computes just a subset of all kpoints and/or all perturbed atoms.
+        # calculation that computes just a subset of all qpoints and/or all perturbed atoms.
         src_perturbation_files = os.path.join(self.dirname_output_hubbard, f'{self.prefix}.*.pert_*.dat')
         dst_perturbation_files = '.'
-        retrieve_list.append([src_perturbation_files, dst_perturbation_files, 3])
+        retrieve_list.append((src_perturbation_files, dst_perturbation_files, 3))
 
         return retrieve_list
 
-    def get_remote_copy_list(self):
-        """Return the `remote_copy_list`.
+    def get_remote_copy_list(self, is_symlink) -> list[tuple]:
+        """Return the `remote_{copy/symlink}_list`.
 
+        :param is_symlink: whether to use symlink for the remote list
         :returns: list of resource copy instructions
         """
         parent_scf = self.inputs.parent_scf
-        folder_src = os.path.join(parent_scf.get_remote_path(), self.dirname_output)
-        return [(parent_scf.computer.uuid, folder_src, '.')]
+        if 'parent_hp' in self.inputs and not is_symlink:
+            dirname = self.dirname_output_scf
+            dirfinal = self.dirname_output
+        elif is_symlink:
+            dirname = os.path.join(self.dirname_output, '*')
+            dirfinal = self.dirname_output
+        else:
+            dirname = self.dirname_output
+            dirfinal = '.'
+        folder_src = os.path.join(parent_scf.get_remote_path(), dirname)
+        return [(parent_scf.computer.uuid, folder_src, dirfinal)]
 
-    def prepare_parameters(self):
+    def get_local_copy_list(self) -> tuple[list,list]:
+        """Return the `local_copy_list`.
+
+        :returns: tuple,list of resource copy instructions
+        """
+        local_copy_list, provenance_exclude_list = [], []
+
+        for retrieved in self.inputs.get('parent_hp', {}).values():
+            local_copy_list.append((retrieved.uuid, self.dirname_output_hubbard, self.dirname_output_hubbard))
+            for filename in retrieved.base.repository.list_object_names(self.dirname_output_hubbard):
+                filepath = os.path.join(self.dirname_output_hubbard, filename)
+                provenance_exclude_list.append(filepath)
+
+        return local_copy_list, provenance_exclude_list
+
+    def prepare_parameters(self) -> dict:
         """Prepare the parameters based on the input parameters.
 
         The returned input dictionary will contain all the necessary namelists and their flags that should be written to
@@ -262,13 +329,18 @@ class HpCalculation(CalcJob):
 
         :returns: a dictionary with input namelists and their flags
         """
-        result = _uppercase_dict(self.inputs.parameters.get_dict(), dict_name='parameters')
+        result = _uppercase_dict(self.inputs.parameters.get_dict() , dict_name='parameters')
         result = {key: _lowercase_dict(value, dict_name=key) for key, value in result.items()}
 
         mesh, _ = self.inputs.qpoints.get_kpoints_mesh()
 
         if 'parent_hp' in self.inputs:
-            result['INPUTHP']['compute_hp'] = True
+            atom_perturbed = bool(is_perturb_only_atom(result.get('INPUTHP', {})))
+            # `sum_perq` and `compute_hp` can be used only separately
+            if atom_perturbed:
+                result['INPUTHP']['sum_pertq'] = True
+            else:
+                result['INPUTHP']['compute_hp'] = True
 
         result['INPUTHP']['iverbosity'] = 2
         result['INPUTHP']['outdir'] = self.dirname_output
@@ -282,12 +354,9 @@ class HpCalculation(CalcJob):
     def write_input_files(self, folder, parameters):
         """Write the prepared `parameters` to the input file in the sandbox folder.
 
-        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk.
+        :param folder: an :class:`aiida.common.folders.Folder` to temporarily write files on disk.
         :param parameters: a dictionary with input namelists and their flags.
-        :return: list of files that need to be excluded from the provenance.
         """
-        provenance_exclude_list = []
-
         # Write the main input file
         with folder.open(self.options.input_filename, 'w') as handle:
             for namelist_name in self.compulsory_namelists:
@@ -296,19 +365,3 @@ class HpCalculation(CalcJob):
                 for key, value in sorted(namelist.items()):
                     handle.write(convert_input_to_namelist_entry(key, value))
                 handle.write('/\n')
-
-        # Copy perturbation files from previous `HpCalculation` if defined as inputs.
-        if 'parent_hp' in self.inputs:
-
-            # Need to manually create the subdirectory first or the write will fail.
-            os.makedirs(os.path.join(folder.abspath, self.dirname_output_hubbard), exist_ok=True)
-
-            for retrieved in self.inputs.get('parent_hp', {}).values():
-                for filename in retrieved.base.repository.list_object_names(self.dirname_output_hubbard):
-                    filepath = os.path.join(self.dirname_output_hubbard, filename)
-                    provenance_exclude_list.append(filepath)
-                    with open(os.path.join(folder.abspath, filepath), 'wb') as handle:
-                        with retrieved.base.repository.open(filepath, 'rb') as source:
-                            handle.write(source.read())
-
-        return provenance_exclude_list
