@@ -1,0 +1,16 @@
+default_inputs:
+    clean_workdir: True
+    parallelize_atoms: True
+    parallelize_qpoints: True
+    qpoints_distance: 0.8
+
+default_protocol: moderate
+protocols:
+    moderate:
+        description: 'Protocol to perform a band structure calculation at normal precision at moderate computational cost.'
+    precise:
+        description: 'Protocol to perform a band structure calculation at high precision at higher computational cost.'
+        qpoints_distance: 0.4
+    fast:
+        description: 'Protocol to perform a band structure calculation at low precision at minimal computational cost for testing purposes.'
+        qpoints_distance: 1.2
