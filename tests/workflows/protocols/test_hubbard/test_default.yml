@@ -1,0 +1,96 @@
+clean_workdir: true
+hubbard:
+  hp:
+    code: test.quantumespresso.hp@localhost
+    metadata:
+      options:
+        max_wallclock_seconds: 43200
+        resources:
+          num_machines: 1
+        withmpi: true
+    parameters:
+      INPUTHP:
+        conv_thr_chi: 5.0e-06
+    settings:
+      parent_folder_symlink: true
+  parallelize_atoms: true
+  parallelize_qpoints: true
+  qpoints_distance: 0.8
+hubbard_structure: CoLiO2
+meta_convergence: true
+relax:
+  base:
+    kpoints_distance: 0.15
+    kpoints_force_parity: false
+    pw:
+      code: test.quantumespresso.pw@localhost
+      metadata:
+        options:
+          max_wallclock_seconds: 43200
+          resources:
+            num_machines: 1
+          withmpi: true
+      parameters:
+        CELL:
+          cell_dofree: all
+          press_conv_thr: 0.5
+        CONTROL:
+          calculation: vc-relax
+          etot_conv_thr: 4.0e-05
+          forc_conv_thr: 0.0001
+          tprnfor: true
+          tstress: true
+        ELECTRONS:
+          conv_thr: 8.0e-10
+          electron_maxstep: 80
+          mixing_beta: 0.4
+        SYSTEM:
+          degauss: 0.01
+          ecutrho: 240.0
+          ecutwfc: 30.0
+          nosym: false
+          occupations: smearing
+          smearing: cold
+      pseudos:
+        Co: Co<md5=04edd96127402ab6ffc358660b52a2db>
+        Li: Li<md5=90ac4658c7606c7ad16e40ce66db5a86>
+        O: O<md5=721f9895631356f7d4610e60de16fd63>
+  max_meta_convergence_iterations: 5
+  meta_convergence: true
+  volume_convergence: 0.02
+scf:
+  kpoints_distance: 0.4
+  kpoints_force_parity: false
+  pw:
+    code: test.quantumespresso.pw@localhost
+    metadata:
+      options:
+        max_wallclock_seconds: 43200
+        resources:
+          num_machines: 1
+        withmpi: true
+    parameters:
+      CONTROL:
+        calculation: scf
+        etot_conv_thr: 4.0e-05
+        forc_conv_thr: 0.0001
+        tprnfor: true
+        tstress: true
+      ELECTRONS:
+        conv_thr: 8.0e-10
+        electron_maxstep: 80
+        mixing_beta: 0.4
+      SYSTEM:
+        degauss: 0.01
+        ecutrho: 240.0
+        ecutwfc: 30.0
+        nosym: false
+        occupations: smearing
+        smearing: cold
+    pseudos:
+      Co: Co<md5=04edd96127402ab6ffc358660b52a2db>
+      Li: Li<md5=90ac4658c7606c7ad16e40ce66db5a86>
+      O: O<md5=721f9895631356f7d4610e60de16fd63>
+skip_first_relax: false
+tolerance_intersite: 0.01
+tolerance_onsite: 0.1

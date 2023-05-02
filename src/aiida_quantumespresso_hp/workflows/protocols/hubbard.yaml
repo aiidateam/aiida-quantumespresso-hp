@@ -1,0 +1,25 @@
+default_inputs:
+    clean_workdir: True
+    meta_convergence: True
+    tolerance_onsite: 0.1
+    tolerance_intersite: 0.01
+    skip_first_relax: False
+    scf:
+        kpoints_distance: 0.4
+
+default_protocol: moderate
+protocols:
+    moderate:
+        description: 'Protocol to perform the computation at normal precision at moderate computational cost.'
+    precise:
+        description: 'Protocol to perform the computation at high precision at higher computational cost.'
+        tolerance_onsite: 0.01
+        tolerance_intersite: 0.005
+        scf:
+            kpoints_distance: 0.2
+    fast:
+        description: 'Protocol to perform the computation at low precision at minimal computational cost for testing purposes.'
+        tolerance_onsite: 0.2
+        tolerance_intersite: 0.1
+        scf:
+            kpoints_distance: 0.6
