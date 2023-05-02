@@ -1,190 +1,369 @@
 # -*- coding: utf-8 -*-
 """Turn-key solution to automatically compute the self-consistent Hubbard parameters for a given structure."""
+from __future__ import annotations
+
 from aiida import orm
 from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import ToContext, WorkChain, append_, if_, while_
 from aiida.orm.nodes.data.array.bands import find_bandgap
-from aiida.plugins import CalculationFactory, WorkflowFactory
+from aiida.plugins import CalculationFactory, DataFactory, WorkflowFactory
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
+from aiida_quantumespresso.utils.hubbard import HubbardUtils
+from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
+import numpy as np
 
 from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
 from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
-from aiida_quantumespresso_hp.utils.validation import validate_structure_kind_order
+from aiida_quantumespresso_hp.utils.general import set_tot_magnetization
+
+HubbardStructureData = DataFactory('quantumespresso.hubbard_structure')
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
+
 PwBaseWorkChain = WorkflowFactory('quantumespresso.pw.base')
 PwRelaxWorkChain = WorkflowFactory('quantumespresso.pw.relax')
 HpWorkChain = WorkflowFactory('quantumespresso.hp.main')
 
 
+def get_separated_parameters(hubbard_parameters: list(tuple(int, str, int, str, float, tuple(int, int, int),
+                                                            str))) -> tuple[list, list]:
+    """Return a tuple with onsites and intersites parameters separated.
+
+    :return: tuple (onsites, intersites)."""
+    onsites = []
+    intersites = []
+
+    for parameters in hubbard_parameters:
+        if parameters[0] == parameters[2] and parameters[1] == parameters[3]:
+            onsites.append(parameters)
+        else:
+            intersites.append(parameters)
+
+    return onsites, intersites
+
+
 def validate_inputs(inputs, _):
-    """Validate the entire inputs namespace."""
-    structure_kinds = inputs['structure'].get_kind_names()
-    hubbard_u_kinds = list(inputs['hubbard_u'].get_dict().keys())
+    """Validate the entire inputs."""
+    parameters = AttributeDict(inputs).scf.pw.parameters.get_dict()
+    nspin = parameters.get('SYSTEM', {}).get('nspin', 1)
 
-    if not hubbard_u_kinds:
-        return 'need to define a starting Hubbard U value for at least one kind.'
+    if nspin == 2:
+        magnetic_moments = parameters.get('SYSTEM', {}).get('starting_magnetization', None)
+        if magnetic_moments is None:
+            return 'Missing `starting_magnetization` input in `scf.pw.parameters` while `nspin == 2`.'
 
-    if not set(hubbard_u_kinds).issubset(structure_kinds):
-        return 'kinds specified in starting Hubbard U values is not a strict subset of the structure kinds.'
+    if nspin not in [1, 2]:
+        return f'nspin=`{nspin}` is not implemented in the `hp.x` code.'
 
 
-class SelfConsistentHubbardWorkChain(WorkChain):
-    """
-    Workchain that for a given input structure will compute the self-consistent Hubbard U parameters
-    by iteratively relaxing the structure with the PwRelaxWorkChain and computing the Hubbard U
-    parameters through the HpWorkChain, until the Hubbard U values are converged within a certain tolerance.
+class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
+    """Workchain that for a given input structure will compute the self-consistent Hubbard parameters
+    by iteratively relaxing the structure (optional) with the ``PwRelaxWorkChain`` and computing the Hubbard
+    parameters through the ``HpWorkChain``, after an scf performed via the ``PwBaseWorkChain``,
+    until the Hubbard values are converged within certain tolerance(s).
 
     The procedure in each step of the convergence cycle is slightly different depending on the electronic and
     magnetic properties of the system. Each cycle will roughly consist of three steps:
 
-        * Relaxing the structure at the current Hubbard U values
-        * One or more SCF calculations depending on the system's electronic and magnetic properties
-        * A self-consistent calculation of the Hubbard U parameters, restarted from the previous SCF run
+        * Relaxing the structure at the current Hubbard values (optional)
+        * One or two SCF calculations depending whether the system is metallic or insulating, respectively
+        * A self-consistent calculation of the Hubbard parameters, restarted from the last SCF run
 
     The possible options for the set of SCF calculations that have to be run in the second step look are:
 
         * Metals:
             - SCF with smearing
 
-        * Non-magnetic insulators
-            - SCF with fixed occupations
-
-        * Magnetic insulators
+        * Insulators
             - SCF with smearing
-            - SCF with fixed occupations, where total magnetization and number of bands are fixed
-              to the values found from the previous SCF calculation
+            - SCF with fixed occupations; if magnetic, total magnetization and number of bands
+            are fixed to the values found from the previous SCF calculation
 
-    When convergence is achieved a Dict node will be returned containing the final converged
-    Hubbard U parameters.
+    When convergence is achieved a node will be returned containing the final converged
+    :class:`~aiida_quantumespresso.data.hubbard_structure.HubbardStructureData`.
     """
-
-    # pylint: disable=too-many-public-methods
 
     defaults = AttributeDict({
         'qe': qe_defaults,
-        'smearing_method': 'marzari-vanderbilt',
-        'smearing_degauss': 0.02,
+        'smearing_method': 'cold',
+        'smearing_degauss': 0.01,
         'conv_thr_preconverge': 1E-10,
         'conv_thr_strictfinal': 1E-15,
-        'u_projection_type_relax': 'atomic',
-        'u_projection_type_scf': 'ortho-atomic',
     })
 
     @classmethod
     def define(cls, spec):
-        # yapf: disable
         super().define(spec)
-        spec.input('structure', valid_type=orm.StructureData)
-        spec.input('hubbard_u', valid_type=orm.Dict)
-        spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(0.1))
-        spec.input('max_iterations', valid_type=orm.Int, default=lambda: orm.Int(5))
+
+        spec.input('hubbard_structure', valid_type=HubbardStructureData)
+        spec.input(
+            'tolerance_onsite',
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.1),
+            help=(
+                'Tolerance value for self-consistent calculation of Hubbard U. '
+                'In case of DFT+U+V calculation, it refers to the diagonal elements (i.e. on-site).'
+            )
+        )
+        spec.input(
+            'tolerance_intersite',
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.01),
+            help=(
+                'Tolerance value for self-consistent DFT+U+V calculation. '
+                'It refers to the only off-diagonal elements V.'
+            )
+        )
+        spec.input(
+            'skip_first_relax',
+            valid_type=bool,
+            default=lambda: False,
+            non_db=True,
+            help='If True, skip the first relaxation'
+        )
+        spec.input(
+            'relax_frequency',
+            valid_type=orm.Int,
+            required=False,
+            help='Integer value referring to the number of iterations to wait before performing the `relax` step.'
+        )
+        spec.expose_inputs(
+            PwRelaxWorkChain,
+            namespace='relax',
+            exclude=(
+                'clean_workdir',
+                'structure',
+            ),
+            namespace_options={
+                'required': False,
+                'populate_defaults': False,
+                'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'
+            }
+        )
+        spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=(
+            'clean_workdir',
+            'pw.structure',
+        ))
+        spec.expose_inputs(
+            HpWorkChain,
+            namespace='hubbard',
+            exclude=(
+                'clean_workdir',
+                'hp.parent_scf',
+                'hp.parent_hp',
+                'hp.hubbard_structure',
+            )
+        )
+        spec.input('max_iterations', valid_type=orm.Int, default=lambda: orm.Int(10))
         spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(False))
+        spec.input(
+            'clean_workdir',
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(True),
+            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.'
+        )
+
         spec.inputs.validator = validate_inputs
-        spec.expose_inputs(PwBaseWorkChain, namespace='recon', exclude=('pw.structure',),
-            namespace_options={'help': 'Inputs for the `PwBaseWorkChain` that, when defined, are used for a '
-                'reconnaissance SCF to determine the electronic properties of the material.'})
-        spec.expose_inputs(PwRelaxWorkChain, namespace='relax', exclude=('structure',),
-            namespace_options={'required': False, 'populate_defaults': False,
-            'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'})
-        spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=('pw.structure',))
-        spec.expose_inputs(HpWorkChain, namespace='hubbard', exclude=('hp.parent_scf',))
+        spec.inputs['hubbard']['hp'].validator = None
+
         spec.outline(
             cls.setup,
-            cls.validate_inputs,
-            if_(cls.should_run_recon)(
-                cls.run_recon,
-                cls.inspect_recon,
-            ),
             while_(cls.should_run_iteration)(
                 cls.update_iteration,
                 if_(cls.should_run_relax)(
                     cls.run_relax,
                     cls.inspect_relax,
                 ),
-                if_(cls.is_metal)(  # pylint: disable=no-member
-                    cls.run_scf_smearing,
-                ).elif_(cls.is_magnetic)(
-                    cls.run_scf_smearing,
-                    cls.run_scf_fixed_magnetic,
-                ).else_(
+                cls.run_scf_smearing,
+                cls.recon_scf,
+                if_(cls.is_insulator)(
                     cls.run_scf_fixed,
+                    cls.inspect_scf,
                 ),
-                cls.inspect_scf,
                 cls.run_hp,
                 cls.inspect_hp,
+                if_(cls.should_check_convergence)(cls.check_convergence,),
             ),
             cls.run_results,
         )
-        spec.output('structure', valid_type=orm.StructureData, required=False,
-            help='The final relaxed structure, only if relax inputs were defined.')
-        spec.output('hubbard', valid_type=orm.Dict,
-            help='The final converged Hubbard U parameters.')
-        spec.exit_code(330, 'ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL',
-            message='Failed to determine the correct pseudo potential after the structure changed its kind names.')
-        spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RECON',
-            message='The reconnaissance PwBaseWorkChain sub process failed')
-        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_RELAX',
-            message='The PwRelaxWorkChain sub process failed in iteration {iteration}')
-        spec.exit_code(403, 'ERROR_SUB_PROCESS_FAILED_SCF',
-            message='The scf PwBaseWorkChain sub process failed in iteration {iteration}')
-        spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_HP',
-            message='The HpWorkChain sub process failed in iteration {iteration}')
+
+        spec.output(
+            'hubbard_structure',
+            valid_type=HubbardStructureData,
+            required=False,
+            help='The Hubbard structure containing the structure and associated Hubbard parameters.'
+        )
+
+        spec.exit_code(
+            330,
+            'ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL',
+            message='Failed to determine the correct pseudo potential after the structure changed its kind names.'
+        )
+        spec.exit_code(
+            401, 'ERROR_SUB_PROCESS_FAILED_RECON', message='The reconnaissance PwBaseWorkChain sub process failed'
+        )
+        spec.exit_code(
+            402,
+            'ERROR_SUB_PROCESS_FAILED_RELAX',
+            message='The PwRelaxWorkChain sub process failed in iteration {iteration}'
+        )
+        spec.exit_code(
+            403,
+            'ERROR_SUB_PROCESS_FAILED_SCF',
+            message='The scf PwBaseWorkChain sub process failed in iteration {iteration}'
+        )
+        spec.exit_code(
+            404, 'ERROR_SUB_PROCESS_FAILED_HP', message='The HpWorkChain sub process failed in iteration {iteration}'
+        )
+        spec.exit_code(
+            405, 'ERROR_NON_INTEGER_TOT_MAGNETIZATION',
+            message='The scf PwBaseWorkChain sub process in iteration {iteration}'\
+                    'returned a non integer total magnetization (threshold exceeded).'
+        )
+
+    @classmethod
+    def get_protocol_filepath(cls):
+        """Return ``pathlib.Path`` to the ``.yaml`` file that defines the protocols."""
+        from importlib_resources import files
+
+        from . import protocols
+        return files(protocols) / 'hubbard.yaml'
+
+    @classmethod
+    def get_builder_from_protocol(
+        cls,
+        pw_code,
+        hp_code,
+        hubbard_structure,
+        protocol=None,
+        overrides=None,
+        options_pw=None,
+        options_hp=None,
+        **kwargs
+    ):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol.
+
+        :param pw_code: the ``Code`` instance configured for the ``quantumespresso.pw`` plugin.
+        :param hp_code: the ``Code`` instance configured for the ``quantumespresso.hp`` plugin.
+        :param hubbard_structure: the ``HubbardStructureData`` instance containing the initialised Hubbard paramters.
+        :param protocol: protocol to use, if not specified, the default will be used.
+        :param overrides: optional dictionary of inputs to override the defaults of the protocol.
+        :param options_pw: A dictionary of options that will be recursively set for the ``metadata.options``
+            input of all the pw ``CalcJobs`` that are nested in this work chain.
+        :param options_hp: A dictionary of options that will be recursively set for the ``metadata.options``
+            input of all the hp ``CalcJobs`` that are nested in this work chain.
+        :return: a process builder instance with all inputs defined ready for launch.
+        """
+        inputs = cls.get_protocol_inputs(protocol, overrides)
+
+        args = (pw_code, hubbard_structure, protocol)
+        relax = PwRelaxWorkChain.get_builder_from_protocol(
+            *args, overrides=inputs.get('relax', None), options=options_pw, **kwargs
+        )
+        scf = PwBaseWorkChain.get_builder_from_protocol(
+            *args, overrides=inputs.get('scf', None), options=options_pw, **kwargs
+        )
+
+        args = (hp_code, protocol)
+        hubbard = HpWorkChain.get_builder_from_protocol(
+            *args, overrides=inputs.get('hubbard', None), options=options_hp, **kwargs
+        )
+
+        relax.pop('clean_workdir')
+        relax.pop('structure')
+        relax.pop('base_final_scf', None)  # We do not want to run a final scf, since it would be time wasted.
+        scf.pop('clean_workdir')
+        scf['pw'].pop('structure')
+
+        hubbard.pop('clean_workdir', None)
+        for namespace in ('parent_scf', 'hubbard_structure', 'parent_hp'):
+            hubbard['hp'].pop(namespace, None)
+
+        builder = cls.get_builder()
+
+        if 'relax_frequency' in inputs:
+            builder.relax_frequency = orm.Int(inputs['relax_frequency'])
+
+        builder.hubbard_structure = hubbard_structure
+        builder.relax = relax
+        builder.scf = scf
+        builder.hubbard = hubbard
+        builder.skip_first_relax = inputs['skip_first_relax']
+        builder.tolerance_onsite = orm.Float(inputs['tolerance_onsite'])
+        builder.tolerance_intersite = orm.Float(inputs['tolerance_intersite'])
+        builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
+        builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
+
+        return builder
 
     def setup(self):
-        """Set up the context."""
+        """Set up Context variables."""
+        # Set ctx variables for the cycle.
+        self.ctx.current_magnetic_moments = None  # starting_magnetization dict for collinear spin calcs
         self.ctx.max_iterations = self.inputs.max_iterations.value
-        self.ctx.current_structure = self.inputs.structure
-        self.ctx.current_hubbard_u = self.inputs.hubbard_u.get_dict()
         self.ctx.is_converged = False
-        self.ctx.is_magnetic = None
-        self.ctx.is_metal = None
+        self.ctx.is_insulator = None
+        self.ctx.is_magnetic = False
         self.ctx.iteration = 0
+        self.ctx.skip_first_relax = self.inputs.skip_first_relax
+        self.ctx.relax_frequency = 1
+        if 'relax_frequency' in self.inputs:
+            self.ctx.relax_frequency = self.inputs.relax_frequency.value
 
-    def validate_inputs(self):
-        """Validate inputs."""
-        structure = self.inputs.structure
-        hubbard_u = self.inputs.hubbard_u
-
-        try:
-            validate_structure_kind_order(structure, list(hubbard_u.get_dict().keys()))
-        except ValueError:
-            self.report('structure has incorrect kind order, reordering...')
-            self.ctx.current_structure = structure_reorder_kinds(structure, hubbard_u)
-            self.report(f'reordered StructureData<{structure.pk}>')
+        # Check if the atoms should be reordered
+        hp_utils = HubbardUtils(self.inputs.hubbard_structure)
+        if not hp_utils.is_to_reorder():
+            self.ctx.current_hubbard_structure = self.inputs.hubbard_structure
+        else:
+            self.report('detected kinds in the wrong order: reordering the kinds.')
+            self.ctx.current_hubbard_structure = structure_reorder_kinds(self.inputs.hubbard_structure)
 
         # Determine whether the system is to be treated as magnetic
         parameters = self.inputs.scf.pw.parameters.get_dict()
-        if parameters.get('SYSTEM', {}).get('nspin', self.defaults.qe.nspin) != 1:
+        nspin = parameters.get('SYSTEM', {}).get('nspin', self.defaults.qe.nspin)
+        magnetic_moments = parameters.get('SYSTEM', {}).get('starting_magnetization', None)
+
+        if nspin == 1:
+            self.report('system is treated to be non-magnetic because `nspin == 1` in `scf.pw.parameters` input.')
+        else:
             self.report('system is treated to be magnetic because `nspin != 1` in `scf.pw.parameters` input.')
             self.ctx.is_magnetic = True
-        else:
-            self.report('system is treated to be non-magnetic because `nspin == 1` in `scf.pw.parameters` input.')
-            self.ctx.is_magnetic = False
-
-    def should_run_recon(self):
-        """Return whether a recon calculation needs to be run, which is true if `recon` is specified in inputs."""
-        return 'recon' in self.inputs
+            self.ctx.current_magnetic_moments = orm.Dict(magnetic_moments)
 
     def should_run_relax(self):
         """Return whether a relax calculation needs to be run, which is true if `relax` is specified in inputs."""
+        if 'relax' not in self.inputs:
+            return False
+
+        if self.ctx.skip_first_relax:
+            self.ctx.skip_first_relax = False  # only the first one will be skipped
+            self.report('`skip_first_relax` is set to `True`. Skipping first relaxation.')
+            return False
+
+        if self.ctx.iteration % self.ctx.relax_frequency != 0:
+            self.report((
+                f'`relax_frequency` is set to {self.ctx.relax_frequency}. '
+                f'Skipping relaxation for iteration {self.ctx.iteration }.'
+            ))
+            return False
+
         return 'relax' in self.inputs
 
-    def should_run_iteration(self):
-        """Return whether a new process should be run.
+    def should_check_convergence(self):
+        """Return whether to check the convergence of Hubbard parameters."""
+        return self.inputs.meta_convergence.value
 
-        This is the case as long as the Hubbard parameters have not yet converged and the maximum number of restarts has
-        not yet been exceeded.
-        """
+    def should_run_iteration(self):
+        """Return whether a new process should be run."""
         return not self.ctx.is_converged and self.ctx.iteration < self.ctx.max_iterations
 
     def update_iteration(self):
         """Update the current iteration index counter."""
         self.ctx.iteration += 1
 
-    def is_metal(self):
+    def is_insulator(self):
         """Return whether the current structure is a metal."""
-        return self.ctx.is_metal
+        return self.ctx.is_insulator
 
     def is_magnetic(self):
         """Return whether the current structure is magnetic."""
@@ -204,109 +383,66 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         except ValueError:
             return self.exit_codes.ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL
 
-        if cls is PwBaseWorkChain and namespace in ['recon', 'scf']:
+        if cls is PwBaseWorkChain and namespace == 'scf':
+            inputs = self.set_pw_parameters(inputs)
             inputs.pw.pseudos = pseudos
-            inputs.pw.structure = self.ctx.current_structure
-            inputs.pw.parameters = inputs.pw.parameters.get_dict()
-            inputs.pw.parameters.setdefault('CONTROL', {})
-            inputs.pw.parameters.setdefault('SYSTEM', {})
-            inputs.pw.parameters.setdefault('ELECTRONS', {})
-            inputs.pw.parameters['SYSTEM']['hubbard_u'] = self.ctx.current_hubbard_u
+            inputs.pw.structure = self.ctx.current_hubbard_structure
+
         elif cls is PwRelaxWorkChain and namespace == 'relax':
-            inputs.structure = self.ctx.current_structure
+            inputs.base = self.set_pw_parameters(inputs.base)
+            # inputs.base.pw.parameters.setdefault('IONS', {})
+            inputs.structure = self.ctx.current_hubbard_structure
             inputs.base.pw.pseudos = pseudos
-            inputs.base.pw.parameters = inputs.base.pw.parameters.get_dict()
-            inputs.base.pw.parameters.setdefault('CONTROL', {})
-            inputs.base.pw.parameters.setdefault('SYSTEM', {})
-            inputs.base.pw.parameters.setdefault('ELECTRONS', {})
-            inputs.base.pw.parameters['SYSTEM']['hubbard_u'] = self.ctx.current_hubbard_u
+            inputs.pop('base_final_scf', None)  # We do not want to run a final scf, since it would be time wasted.
 
         return inputs
 
-    def get_pseudos(self):
+    def set_pw_parameters(self, inputs):
+        """Set the input parameters for a generic `quantumespresso.pw` calculation.
+
+        :param inputs: AttributeDict of a ``PwBaseWorkChain`` builder input."""
+        parameters = inputs.pw.parameters.get_dict()
+        parameters.setdefault('CONTROL', {})
+        parameters.setdefault('SYSTEM', {})
+        parameters.setdefault('ELECTRONS', {})
+
+        if self.ctx.current_magnetic_moments:
+            parameters['SYSTEM']['starting_magnetization'] = self.ctx.current_magnetic_moments.get_dict()
+
+        inputs.pw.parameters = orm.Dict(parameters)
+
+        return inputs
+
+    def get_pseudos(self) -> dict:
         """Return the mapping of pseudos based on the current structure.
 
         .. note:: this is necessary because during the workchain the kind names of the structure can change, meaning the
             mapping of the pseudos that is to be passed to the subprocesses also may have to change, since the keys are
             based on the kind names of the structure.
 
-        :return: dictionary of pseudos where the keys are the kindnames of ``self.ctx.current_structure``.
+        :return: dictionary of pseudos where the keys are the kindnames of ``self.ctx.current_hubbard_structure``.
         """
         import re
 
         results = {}
-        pseudos = self.inputs.recon.pw.pseudos
+        pseudos = self.inputs.scf.pw.pseudos
 
-        for kind in self.ctx.current_structure.kinds:
+        for kind in self.ctx.current_hubbard_structure.kinds:
             for key, pseudo in pseudos.items():
                 symbol = re.sub(r'\d', '', key)
                 if re.match(fr'{kind.symbol}[0-9]*', symbol):
                     results[kind.name] = pseudo
                     break
             else:
-                raise ValueError(f'could not find the pseudo from inputs.recon.pw.pseudos for kind `{kind}`.')
+                raise ValueError(f'could not find the pseudo from inputs.scf.pw.pseudos for kind `{kind}`.')
 
         return results
-
-    def run_recon(self):
-        """Run the PwRelaxWorkChain to run a relax PwCalculation.
-
-        This runs a simple scf cycle with a few steps with smearing turned on to determine whether the system is most
-        likely a metal or an insulator. This step is required because the metallicity of the systems determines how the
-        relaxation calculations in the convergence cycle have to be performed.
-        """
-        inputs = self.get_inputs(PwBaseWorkChain, 'recon')
-        inputs.pw.parameters.setdefault('CONTROL', {})['calculation'] = 'scf'
-        inputs.pw.parameters.setdefault('ELECTRONS', {})['scf_must_converge'] = False
-        inputs.pw.parameters.setdefault('ELECTRONS', {})['electron_maxstep'] = 10
-        inputs.pw.parameters.setdefault('SYSTEM', {})['occupations'] = 'smearing'
-        inputs.pw.parameters.setdefault('SYSTEM', {})['smearing'] = self.defaults.smearing_method
-        inputs.pw.parameters.setdefault('SYSTEM', {})['degauss'] = self.defaults.smearing_degauss
-        inputs.pw.parameters.setdefault('SYSTEM', {}).pop('lda_plus_u', None)
-        inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
-        inputs.metadata.call_link_label = 'recon'
-
-        running = self.submit(PwBaseWorkChain, **inputs)
-        self.report(f'launching reconnaissance PwBaseWorkChain<{running.pk}>')
-        return ToContext(workchain_recon=running)
-
-    def inspect_recon(self):
-        """Verify that the reconnaissance PwBaseWorkChain finished successfully."""
-        workchain = self.ctx.workchain_recon
-
-        if not workchain.is_finished_ok:
-            self.report(f'reconnaissance PwBaseWorkChain failed with exit status {workchain.exit_status}')
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RECON.format(iteration=self.ctx.iteration)
-
-        bands = workchain.outputs.output_band
-        parameters = workchain.outputs.output_parameters.get_dict()
-        number_electrons = parameters['number_of_electrons']
-
-        is_insulator, _ = find_bandgap(bands, number_electrons=number_electrons)
-
-        if is_insulator:
-            self.report('system is determined to be an insulator')
-            self.ctx.is_metal = False
-        else:
-            self.report('system is determined to be a metal')
-            self.ctx.is_metal = True
 
     def run_relax(self):
         """Run the PwRelaxWorkChain to run a relax PwCalculation."""
         inputs = self.get_inputs(PwRelaxWorkChain, 'relax')
-        parameters = inputs.base.pw.parameters
-
-        u_projection_type_relax = parameters['SYSTEM'].get('u_projection_type', self.defaults.u_projection_type_relax)
-
-        parameters['SYSTEM']['u_projection_type'] = self.defaults.u_projection_type_relax
-        inputs.base.pw.parameters = orm.Dict(dict=parameters)
+        inputs.clean_workdir = self.inputs.clean_workdir
         inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_relax'
-
-        if u_projection_type_relax != self.defaults.u_projection_type_relax:
-            self.report(
-                f'warning: you specified `u_projection_type = {u_projection_type_relax}` in the input parameters, but '
-                r'this will crash pw.x, changing it to `{self.defaults.u_projection_type_relax}`'
-            )
 
         running = self.submit(PwRelaxWorkChain, **inputs)
         self.report(f'launching PwRelaxWorkChain<{running.pk}> iteration #{self.ctx.iteration}')
@@ -317,88 +453,83 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         workchain = self.ctx.workchains_relax[-1]
 
         if not workchain.is_finished_ok:
-            self.report(f'reconnaissance PwBaseWorkChain failed with exit status {workchain.exit_status}')
+            self.report(f'PwRelaxWorkChain failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_RELAX.format(iteration=self.ctx.iteration)
 
-        self.ctx.current_structure = workchain.outputs.output_structure
-
-    def run_scf_fixed(self):
-        """Run an scf `PwBaseWorkChain` with fixed occupations."""
-        inputs = self.get_inputs(PwBaseWorkChain, 'scf')
-        inputs.pw.parameters['CONTROL']['calculation'] = 'scf'
-        inputs.pw.parameters['SYSTEM']['occupations'] = 'fixed'
-        inputs.pw.parameters['SYSTEM'].pop('degauss', None)
-        inputs.pw.parameters['SYSTEM'].pop('smearing', None)
-        inputs.pw.parameters['SYSTEM']['u_projection_type'] = inputs.pw.parameters['SYSTEM'].get(
-            'u_projection_type', self.defaults.u_projection_type_scf
-        )
-        conv_thr = inputs.pw.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
-        inputs.pw.parameters['ELECTRONS']['conv_thr'] = conv_thr
-        inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
-        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed'
-
-        running = self.submit(PwBaseWorkChain, **inputs)
-
-        self.report(f'launching PwBaseWorkChain<{running.pk}> with fixed occupations')
-        return ToContext(workchains_scf=append_(running))
+        self.ctx.current_hubbard_structure = workchain.outputs.output_structure
 
     def run_scf_smearing(self):
-        """Run an scf `PwBaseWorkChain` with smeared occupations"""
+        """Run an scf `PwBaseWorkChain` with smeared occupations, always needed since we do not
+        a priori whether the material will be metallic or insulating."""
         inputs = self.get_inputs(PwBaseWorkChain, 'scf')
-        inputs.pw.parameters['CONTROL']['calculation'] = 'scf'
-        inputs.pw.parameters['SYSTEM']['occupations'] = 'smearing'
-        inputs.pw.parameters['SYSTEM']['smearing'] = inputs.pw.parameters['SYSTEM'].get(
-            'smearing', self.defaults.smearing_method
-        )
-        inputs.pw.parameters['SYSTEM']['degauss'] = inputs.pw.parameters['SYSTEM'].get(
-            'degauss', self.defaults.smearing_degauss
-        )
-        inputs.pw.parameters['SYSTEM']['u_projection_type'] = inputs.pw.parameters['SYSTEM'].get(
-            'u_projection_type', self.defaults.u_projection_type_scf
-        )
-        inputs.pw.parameters['ELECTRONS']['conv_thr'] = inputs.pw.parameters['ELECTRONS'].get(
+        parameters = inputs.pw.parameters
+        parameters['CONTROL']['calculation'] = 'scf'
+        parameters['SYSTEM']['occupations'] = 'smearing'
+        parameters['SYSTEM']['smearing'] = parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
+        parameters['SYSTEM']['degauss'] = parameters['SYSTEM'].get('degauss', self.defaults.smearing_degauss)
+        parameters['ELECTRONS']['conv_thr'] = parameters['ELECTRONS'].get(
             'conv_thr', self.defaults.conv_thr_preconverge
         )
+        inputs.pw.parameters = orm.Dict(parameters)
         inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_smearing'
-        inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
 
         running = self.submit(PwBaseWorkChain, **inputs)
 
         self.report(f'launching PwBaseWorkChain<{running.pk}> with smeared occupations')
         return ToContext(workchains_scf=append_(running))
 
-    def run_scf_fixed_magnetic(self):
-        """Run an scf `PwBaseWorkChain` with fixed occupations restarting from the previous calculation.
+    def run_scf_fixed(self):
+        """
+        Run an scf `PwBaseWorkChain` with fixed occupations on top of the previous calculation.
+        The nunmber of bands and total magnetization (if magnetic) are set according to those of the
+        previous calculation that was run with smeared occupations.
 
-        The nunmber of bands and total magnetization are set according to those of the previous calculation that was
-        run with smeared occupations.
+        .. note: this will be run only if the material has been recognised as insulating.
         """
         previous_workchain = self.ctx.workchains_scf[-1]
         previous_parameters = previous_workchain.outputs.output_parameters
 
         inputs = self.get_inputs(PwBaseWorkChain, 'scf')
-        inputs.pw.parameters['CONTROL']['calculation'] = 'scf'
-        inputs.pw.parameters['CONTROL']['restart_mode'] = 'restart'
-        inputs.pw.parameters['SYSTEM']['occupations'] = 'fixed'
-        inputs.pw.parameters['SYSTEM'].pop('degauss', None)
-        inputs.pw.parameters['SYSTEM'].pop('smearing', None)
-        inputs.pw.parameters['SYSTEM'].pop('starting_magnetization', None)
-        inputs.pw.parameters['SYSTEM']['nbnd'] = previous_parameters.get_dict()['number_of_bands']
-        inputs.pw.parameters['SYSTEM']['tot_magnetization'] = previous_parameters.get_dict()['total_magnetization']
-        inputs.pw.parameters['SYSTEM']['u_projection_type'] = inputs.pw.parameters['SYSTEM'].get(
-            'u_projection_type', self.defaults.u_projection_type_scf
-        )
-        inputs.pw.parameters['ELECTRONS']['conv_thr'] = inputs.pw.parameters['ELECTRONS'].get(
-            'conv_thr', self.defaults.conv_thr_strictfinal
-        )
 
-        inputs.pw.parameters = orm.Dict(dict=inputs.pw.parameters)
-        inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed_magnetic'
+        nbnd = previous_parameters.get_dict()['number_of_bands']
+        conv_thr = inputs.pw.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
+
+        inputs.pw.parameters['CONTROL'].update({
+            'calculation': 'scf',
+            'restart_mode': 'from_scratch',  # important
+        })
+        inputs.pw.parameters['SYSTEM'].update({
+            'nbnd': nbnd,
+            'occupations': 'fixed',
+        })
+        inputs.pw.parameters['ELECTRONS'].update({
+            'conv_thr': conv_thr,
+            'startingpot': 'file',
+            'startingwfc': 'file',
+        })
+
+        for key in ['degauss', 'smearing', 'starting_magnetization']:
+            inputs.pw.parameters['SYSTEM'].pop(key, None)
+
+        # If magnetic, set the total magnetization and raises an error if is non (not close enough) integer.
+        if self.ctx.is_magnetic:
+            total_magnetization = previous_parameters.get_dict()['total_magnetization']
+            if not set_tot_magnetization(inputs.pw.parameters, total_magnetization):
+                return self.exit_codes.ERROR_NON_INTEGER_TOT_MAGNETIZATION.format(iteration=self.ctx.iteration)
+
+        inputs.pw.parent_folder = previous_workchain.outputs.remote_folder
+        inputs.pw.parameters = orm.Dict(inputs.pw.parameters)
+
+        if self.ctx.is_magnetic:
+            inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed_magnetic'
+            report_append = 'bands and total magnetization'
+        else:
+            inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed'
+            report_append = ''
 
         running = self.submit(PwBaseWorkChain, **inputs)
-        self.report(
-            f'launching PwBaseWorkChain<{running.pk}> with fixed occupations, bands and total magnetization'
-        )
+        self.report(f'launching PwBaseWorkChain<{running.pk}> with fixed occupations' + report_append)
+
         return ToContext(workchains_scf=append_(running))
 
     def inspect_scf(self):
@@ -409,14 +540,36 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             self.report(f'scf in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_SCF.format(iteration=self.ctx.iteration)
 
-    def run_hp(self):
-        """
-        Run the HpWorkChain restarting from the last completed scf calculation
-        """
+    def recon_scf(self):
+        """Verify that the scf PwBaseWorkChain finished successfully."""
         workchain = self.ctx.workchains_scf[-1]
 
-        inputs = self.get_inputs(HpWorkChain, 'hubbard')
+        if not workchain.is_finished_ok:
+            self.report(f'scf in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_SCF.format(iteration=self.ctx.iteration)
+
+        bands = workchain.outputs.output_band
+        parameters = workchain.outputs.output_parameters.get_dict()
+        # number_electrons = parameters['number_of_electrons']
+        # is_insulator, _ = find_bandgap(bands, number_electrons=number_electrons)
+        fermi_energy = parameters['fermi_energy']
+        is_insulator, _ = find_bandgap(bands, fermi_energy=fermi_energy)
+
+        if is_insulator:
+            self.report('after relaxation, system is determined to be an insulator')
+            self.ctx.is_insulator = True
+        else:
+            self.report('after relaxation, system is determined to be a metal')
+            self.ctx.is_insulator = False
+
+    def run_hp(self):
+        """Run the HpWorkChain restarting from the last completed scf calculation."""
+        workchain = self.ctx.workchains_scf[-1]
+
+        inputs = AttributeDict(self.exposed_inputs(HpWorkChain, namespace='hubbard'))
+        inputs.clean_workdir = self.inputs.clean_workdir
         inputs.hp.parent_scf = workchain.outputs.remote_folder
+        inputs.hp.hubbard_structure = self.ctx.current_hubbard_structure
         inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_hp'
 
         running = self.submit(HpWorkChain, **inputs)
@@ -425,10 +578,11 @@ class SelfConsistentHubbardWorkChain(WorkChain):
         return ToContext(workchains_hp=append_(running))
 
     def inspect_hp(self):
-        """
-        Analyze the last completed HpWorkChain. We check the current Hubbard U parameters and compare those with
-        the values computed in the previous iteration. If the difference for all Hubbard sites is smaller than
-        the tolerance, the calculation is considered to be converged.
+        """Analyze the last completed HpWorkChain.
+
+        We check the current Hubbard parameters and compare those with the values computed
+        in the previous iteration. If the difference for all Hubbard sites is smaller than
+        the tolerance(s), the calculation is considered to be converged.
         """
         workchain = self.ctx.workchains_hp[-1]
 
@@ -437,42 +591,94 @@ class SelfConsistentHubbardWorkChain(WorkChain):
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_HP.format(iteration=self.ctx.iteration)
 
         if not self.inputs.meta_convergence:
-            self.report('meta convergence is switched off, so not checking convergence of Hubbard U parameters.')
+            self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
+            self.report('meta convergence is switched off, so not checking convergence of Hubbard parameters.')
             self.ctx.is_converged = True
+
+    def check_convergence(self):
+        """Check the convergence of the Hubbard parameters."""
+        workchain = self.ctx.workchains_hp[-1]
+
+        # We store in memory the parameters before relabelling to make the comparison easier.
+        reference = self.ctx.current_hubbard_structure.clone()
+        ref_utils = HubbardUtils(reference)
+        ref_utils.reorder_atoms()
+        ref_params = reference.hubbard.to_list()
+
+        new_hubbard_structure = workchain.outputs.hubbard_structure.clone()
+        new_utils = HubbardUtils(reference)
+        new_utils.reorder_atoms()
+        new_params = new_hubbard_structure.hubbard.to_list()
+
+        # We check if new types were created, in which case we relabel the `HubbardStructureData`
+        self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
+
+        for site in workchain.outputs.hubbard.dict.sites:
+            if not site['type'] == site['new_type']:
+                self.report('new types have been detected: relabeling the structure and starting new iteration.')
+                result = structure_relabel_kinds(
+                    self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
+                )
+                self.ctx.current_hubbard_structure = result['hubbard_structure']
+                if self.ctx.current_magnetic_moments is not None:
+                    self.ctx.current_magnetic_moments = result['starting_magnetization']
+                return
+
+        if not len(ref_params) == len(new_params):
+            self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
             return
 
-        prev_hubbard_u = self.ctx.current_hubbard_u
+        ref_onsites, ref_intersites = get_separated_parameters(ref_params)
+        new_onsites, new_intersites = get_separated_parameters(new_params)
 
-        # First check if new types were created, in which case we will have to create a new `StructureData`
-        for site in workchain.outputs.hubbard.base.attributes.get('sites'):
-            if site['type'] != site['new_type']:
-                self.report('new types have been determined: relabeling the structure and starting new iteration.')
-                result = structure_relabel_kinds(self.ctx.current_structure, workchain.outputs.hubbard)
-                self.ctx.current_structure = result['structure']
-                self.ctx.current_hubbard_u = result['hubbard_u'].get_dict()
-                break
-        else:
-            self.ctx.current_hubbard_u = {}
-            for entry in workchain.outputs.hubbard.get_dict()['sites']:
-                self.ctx.current_hubbard_u[entry['kind']] = float(entry['value'])
+        check_onsites = True
+        check_intersites = True
 
-        # Check per site if the new computed value is converged with respect to the last iteration
-        for entry in workchain.outputs.hubbard.base.attributes.get('sites'):
-            kind = entry['kind']
-            index = entry['index']
-            tolerance = self.inputs.tolerance.value
-            current_value = float(entry['value'])
-            previous_value = float(prev_hubbard_u[kind])
-            if abs(current_value - previous_value) > self.inputs.tolerance.value:
-                msg = f'parameters not converged for site {index}: {current_value} - {previous_value} > {tolerance}'
-                self.report(msg)
-                break
-        else:
-            self.report('Hubbard U parameters are converged')
+        # We do the check on the onsites first
+        old = np.array(ref_onsites, dtype='object')
+        new = np.array(new_onsites, dtype='object')
+        diff = np.abs(old[:, 4] - new[:, 4])
+
+        if (diff > self.inputs.tolerance_onsite).all():
+            check_onsites = False
+            self.report(f'Hubbard onsites parameters are not converged. Max difference is {diff.max()}.')
+
+        # Then the intersites if present. It might be an "only U" calculation.
+        if ref_intersites:
+            old = np.array(ref_intersites, dtype='object')
+            new = np.array(new_intersites, dtype='object')
+            diff = np.abs(old[:, 4] - new[:, 4])
+
+            if (diff > self.inputs.tolerance_intersite).all():
+                check_onsites = False
+                self.report(f'Hubbard intersites parameters are not converged. Max difference is {diff.max()}.')
+
+        if check_intersites and check_onsites:
+            self.report('Hubbard parameters are converged. Stopping the cycle.')
             self.ctx.is_converged = True
 
     def run_results(self):
         """Attach the final converged Hubbard U parameters and the corresponding structure."""
-        self.report(f'Hubbard U parameters self-consistently converged in {self.ctx.iteration} iterations')
-        self.out('structure', self.ctx.current_structure)
-        self.out('hubbard', self.ctx.workchains_hp[-1].outputs.hubbard)
+        self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
+        self.out('hubbard_structure', self.ctx.current_hubbard_structure)
+
+    def on_terminated(self):
+        """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
+        super().on_terminated()
+
+        if self.inputs.clean_workdir.value is False:
+            self.report('remote folders will not be cleaned')
+            return
+
+        cleaned_calcs = []
+
+        for called_descendant in self.node.called_descendants:
+            if isinstance(called_descendant, orm.CalcJobNode):
+                try:
+                    called_descendant.outputs.remote_folder._clean()  # pylint: disable=protected-access
+                    cleaned_calcs.append(called_descendant.pk)
+                except (IOError, OSError, KeyError):
+                    pass
+
+        if cleaned_calcs:
+            self.report(f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}")
