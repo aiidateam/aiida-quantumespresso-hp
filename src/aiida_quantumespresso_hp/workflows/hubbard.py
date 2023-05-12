@@ -25,11 +25,13 @@ PwRelaxWorkChain = WorkflowFactory('quantumespresso.pw.relax')
 HpWorkChain = WorkflowFactory('quantumespresso.hp.main')
 
 
-def get_separated_parameters(hubbard_parameters: list(tuple(int, str, int, str, float, tuple(int, int, int),
-                                                            str))) -> tuple[list, list]:
+def get_separated_parameters(
+    hubbard_parameters: list[tuple[int, str, int, str, float, tuple[int, int, int], str]]
+) -> tuple[list, list]:
     """Return a tuple with onsites and intersites parameters separated.
 
-    :return: tuple (onsites, intersites)."""
+    :return: tuple (list of onsites, list of intersites).
+    """
     onsites = []
     intersites = []
 
@@ -57,27 +59,31 @@ def validate_inputs(inputs, _):
 
 
 class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
-    """Workchain that for a given input structure will compute the self-consistent Hubbard parameters
-    by iteratively relaxing the structure (optional) with the ``PwRelaxWorkChain`` and computing the Hubbard
-    parameters through the ``HpWorkChain``, after an scf performed via the ``PwBaseWorkChain``,
+    """Workchain computing the self-consistent Hubbard parameters of a structure.
+
+    It iteratively relaxes the structure (optional) with the ``PwRelaxWorkChain``
+    and computes the Hubbard parameters through the ``HpWorkChain``,
+    using the remote folder of an scf performed via the ``PwBaseWorkChain``,
     until the Hubbard values are converged within certain tolerance(s).
 
     The procedure in each step of the convergence cycle is slightly different depending on the electronic and
     magnetic properties of the system. Each cycle will roughly consist of three steps:
 
-        * Relaxing the structure at the current Hubbard values (optional)
-        * One or two SCF calculations depending whether the system is metallic or insulating, respectively
-        * A self-consistent calculation of the Hubbard parameters, restarted from the last SCF run
+    * Relaxing the structure at the current Hubbard values (optional).
+    * One or two SCF calculations depending whether the system is metallic or insulating, respectively.
+    * A self-consistent calculation of the Hubbard parameters, restarted from the last SCF run.
 
     The possible options for the set of SCF calculations that have to be run in the second step look are:
 
-        * Metals:
-            - SCF with smearing
+    * Metals:
 
-        * Insulators
-            - SCF with smearing
-            - SCF with fixed occupations; if magnetic, total magnetization and number of bands
-            are fixed to the values found from the previous SCF calculation
+        - SCF with smearing.
+
+    * Insulators
+
+        - SCF with smearing.
+        - SCF with fixed occupations; if magnetic, total magnetization and number of bands
+            are fixed to the values found from the previous SCF calculation.
 
     When convergence is achieved a node will be returned containing the final converged
     :class:`~aiida_quantumespresso.data.hubbard_structure.HubbardStructureData`.
@@ -93,6 +99,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
     @classmethod
     def define(cls, spec):
+        """Define the specifications of the process."""
         super().define(spec)
 
         spec.input('hubbard_structure', valid_type=HubbardStructureData)
@@ -400,7 +407,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
     def set_pw_parameters(self, inputs):
         """Set the input parameters for a generic `quantumespresso.pw` calculation.
 
-        :param inputs: AttributeDict of a ``PwBaseWorkChain`` builder input."""
+        :param inputs: AttributeDict of a ``PwBaseWorkChain`` builder input.
+        """
         parameters = inputs.pw.parameters.get_dict()
         parameters.setdefault('CONTROL', {})
         parameters.setdefault('SYSTEM', {})
@@ -459,8 +467,11 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.ctx.current_hubbard_structure = workchain.outputs.output_structure
 
     def run_scf_smearing(self):
-        """Run an scf `PwBaseWorkChain` with smeared occupations, always needed since we do not
-        a priori whether the material will be metallic or insulating."""
+        """Run an scf `PwBaseWorkChain` with smeared occupations.
+
+        This step is always needed since we do not a priori whether
+        the material will be metallic or insulating.
+        """
         inputs = self.get_inputs(PwBaseWorkChain, 'scf')
         parameters = inputs.pw.parameters
         parameters['CONTROL']['calculation'] = 'scf'
@@ -479,8 +490,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         return ToContext(workchains_scf=append_(running))
 
     def run_scf_fixed(self):
-        """
-        Run an scf `PwBaseWorkChain` with fixed occupations on top of the previous calculation.
+        """Run an scf `PwBaseWorkChain` with fixed occupations on top of the previous calculation.
+
         The nunmber of bands and total magnetization (if magnetic) are set according to those of the
         previous calculation that was run with smeared occupations.
 
