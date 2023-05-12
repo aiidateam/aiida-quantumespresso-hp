@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """Calculation function to relabel the kinds of a Hubbard structure."""
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import Dict, Union
 
 from aiida.engine import calcfunction
+from aiida.orm import Dict
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 
@@ -11,7 +13,7 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 def structure_relabel_kinds(
     hubbard_structure: HubbardStructureData,
     hubbard: Dict,
-    magnetization: Union[Dict, None] = None,
+    magnetization: Dict | None = None,
 ) -> Dict:
     """Create a clone of the given structure but with new kinds, based on the new hubbard sites.
 
