@@ -1,5 +1,6 @@
 default_inputs:
     clean_workdir: True
+    max_iterations: 10
     meta_convergence: True
     tolerance_onsite: 0.1
     tolerance_intersite: 0.01
