@@ -164,8 +164,10 @@ def test_magnetic_setup(generate_workchain_hubbard, generate_inputs_hubbard):
 @pytest.mark.usefixtures('aiida_profile')
 def test_skip_first_relax(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain` when skipping only the first relax."""
+    from aiida.orm import Bool
+
     inputs = generate_inputs_hubbard()
-    inputs['skip_first_relax'] = True
+    inputs['skip_first_relax'] = Bool(True)
     process = generate_workchain_hubbard(inputs=inputs)
 
     process.setup()

@@ -116,9 +116,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         )
         spec.input(
             'skip_first_relax',
-            valid_type=bool,
-            default=lambda: False,
-            non_db=True,
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False),
             help='If True, skip the first relaxation'
         )
         spec.input(
@@ -288,9 +287,10 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         builder.relax = relax
         builder.scf = scf
         builder.hubbard = hubbard
-        builder.skip_first_relax = inputs['skip_first_relax']
+        builder.skip_first_relax = orm.Bool(inputs['skip_first_relax'])
         builder.tolerance_onsite = orm.Float(inputs['tolerance_onsite'])
         builder.tolerance_intersite = orm.Float(inputs['tolerance_intersite'])
+        builder.max_iterations = orm.Int(inputs['max_iterations'])
         builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
         builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
 
@@ -305,7 +305,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.ctx.is_insulator = None
         self.ctx.is_magnetic = False
         self.ctx.iteration = 0
-        self.ctx.skip_first_relax = self.inputs.skip_first_relax
+        self.ctx.skip_first_relax = self.inputs.skip_first_relax.value
         self.ctx.relax_frequency = 1
         if 'relax_frequency' in self.inputs:
             self.ctx.relax_frequency = self.inputs.relax_frequency.value

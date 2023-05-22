@@ -17,6 +17,7 @@ hubbard:
   parallelize_qpoints: true
   qpoints_distance: 0.8
 hubbard_structure: CoLiO2
+max_iterations: 10
 meta_convergence: true
 relax:
   base:

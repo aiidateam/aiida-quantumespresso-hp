@@ -33,13 +33,19 @@ def test_default(fixture_code, data_regression, generate_hubbard_structure, seri
 @pytest.mark.parametrize(
     'overrides', (
         {
-            'relax_frequency': 3
-        },
-        {
             'tolerance_onsite': 1
         },
         {
             'tolerance_intersite': 1
+        },
+        {
+            'skip_first_relax': True
+        },
+        {
+            'relax_frequency': 3
+        },
+        {
+            'max_iterations': 1
         },
         {
             'meta_convergence': False
