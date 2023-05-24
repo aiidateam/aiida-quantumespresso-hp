@@ -45,7 +45,11 @@ docs = [
     'sphinx-book-theme~=1.0.1',
     'sphinx-design~=0.4.1',
     'sphinxcontrib-details-directive~=0.1.0',
-    'sphinx-autoapi~=2.0.1'
+    'sphinx-autoapi~=2.0.1',
+    'xmltodict',
+    'jupyterlab=3',
+    'jupyterlab-myst',
+    'cryptography>=37.0.4',  # lower gives wrong link to openssl
 ]
 pre-commit = [
     'pre-commit~=2.17',
