@@ -11,16 +11,20 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
 @calcfunction
 def structure_relabel_kinds(
-    hubbard_structure: HubbardStructureData, hubbard: Dict, magnetization: Dict | None = None
+    hubbard_structure: HubbardStructureData,
+    hubbard: Dict,
+    magnetization: Dict | None = None,
 ) -> Dict:
     """Create a clone of the given structure but with new kinds, based on the new hubbard sites.
 
     :param hubbard_structure: ``HubbardStructureData`` instance.
     :param hubbard: the ``hubbard`` output Dict node of a ``HpCalculation``.
     :param magnetization: Dict instance containing the `starting_magnetization` QuantumESPRESSO inputs.
-    :returns: dict with keys:
+    :return: dict with keys:
+
         * ``hubbard_structure``: relabelled ``HubbardStructureData``
-        * ``starting_magnetization``: updated magnetization as :class:`aiida.orm.Dict` (if provided in inputs)
+        * ``starting_magnetization``: updated magnetization as :class:`~aiida.orm.Dict` (if provided in inputs)
+
     """
     relabeled = hubbard_structure.clone()
     relabeled.clear_kinds()
@@ -84,7 +88,7 @@ def get_relabelled_symbol(symbol: str, counter: int) -> str:
     :param counter: a integer to assing the new label. Up to 9 an interger
         is appended, while an *ascii uppercase letter* is used. Lower cases
         are discarded to avoid possible misleading names
-    returns: a 3 digit length symbol (QuantumESPRESSO allows only up to 3)
+    :return: a 3 digit length symbol (QuantumESPRESSO allows only up to 3)
     """
     from string import ascii_uppercase, digits
     suffix = (digits + ascii_uppercase)[counter]

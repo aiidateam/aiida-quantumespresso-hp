@@ -24,21 +24,21 @@ protocols:
         description: 'Protocol to perform the computation at normal precision at moderate computational cost.'
     precise:
         description: 'Protocol to perform the computation at high precision at higher computational cost.'
-        qpoints:
-            - 3
-            - 3
-            - 3
         hp:
             parameters:
                 INPUTHP:
                     conv_thr_chi: 1.e-8
+            qpoints:
+                - 3
+                - 3
+                - 3
     fast:
         description: 'Protocol to perform the computation at low precision at minimal computational cost for testing purposes.'
-        qpoints:
-            - 1
-            - 1
-            - 1
         hp:
             parameters:
                 INPUTHP:
                     conv_thr_chi: 1.e-4
+            qpoints:
+                - 1
+                - 1
+                - 1

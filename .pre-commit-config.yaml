@@ -7,6 +7,11 @@ repos:
     -   id: fix-encoding-pragma
     -   id: mixed-line-ending
     -   id: trailing-whitespace
+        exclude: >-
+            (?x)^(
+                tests/.*.*out|
+                tests/.*.in$
+            )$
 
 -   repo: https://github.com/ikamensh/flynt/
     rev: '0.76'
@@ -25,6 +30,11 @@ repos:
         name: yapf
         types: [python]
         args: ['-i']
+        exclude: &exclude_files >
+            (?x)^(
+                docs/.*|
+                tests/.*(?<!\.py)$
+            )$
         additional_dependencies: ['toml']
 
 -   repo: https://github.com/PyCQA/pylint
@@ -37,8 +47,5 @@ repos:
     rev: '6.1.1'
     hooks:
     -   id: pydocstyle
-        exclude: >
-            (?x)^(
-                src/aiida_quantumespresso_hp/workflows/hubbard.py|
-            )$
+        exclude: *exclude_files
         additional_dependencies: ['toml']
