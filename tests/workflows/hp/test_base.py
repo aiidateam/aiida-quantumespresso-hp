@@ -115,3 +115,49 @@ def test_handle_convergence_not_reached(generate_workchain_hp, generate_inputs_h
     assert result.do_break
 
     assert process.ctx.inputs.parameters['INPUTHP'] == expected
+
+
+# yapf: disable
+@pytest.mark.usefixtures('aiida_profile')
+@pytest.mark.parametrize(
+    ('cmdline', 'expected'),
+    (
+        ([], ['-nd', '1']),
+        (['-nd', '2'], ['-nd', '1']),
+        (['-nk', '2', '-nd', '2'], ['-nk', '2', '-nd', '1']),
+        (['-nk', '2'], ['-nk', '2', '-nd', '1']),
+    ),
+)
+# yapf: enable
+def test_handle_computing_cholesky(generate_workchain_hp, generate_inputs_hp, cmdline, expected):
+    """Test `HpBaseWorkChain.handle_computing_cholesky`."""
+    from aiida.orm import Dict
+
+    inputs_hp = {'hp': generate_inputs_hp()}
+    inputs_hp['hp']['settings'] = Dict({'cmdline': cmdline})
+
+    process = generate_workchain_hp(exit_code=HpCalculation.exit_codes.ERROR_COMPUTING_CHOLESKY, inputs=inputs_hp)
+    process.setup()
+    process.validate_parameters()
+
+    result = process.handle_computing_cholesky(process.ctx.children[-1])
+    assert isinstance(result, ProcessHandlerReport)
+    assert result.do_break
+
+    assert process.ctx.inputs.settings['cmdline'] == expected
+
+
+def test_handle_computing_cholesky_fail(generate_workchain_hp, generate_inputs_hp):
+    """Test `HpBaseWorkChain.handle_computing_cholesky` failing."""
+    from aiida.orm import Dict
+
+    inputs_hp = {'hp': generate_inputs_hp()}
+    inputs_hp['hp']['settings'] = Dict({'cmdline': ['-nd', '1']})
+
+    process = generate_workchain_hp(exit_code=HpCalculation.exit_codes.ERROR_COMPUTING_CHOLESKY, inputs=inputs_hp)
+    process.setup()
+    process.validate_parameters()
+
+    result = process.handle_computing_cholesky(process.ctx.children[-1])
+    assert isinstance(result, ProcessHandlerReport)
+    assert not result.do_break

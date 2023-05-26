@@ -142,6 +142,8 @@ class HpBaseWorkChain(BaseRestartWorkChain, ProtocolMixin):
         if self.inputs.only_initialization.value:
             self.ctx.inputs.parameters['INPUTHP']['determine_num_pert_only'] = True
 
+        self.ctx.inputs.settings = self.ctx.inputs.settings.get_dict() if 'settings' in self.ctx.inputs else {}
+
     def set_max_seconds(self, max_wallclock_seconds):
         """Set the `max_seconds` to a fraction of `max_wallclock_seconds` option to prevent out-of-walltime problems.
 
@@ -176,7 +178,37 @@ class HpBaseWorkChain(BaseRestartWorkChain, ProtocolMixin):
             self.report_error_handled(node, 'unrecoverable error, aborting...')
             return ProcessHandlerReport(True, self.exit_codes.ERROR_UNRECOVERABLE_FAILURE)
 
-    @process_handler(priority=500, exit_codes=HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED)
+    @process_handler(priority=460, exit_codes=HpCalculation.exit_codes.ERROR_COMPUTING_CHOLESKY)
+    def handle_computing_cholesky(self, _):
+        """Handle `ERROR_COMPUTING_CHOLESKY`: set parallel diagonalization to 1 and restart.
+
+        Parallelization of diagonalization may produce in some cases too much numerical noise,
+        giving rise to Cholesky factorization issues. As other diagonalization algorithms are
+        not available in `hp.x`, we try to set the diagonalization flag to 1, if not already set.
+        """
+        settings = self.ctx.inputs.settings
+        cmdline = settings.get('cmdline', [])
+
+        for key in ['-ndiag', '-northo', '-nd']:
+            if key in cmdline:
+
+                index = cmdline.index(key)
+
+                if int(cmdline[index+1]) == 1:
+                    self.report('diagonalization flag already to 1, stopping')
+                    return ProcessHandlerReport(False)
+
+                cmdline[index+1] = '1' # enforce to be 1
+                break
+        else:
+            cmdline += ['-nd', '1']
+
+        settings['cmdline'] = cmdline
+        self.report('set parallelization flag for diagonalization to 1, restarting')
+        return ProcessHandlerReport(True)
+
+
+    @process_handler(priority=410, exit_codes=HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED)
     def handle_convergence_not_reached(self, _):
         """Handle `ERROR_CONVERGENCE_NOT_REACHED`: decrease `alpha_mix`, increase `niter_max`, and restart.
 

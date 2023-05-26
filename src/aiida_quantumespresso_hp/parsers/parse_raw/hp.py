@@ -28,33 +28,11 @@ def parse_raw_output(stdout):
         if 'JOB DONE' in line:
             is_prematurely_terminated = False
 
-        if 'reading inputhp namelist' in line:
-            logs.error.append('ERROR_INVALID_NAMELIST')
-
-        # If the atoms were not ordered correctly in the parent calculation
-        if 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf' in line:
-            logs.error.append('ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS')
-
-        # If the calculation run out of walltime we expect to find the following string
-        match = re.search(r'.*Maximum CPU time exceeded.*', line)
-        if match:
-            logs.error.append('ERROR_OUT_OF_WALLTIME')
-
-        # If not all expected perturbation files were found for a chi_collect calculation
-        if 'Error in routine hub_read_chi (1)' in line:
-            logs.error.append('ERROR_MISSING_PERTURBATION_FILE')
-
-        # If the run did not convergence we expect to find the following string
-        match = re.search(r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*', line)
-        if match:
-            logs.error.append('ERROR_CONVERGENCE_NOT_REACHED')
+        detect_important_message(logs, line)
 
         # A calculation that will only perturb a single atom will only print one line
         match = re.search(r'.*The grid of q-points.*\s+([0-9])+\s+q-points.*', line)
         if match:
-            ### DEBUG
-            print(int(match.group(1)))
-            ### DEBUG
             parsed_data['number_of_qpoints'] = int(match.group(1))
 
         # Determine the atomic sites that will be perturbed, or that the calculation expects
@@ -87,4 +65,50 @@ def parse_raw_output(stdout):
     if is_prematurely_terminated:
         logs.error.append('ERROR_OUTPUT_STDOUT_INCOMPLETE')
 
+    # Remove duplicate log messages by turning it into a set. Then convert back to list as that is what is expected
+    logs.error = list(set(logs.error))
+    logs.warning = list(set(logs.warning))
+
     return parsed_data, logs
+
+
+def detect_important_message(logs, line):
+    """Detect error or warning messages, and append to the log if match is found."""
+    REG_ERROR_CONVERGENCE_NOT_REACHED = re.compile(
+        r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*'
+    )
+    REG_ERROR_POSITIONS = 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf'
+    message_map = {
+        'error': {
+            'Error in routine hub_read_chi (1)': 'ERROR_MISSING_PERTURBATION_FILE',
+            'Maximum CPU time exceeded': 'ERROR_OUT_OF_WALLTIME',
+            'reading inputhp namelist': 'ERROR_INVALID_NAMELIST',
+            'problems computing cholesky': 'ERROR_COMPUTING_CHOLESKY',
+            REG_ERROR_CONVERGENCE_NOT_REACHED: 'ERROR_CONVERGENCE_NOT_REACHED',
+            REG_ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
+        },
+        'warning': {
+            'Warning:': None,
+            'DEPRECATED:': None,
+        }
+    }
+
+    # Match any known error and warning messages
+    for marker, message in message_map['error'].items():
+        # Replace with isinstance(marker, re.Pattern) once Python 3.6 is dropped
+        if hasattr(marker, 'search'):
+            if marker.match(line):
+                if message is None:
+                    message = line
+                logs.error.append(message)
+        else:
+            if marker in line:
+                if message is None:
+                    message = line
+                logs.error.append(message)
+
+    for marker, message in message_map['warning'].items():
+        if marker in line:
+            if message is None:
+                message = line
+            logs.warning.append(message)

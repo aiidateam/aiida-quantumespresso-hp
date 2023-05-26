@@ -189,6 +189,8 @@ class HpCalculation(CalcJob):
             message='The calculation stopped prematurely because it ran out of walltime.')
         spec.exit_code(410, 'ERROR_CONVERGENCE_NOT_REACHED',
             message='The electronic minimization cycle did not reach self-consistency.')
+        spec.exit_code(460, 'ERROR_COMPUTING_CHOLESKY',
+            message='The code failed during the cholesky factorization.')
 
     @classproperty
     def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
