@@ -73,11 +73,11 @@ def parse_raw_output(stdout):
 
 
 def detect_important_message(logs, line):
-    """Detect error or warning messages, and append to the log if match is found."""
+    """Detect error or warning messages, and append to the log if a match is found."""
     REG_ERROR_CONVERGENCE_NOT_REACHED = re.compile(
         r'.*Convergence has not been reached after\s+([0-9]+)\s+iterations!.*'
     )
-    REG_ERROR_POSITIONS = 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf'
+    ERROR_POSITIONS = 'WARNING! All Hubbard atoms must be listed first in the ATOMIC_POSITIONS card of PWscf'
     message_map = {
         'error': {
             'Error in routine hub_read_chi (1)': 'ERROR_MISSING_PERTURBATION_FILE',
@@ -85,7 +85,7 @@ def detect_important_message(logs, line):
             'reading inputhp namelist': 'ERROR_INVALID_NAMELIST',
             'problems computing cholesky': 'ERROR_COMPUTING_CHOLESKY',
             REG_ERROR_CONVERGENCE_NOT_REACHED: 'ERROR_CONVERGENCE_NOT_REACHED',
-            REG_ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
+            ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
         },
         'warning': {
             'Warning:': None,
