@@ -633,7 +633,6 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 self.ctx.current_hubbard_structure = result['hubbard_structure']
                 if self.ctx.current_magnetic_moments is not None:
                     self.ctx.current_magnetic_moments = result['starting_magnetization']
-                return
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')

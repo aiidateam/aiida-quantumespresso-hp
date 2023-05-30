@@ -357,10 +357,16 @@ def test_relabel_check_convergence(
     # Mocking current (i.e. "old") and "new" HubbardStructureData,
     # containing different Hubbard parameters
     process.ctx.current_hubbard_structure = generate_hubbard_structure()
-    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True)]
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
 
     process.check_convergence()
     assert not process.ctx.is_converged
+
+    process.ctx.current_hubbard_structure = generate_hubbard_structure(u_value=99.99)
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
+
+    process.check_convergence()
+    assert process.ctx.is_converged
 
 
 @pytest.mark.usefixtures('aiida_profile')
