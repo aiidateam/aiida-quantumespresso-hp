@@ -21,12 +21,9 @@ class HpParser(Parser):
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
         # The stdout is always parsed by default.
-        for parse_method in [
-            self.parse_stdout,
-        ]:
-            exit_code = parse_method()
-            if exit_code:
-                return exit_code
+        exit_code = self.parse_stdout()
+        if exit_code:
+            return exit_code
 
         # If it only initialized, then we do NOT parse the `{prefix}.Hubbard_parameters.dat``
         # and the {prefix}.chi.dat files.
@@ -112,16 +109,15 @@ class HpParser(Parser):
         else:
             self.out('parameters', orm.Dict(parsed_data))
 
-        exit_statuses = [
+        for exit_status in [
             'ERROR_INVALID_NAMELIST',
-            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             'ERROR_MISSING_PERTURBATION_FILE',
             'ERROR_CONVERGENCE_NOT_REACHED',
             'ERROR_OUT_OF_WALLTIME',
-        ]
-
-        for exit_status in exit_statuses:
+            'ERROR_COMPUTING_CHOLESKY',
+            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+        ]:
             if exit_status in logs['error']:
                 return self.exit_codes.get(exit_status)
 
