@@ -13,7 +13,7 @@ from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 def structure_relabel_kinds(
     hubbard_structure: HubbardStructureData,
     hubbard: Dict,
-    magnetization: Dict | None = None,
+    magnetization: dict | None = None,
 ) -> Dict:
     """Create a clone of the given structure but with new kinds, based on the new hubbard sites.
 

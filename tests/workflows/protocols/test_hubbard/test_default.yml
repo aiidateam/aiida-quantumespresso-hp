@@ -92,6 +92,5 @@ scf:
       Co: Co<md5=04edd96127402ab6ffc358660b52a2db>
       Li: Li<md5=90ac4658c7606c7ad16e40ce66db5a86>
       O: O<md5=721f9895631356f7d4610e60de16fd63>
-skip_first_relax: false
 tolerance_intersite: 0.01
 tolerance_onsite: 0.1

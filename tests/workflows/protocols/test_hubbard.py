@@ -39,7 +39,7 @@ def test_default(fixture_code, data_regression, generate_hubbard_structure, seri
             'tolerance_intersite': 1
         },
         {
-            'skip_first_relax': True
+            'skip_relax_iterations': 2
         },
         {
             'relax_frequency': 3
