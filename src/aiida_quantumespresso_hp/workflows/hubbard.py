@@ -608,6 +608,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
     def check_convergence(self):
         """Check the convergence of the Hubbard parameters."""
+        from aiida_quantumespresso.utils.hubbard import is_intersite_hubbard
+
         workchain = self.ctx.workchains_hp[-1]
 
         # We store in memory the parameters before relabelling to make the comparison easier.
@@ -624,15 +626,16 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         # We check if new types were created, in which case we relabel the `HubbardStructureData`
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
 
-        for site in workchain.outputs.hubbard.dict.sites:
-            if not site['type'] == site['new_type']:
-                self.report('new types have been detected: relabeling the structure and starting new iteration.')
-                result = structure_relabel_kinds(
-                    self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
-                )
-                self.ctx.current_hubbard_structure = result['hubbard_structure']
-                if self.ctx.current_magnetic_moments is not None:
-                    self.ctx.current_magnetic_moments = result['starting_magnetization']
+        if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
+            for site in workchain.outputs.hubbard.dict.sites:
+                if not site['type'] == site['new_type']:
+                    self.report('new types have been detected: relabeling the structure and starting new iteration.')
+                    result = structure_relabel_kinds(
+                        self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
+                    )
+                    self.ctx.current_hubbard_structure = result['hubbard_structure']
+                    if self.ctx.current_magnetic_moments is not None:
+                        self.ctx.current_magnetic_moments = result['starting_magnetization']
                 break
 
         if not len(ref_params) == len(new_params):
