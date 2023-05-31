@@ -115,6 +115,20 @@ def test_validate_inputs_invalid_inputs(generate_workchain_hubbard, generate_inp
         generate_workchain_hubbard(inputs=inputs)
 
 
+@pytest.mark.parametrize('parameters', ('skip_relax_iterations', 'relax_frequency'))
+@pytest.mark.usefixtures('aiida_profile')
+def test_validate_invalid_positve_input(generate_workchain_hubbard, generate_inputs_hubbard, parameters):
+    """Test `SelfConsistentHubbardWorkChain` for invalid positive inputs."""
+    from aiida.orm import Int
+
+    inputs = AttributeDict(generate_inputs_hubbard())
+    inputs.update({parameters: Int(-1)})
+
+    match = 'the value must be positive.'
+    with pytest.raises(ValueError, match=match):
+        generate_workchain_hubbard(inputs=inputs)
+
+
 @pytest.mark.usefixtures('aiida_profile')
 def test_setup(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.setup`."""
@@ -124,12 +138,12 @@ def test_setup(generate_workchain_hubbard, generate_inputs_hubbard):
 
     assert process.ctx.iteration == 0
     assert process.ctx.relax_frequency == 1
+    assert process.ctx.skip_relax_iterations == 0
     assert process.ctx.current_hubbard_structure == inputs['hubbard_structure']
     assert process.ctx.current_magnetic_moments is None
-    assert process.ctx.is_converged is False
+    assert not process.ctx.is_converged
     assert process.ctx.is_insulator is None
     assert not process.ctx.is_magnetic
-    assert not process.ctx.skip_first_relax
     assert not process.should_check_convergence()
 
 
@@ -162,19 +176,55 @@ def test_magnetic_setup(generate_workchain_hubbard, generate_inputs_hubbard):
 
 
 @pytest.mark.usefixtures('aiida_profile')
-def test_skip_first_relax(generate_workchain_hubbard, generate_inputs_hubbard):
-    """Test `SelfConsistentHubbardWorkChain` when skipping only the first relax."""
-    from aiida.orm import Bool
+def test_skip_relax_iterations(generate_workchain_hubbard, generate_inputs_hubbard, generate_hp_workchain_node):
+    """Test `SelfConsistentHubbardWorkChain` when skipping the first relax iterations."""
+    from aiida.orm import Bool, Int
 
     inputs = generate_inputs_hubbard()
-    inputs['skip_first_relax'] = Bool(True)
+    inputs['skip_relax_iterations'] = Int(1)
+    inputs['meta_convergence'] = Bool(True)
     process = generate_workchain_hubbard(inputs=inputs)
-
     process.setup()
+    # 1
+    process.update_iteration()
+    assert process.ctx.skip_relax_iterations == 1
+    assert process.ctx.iteration == 1
+    assert not process.should_run_relax()
+    assert not process.should_check_convergence()
+    process.ctx.workchains_hp = [generate_hp_workchain_node()]
+    process.inspect_hp()
+    assert process.ctx.current_hubbard_structure == process.ctx.workchains_hp[-1].outputs.hubbard_structure
+    # 2
+    process.update_iteration()
+    assert process.should_run_relax()
+    assert process.should_check_convergence()
+    # 3
+    process.update_iteration()
+    assert process.should_run_relax()
+    assert process.should_check_convergence()
 
-    assert not process.should_run_relax()  # skip only first one
-    assert process.should_run_relax()  # the second one not
-    assert process.should_run_relax()  # and the third neither!
+    inputs['skip_relax_iterations'] = Int(2)
+    process = generate_workchain_hubbard(inputs=inputs)
+    process.setup()
+    # 1
+    process.update_iteration()
+    assert process.ctx.skip_relax_iterations == 2
+    assert not process.should_run_relax()
+    assert not process.should_check_convergence()
+    process.ctx.workchains_hp = [generate_hp_workchain_node()]
+    process.inspect_hp()
+    assert process.ctx.current_hubbard_structure == process.ctx.workchains_hp[-1].outputs.hubbard_structure
+    # 2
+    process.update_iteration()
+    assert not process.should_run_relax()
+    assert not process.should_check_convergence()
+    process.ctx.workchains_hp.append(generate_hp_workchain_node())
+    process.inspect_hp()
+    assert process.ctx.current_hubbard_structure == process.ctx.workchains_hp[-1].outputs.hubbard_structure
+    # 3
+    process.update_iteration()
+    assert process.should_run_relax()
+    assert process.should_check_convergence()
 
 
 @pytest.mark.usefixtures('aiida_profile')
@@ -185,10 +235,9 @@ def test_relax_frequency(generate_workchain_hubbard, generate_inputs_hubbard):
     inputs = generate_inputs_hubbard()
     inputs['relax_frequency'] = Int(3)
     process = generate_workchain_hubbard(inputs=inputs)
-
     process.setup()
 
-    process.update_iteration()  # it updates first in the while of the outline
+    process.update_iteration()
     assert not process.should_run_relax()  # skip
     process.update_iteration()
     assert not process.should_run_relax()  # skip
@@ -205,7 +254,8 @@ def test_should_check_convergence(generate_workchain_hubbard, generate_inputs_hu
     inputs = generate_inputs_hubbard()
     inputs['meta_convergence'] = Bool(True)
     process = generate_workchain_hubbard(inputs=inputs)
-
+    process.setup()
+    process.update_iteration()
     assert process.should_check_convergence()
 
 

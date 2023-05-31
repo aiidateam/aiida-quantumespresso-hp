@@ -4,7 +4,6 @@ default_inputs:
     meta_convergence: True
     tolerance_onsite: 0.1
     tolerance_intersite: 0.01
-    skip_first_relax: False
     scf:
         kpoints_distance: 0.4
 
