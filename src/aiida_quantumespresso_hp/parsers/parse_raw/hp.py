@@ -84,6 +84,8 @@ def detect_important_message(logs, line):
             'Maximum CPU time exceeded': 'ERROR_OUT_OF_WALLTIME',
             'reading inputhp namelist': 'ERROR_INVALID_NAMELIST',
             'problems computing cholesky': 'ERROR_COMPUTING_CHOLESKY',
+            'Reconstruction problem: some chi were not found': 'ERROR_MISSING_CHI_MATRICES',
+            'incompatible FFT grid': 'ERROR_INCOMPATIBLE_FFT_GRID',
             REG_ERROR_CONVERGENCE_NOT_REACHED: 'ERROR_CONVERGENCE_NOT_REACHED',
             ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
         },

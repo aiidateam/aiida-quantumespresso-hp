@@ -191,6 +191,10 @@ class HpCalculation(CalcJob):
             message='The electronic minimization cycle did not reach self-consistency.')
         spec.exit_code(462, 'ERROR_COMPUTING_CHOLESKY',
             message='The code failed during the cholesky factorization.')
+        spec.exit_code(490, 'ERROR_MISSING_CHI_MATRICES',
+            message='The code failed to reconstruct the full chi matrix as some chi matrices were missing')
+        spec.exit_code(495, 'ERROR_INCOMPATIBLE_FFT_GRID',
+            message='The code failed due to incompatibility between the FFT grid and the parallelization options.')
 
     @classproperty
     def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
