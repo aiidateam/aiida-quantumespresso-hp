@@ -1,0 +1,234 @@
+     Program HP v.7.2 starts on  5Jun2023 at 13:54:28 
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+         "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Parallel version (MPI), running on    48 processors
+
+     MPI processes distributed on     1 nodes
+     K-points division:     npool     =      16
+     R & G space division:  proc/nbgrp/npool/nimage =       3
+     24962 MiB available memory on the printing compute node when the environment starts
+ 
+
+     =---------------------------------------------------------------------------=
+
+           Calculation of Hubbard parameters using the HP code based on DFPT      
+
+               Please cite the following papers when using this program:          
+
+                 - HP code : Comput. Phys. Commun. 279, 108455 (2022).            
+
+                 - Theory  : Phys. Rev. B 98,  085127 (2018) and                  
+
+                             Phys. Rev. B 103, 045141 (2021).                     
+
+     =-----------------------------------------------------------------------------=
+
+     Reading xml data from directory:
+
+     out/aiida.save/
+
+     IMPORTANT: XC functional enforced from input :
+     Exchange-correlation= PBESOL
+                           (   1   4  10   8   0   0   0)
+     Any further DFT definition will be discarded
+     Please, verify this is what you really want
+
+ 
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
+     Min         905     905    271                30463    30463    5034
+     Max         906     906    271                30465    30465    5035
+     Sum        2717    2717    813                91393    91393   15103
+ 
+     Using Slab Decomposition
+ 
+
+     Check: negative core charge=   -0.000036
+     Reading collected, re-writing distributed wavefunctions
+ 
+
+     bravais-lattice index     =             0
+     lattice parameter (alat)  =       12.3672 (a.u.)
+     unit-cell volume          =     1453.9300 (a.u.)^3
+     number of atoms/cell      =            16
+     number of atomic types    =             2
+     kinetic-energy cut-off    =         60.00 (Ry)
+     charge density cut-off    =        240.00 (Ry)
+     conv. thresh. for NSCF    =       1.0E-11
+     conv. thresh. for chi     =       1.0E-06
+     Input Hubbard parameters (in eV):
+       V (  1,   1)  =   5.0000
+       V (  1, 229)  =   0.0000
+       V (  1, 230)  =   0.0000
+       V (  2,   2)  =   5.0000
+       V (  2,   6)  =   0.0000
+       V (  2, 405)  =   0.0000
+       V (  3,   3)  =   5.0000
+       V (  4,   4)  =   5.0000
+       V (  5,   5)  =   0.0000
+       V (  5,  34)  =   0.0000
+       V (  5, 209)  =   0.0000
+       V (  6,   2)  =   0.0000
+       V (  6,   6)  =   0.0000
+       V (  6, 209)  =   0.0000
+       V (  7,   7)  =   0.0000
+       V (  8,   8)  =   0.0000
+       V (  9,   9)  =   0.0000
+       V ( 10,  10)  =   0.0000
+       V ( 11,  11)  =   0.0000
+       V ( 12,  12)  =   0.0000
+       V ( 13,  13)  =   0.0000
+       V ( 14,  14)  =   0.0000
+       V ( 15,  15)  =   0.0000
+       V ( 16,  16)  =   0.0000
+
+     celldm(1) = 12.36723  celldm(2) =  0.00000  celldm(3) =  0.00000
+     celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
+
+     crystal axes: (cart. coord. in units of alat)
+               a(1) = (  0.5609  0.5784  0.5924 )  
+               a(2) = (  0.5609 -0.5784 -0.5924 )  
+               a(3) = ( -0.5609  0.5784 -0.5924 )  
+
+     reciprocal axes: (cart. coord. in units 2 pi/alat)
+               b(1) = (  0.8915  0.8645  0.0000 )  
+               b(2) = (  0.8915  0.0000 -0.8440 )  
+               b(3) = (  0.0000  0.8645 -0.8440 )  
+
+     Atoms inside the unit cell (Cartesian axes):
+     site n.  atom      mass           positions (alat units)
+        1      W     183.8400   tau(  1) = ( -0.28043  0.57835 -0.55568  )
+        2      W     183.8400   tau(  2) = (  0.84128  0.00000 -0.03673  )
+        3      W     183.8400   tau(  3) = (  0.28043  0.00000 -0.55450  )
+        4      W     183.8400   tau(  4) = (  0.28043  0.57835 -0.03791  )
+        5      O      15.9994   tau(  5) = (  0.00000  0.00000  0.00000  )
+        6      O      15.9994   tau(  6) = (  0.56086  0.00000  0.00000  )
+        7      O      15.9994   tau(  7) = (  0.56086  0.57835  0.00000  )
+        8      O      15.9994   tau(  8) = (  0.00000  0.57835  0.00000  )
+        9      O      15.9994   tau(  9) = (  0.28043  0.28397  0.03317  )
+       10      O      15.9994   tau( 10) = (  0.28043  0.29438 -0.62558  )
+       11      O      15.9994   tau( 11) = ( -0.28043  0.29438 -0.55923  )
+       12      O      15.9994   tau( 12) = (  0.84128  0.28397 -0.03317  )
+       13      O      15.9994   tau( 13) = (  0.28043  0.00000 -0.87440  )
+       14      O      15.9994   tau( 14) = (  0.28043  0.57835  0.28199  )
+       15      O      15.9994   tau( 15) = (  0.28043  0.00000 -0.26540  )
+       16      O      15.9994   tau( 16) = (  0.28043  0.57835 -0.32701  )
+
+     Atom which will be perturbed:
+
+       13      O      15.9994   tau(13) = (  0.28043  0.00000 -0.87440  )
+
+     Reading xml data from directory:
+
+     out/aiida.save/
+
+     IMPORTANT: XC functional enforced from input :
+     Exchange-correlation= PBESOL
+                           (   1   4  10   8   0   0   0)
+     Any further DFT definition will be discarded
+     Please, verify this is what you really want
+
+ 
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
+     Min         905     905    271                30463    30463    5034
+     Max         906     906    271                30465    30465    5035
+     Sum        2717    2717    813                91393    91393   15103
+ 
+     Using Slab Decomposition
+ 
+
+     Check: negative core charge=   -0.000036
+     Reading collected, re-writing distributed wavefunctions
+ 
+     =====================================================================
+
+                          PERTURBED ATOM #   13
+
+     site n.  atom      mass           positions (alat units)
+       13      O      15.9994   tau(13) = (  0.28043  0.00000 -0.87440  )
+ 
+     =====================================================================
+
+     The perturbed atom has a type which is not unique!
+     Changing the type of the perturbed atom and recomputing the symmetries...
+     The number of symmetries is reduced :
+     nsym =  4  nsym_PWscf =  8
+     Changing the type of the perturbed atom back to its original type...
+
+
+     The grid of q-points ( 4, 4, 4)  ( 18 q-points ) :
+       N       xq(1)         xq(2)         xq(3)       wq
+       1   0.000000000   0.000000000   0.000000000   0.015625000
+       2   0.000000000   0.216131358  -0.211002628   0.062500000
+       3   0.000000000  -0.432262716   0.422005257   0.031250000
+       4   0.222873502   0.000000000  -0.211002628   0.062500000
+       5   0.222873502   0.216131358  -0.422005257   0.125000000
+       6   0.222873502  -0.432262716   0.211002628   0.125000000
+       7   0.222873502  -0.216131358   0.000000000   0.062500000
+       8  -0.445747005   0.000000000   0.422005257   0.031250000
+       9  -0.445747005   0.216131358   0.211002628   0.125000000
+      10  -0.445747005  -0.432262716   0.844010513   0.031250000
+      11   0.445747005   0.432262716  -0.422005257   0.031250000
+      12   0.445747005   0.000000000   0.000000000   0.031250000
+      13  -0.222873502  -0.216131358   0.844010513   0.062500000
+      14  -0.222873502   0.000000000   0.633007885   0.062500000
+      15   0.000000000   0.432262716   0.000000000   0.031250000
+      16   0.000000000  -0.216131358   0.633007885   0.062500000
+      17   0.000000000   0.000000000   0.422005257   0.031250000
+      18  -0.891494009  -0.864525432   0.844010513   0.015625000
+ 
+     PRINTING TIMING FROM PWSCF ROUTINES: 
+ 
+
+     Called by init_run:
+
+     Called by electrons:
+     v_of_rho     :      0.17s CPU      0.21s WALL (       2 calls)
+     v_h          :      0.01s CPU      0.01s WALL (       2 calls)
+     v_xc         :      0.17s CPU      0.20s WALL (       2 calls)
+
+     Called by c_bands:
+
+     Called by sum_band:
+
+     Called by *egterg:
+
+     Called by h_psi:
+
+     General routines
+     fft          :      0.09s CPU      0.16s WALL (      22 calls)
+     davcio       :      0.00s CPU      0.02s WALL (       6 calls)
+ 
+     Parallel routines
+
+     Hubbard U routines
+     alloc_neigh  :      0.33s CPU      0.34s WALL (       2 calls)
+ 
+     init_vloc    :      0.37s CPU      0.37s WALL (       2 calls)
+     init_us_1    :      0.02s CPU      0.03s WALL (       2 calls)
+ 
+     PRINTING TIMING FROM HP ROUTINES: 
+ 
+ 
+     PRINTING TIMING FROM LR MODULE: 
+ 
+ 
+     HP           :      2.09s CPU      3.79s WALL
+
+ 
+   This run was terminated on:  13:54:32   5Jun2023            
+
+=------------------------------------------------------------------------------=
+   JOB DONE.
+=------------------------------------------------------------------------------=

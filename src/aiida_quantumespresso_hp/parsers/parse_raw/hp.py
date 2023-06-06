@@ -31,7 +31,7 @@ def parse_raw_output(stdout):
         detect_important_message(logs, line)
 
         # A calculation that will only perturb a single atom will only print one line
-        match = re.search(r'.*The grid of q-points.*\s+([0-9])+\s+q-points.*', line)
+        match = re.search(r'.*The grid of q-points.*\s+([0-9]+)+\s+q-points.*', line)
         if match:
             parsed_data['number_of_qpoints'] = int(match.group(1))
 

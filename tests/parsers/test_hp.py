@@ -204,6 +204,40 @@ def test_hp_initialization_only_mesh(
     })
 
 
+def test_hp_initialization_only_mesh_more_points(
+    aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_mesh_only, data_regression, tmpdir
+):
+    """Test an initialization only `hp.x` calculation with intersites with more points."""
+    name = 'initialization_only_mesh_more_points'
+    entry_point_calc_job = 'quantumespresso.hp'
+    entry_point_parser = 'quantumespresso.hp'
+
+    # QE generates the ``HUBBARD.dat``, but with empty values, thus we make sure the parser
+    # does not recognize it as a final calculation and it does not crash as a consequence.
+    attributes = {'retrieve_temporary_list': ['HUBBARD.dat']}
+    node = generate_calc_job_node(
+        entry_point_calc_job,
+        aiida_localhost,
+        test_name=name,
+        inputs=generate_inputs_mesh_only,
+        attributes=attributes,
+        retrieve_temporary=(tmpdir, ['HUBBARD.dat'])
+    )
+    parser = generate_parser(entry_point_parser)
+    results, calcfunction = parser.parse_from_node(node, store_provenance=False, retrieved_temporary_folder=tmpdir)
+
+    assert calcfunction.is_finished, calcfunction.exception
+    assert calcfunction.is_finished_ok, calcfunction.exit_message
+    assert 'parameters' in results
+    assert 'hubbard' not in results
+    assert 'hubbard_chi' not in results
+    assert 'hubbard_matrices' not in results
+    assert 'hubbard_structure' not in results
+    data_regression.check({
+        'parameters': results['parameters'].get_dict(),
+    })
+
+
 def test_hp_failed_invalid_namelist(aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_default):
     """Test an `hp.x` calculation that fails because of an invalid namelist."""
     name = 'failed_invalid_namelist'
