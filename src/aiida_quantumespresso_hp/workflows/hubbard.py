@@ -159,6 +159,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 if_(cls.should_check_convergence)(
                     cls.check_convergence,
                 ),
+                if_(cls.should_clean_workdir)(
+                    cls.clean_iteration,
+                )
             ),
             cls.run_results,
         )
@@ -646,14 +649,12 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
         self.out('hubbard_structure', self.ctx.current_hubbard_structure)
 
-    def on_terminated(self):
-        """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
-        super().on_terminated()
+    def should_clean_workdir(self):
+        """Whether to clean the work directories at each iteration."""
+        return self.inputs.clean_workdir.value
 
-        if self.inputs.clean_workdir.value is False:
-            self.report('remote folders will not be cleaned')
-            return
-
+    def clean_iteration(self):
+        """Clean all work directiories of the current iteration."""
         cleaned_calcs = []
 
         for called_descendant in self.node.called_descendants:
