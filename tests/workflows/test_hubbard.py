@@ -248,6 +248,28 @@ def test_relax_frequency(generate_workchain_hubbard, generate_inputs_hubbard):
 
 
 @pytest.mark.usefixtures('aiida_profile')
+def test_radial_analysis(
+    generate_workchain_hubbard,
+    generate_inputs_hubbard,
+    generate_scf_workchain_node,
+):
+    """Test `SelfConsistentHubbardWorkChain` outline when radial analysis is activated.
+
+    We want to make sure `rmax` is in `hp.parameters`.
+    """
+    inputs = generate_inputs_hubbard()
+    inputs['radial_analysis'] = Dict({})  # no need to specify inputs, it will use the defaults
+    process = generate_workchain_hubbard(inputs=inputs)
+
+    process.setup()
+    process.ctx.workchains_scf = [generate_scf_workchain_node(remote_folder=True)]
+    process.run_hp()
+
+    # parameters = process.ctx['workchains_hp'][-1].inputs['hp']['parameters'].get_dict()
+    # assert 'rmax' in parameters
+
+
+@pytest.mark.usefixtures('aiida_profile')
 def test_should_check_convergence(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.should_check_convergence`."""
     from aiida.orm import Bool

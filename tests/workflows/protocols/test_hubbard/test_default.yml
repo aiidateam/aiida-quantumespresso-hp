@@ -19,6 +19,10 @@ hubbard:
 hubbard_structure: CoLiO2
 max_iterations: 10
 meta_convergence: true
+radial_analysis:
+  nn_finder: 'crystal'
+  radius_max: 10.0
+  thr: 0.01
 relax:
   base:
     kpoints_distance: 0.15

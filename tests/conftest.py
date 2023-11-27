@@ -58,7 +58,7 @@ def fixture_code(fixture_localhost):
 
         try:
             return load_code(label=label)
-        except exceptions.NotExistent:
+        except (exceptions.NotExistent, exceptions.MultipleObjectsError):
             return InstalledCode(
                 label=label,
                 computer=fixture_localhost,
