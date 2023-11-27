@@ -20,7 +20,7 @@ hubbard_structure: CoLiO2
 max_iterations: 10
 meta_convergence: true
 radial_analysis:
-  nn_finder: 'crystal'
+  nn_finder: crystal
   radius_max: 10.0
   thr: 0.01
 relax:
@@ -34,6 +34,7 @@ relax:
           max_wallclock_seconds: 43200
           resources:
             num_machines: 1
+            num_mpiprocs_per_machine: 1
           withmpi: true
       parameters:
         CELL:
@@ -73,6 +74,7 @@ scf:
         max_wallclock_seconds: 43200
         resources:
           num_machines: 1
+          num_mpiprocs_per_machine: 1
         withmpi: true
     parameters:
       CONTROL:
