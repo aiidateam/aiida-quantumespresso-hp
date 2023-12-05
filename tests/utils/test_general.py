@@ -26,5 +26,8 @@ def test_is_perturb_only_atom():
     parameters = {'perturb_only_atom(1)': True}
     assert is_perturb_only_atom(parameters) == 1
 
+    parameters = {'perturb_only_atom(20)': True}
+    assert is_perturb_only_atom(parameters) == 20
+
     parameters = {'perturb_only_atom(1)': False}
     assert is_perturb_only_atom(parameters) is None
