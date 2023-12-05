@@ -158,9 +158,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 ),
                 cls.run_hp,
                 cls.inspect_hp,
-                if_(cls.should_check_convergence)(
-                    cls.check_convergence,
-                ),
+                cls.check_convergence,
                 if_(cls.should_clean_workdir)(
                     cls.clean_iteration,
                 )
@@ -627,6 +625,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                     if self.ctx.current_magnetic_moments is not None:
                         self.ctx.current_magnetic_moments = result['starting_magnetization']
                     break
+
+        if not self.should_check_convergence():
+            return
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
