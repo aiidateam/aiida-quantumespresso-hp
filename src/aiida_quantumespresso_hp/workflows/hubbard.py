@@ -654,7 +654,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         if self.ctx.is_converged:
             self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
         else:
-            self.report(f'Hubbard parameters did not converged at the last iteration #{self.ctx.iteration}.')
+            self.report(f'Hubbard parameters did not converge at the last iteration #{self.ctx.iteration}.')
             return self.exit_codes.ERROR_CONVERGENCE_NOT_REACHED.format(iteration=self.ctx.iteration)
 
     def should_clean_workdir(self):
