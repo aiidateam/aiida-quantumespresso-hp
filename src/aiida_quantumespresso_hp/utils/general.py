@@ -28,7 +28,7 @@ def is_perturb_only_atom(parameters: dict) -> int | None:
     match = None  # making sure that if the dictionary is empty we don't raise an `UnboundLocalError`
 
     for key in parameters.keys():
-        match = re.search(r'perturb_only_atom.*([0-9]).*', key)
+        match = re.search(r'perturb_only_atom.*?(\d+).*', key)
         if match:
             if not parameters[key]:  # also the key must be `True`
                 match = None  # making sure to have `None`
