@@ -233,7 +233,8 @@ class HpBaseWorkChain(BaseRestartWorkChain, ProtocolMixin):
             changes.append(f'set `{parameter}` to {parameters[parameter]}')
 
         if 'niter_max' in parameters:
-            parameters['niter_max'] *= self.defaults.delta_factor_niter_max
+            # QE has a hard-coded limit of 500
+            parameters['niter_max'] = min(parameters['niter_max'] * self.defaults.delta_factor_niter_max, 500)
         else:
             parameters['niter_max'] = 200
 
