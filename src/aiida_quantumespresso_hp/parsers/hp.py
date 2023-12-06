@@ -15,15 +15,23 @@ class HpParser(Parser):
 
     def parse(self, **kwargs):
         """Parse the contents of the output files retrieved in the `FolderData`."""
+        self.exit_code_stdout = None  # pylint: disable=attribute-defined-outside-init
+
         try:
             self.retrieved
         except exceptions.NotExistent:
             return self.exit_codes.ERROR_NO_RETRIEVED_FOLDER
 
         # The stdout is always parsed by default.
-        exit_code = self.parse_stdout()
+        logs = self.parse_stdout()
+
+        # Check for specific known problems that can cause a pre-mature termination of the calculation
+        exit_code = self.validate_premature_exit(logs)
         if exit_code:
             return exit_code
+
+        if self.exit_code_stdout:
+            return self.exit_code_stdout
 
         # If it only initialized, then we do NOT parse the `{prefix}.Hubbard_parameters.dat``
         # and the {prefix}.chi.dat files.
@@ -88,7 +96,7 @@ class HpParser(Parser):
 
         Parse the output parameters from the output of a Hp calculation written to standard out.
 
-        :return: optional exit code in case of an error
+        :return: log messages
         """
         from .parse_raw.hp import parse_raw_output
 
@@ -109,14 +117,24 @@ class HpParser(Parser):
         else:
             self.out('parameters', orm.Dict(parsed_data))
 
+        # If the stdout was incomplete, most likely the job was interrupted before it could cleanly finish, so the
+        # output files are most likely corrupt and cannot be restarted from
+        if 'ERROR_OUTPUT_STDOUT_INCOMPLETE' in logs['error']:
+            self.exit_code_stdout = self.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE  # pylint: disable=attribute-defined-outside-init
+
+        return logs
+
+    def validate_premature_exit(self, logs):
+        """Analyze problems that will cause a pre-mature termination of the calculation, controlled or not."""
         for exit_status in [
+            'ERROR_OUT_OF_WALLTIME',
             'ERROR_INVALID_NAMELIST',
             'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             'ERROR_MISSING_PERTURBATION_FILE',
             'ERROR_CONVERGENCE_NOT_REACHED',
-            'ERROR_OUT_OF_WALLTIME',
             'ERROR_COMPUTING_CHOLESKY',
-            'ERROR_OUTPUT_STDOUT_INCOMPLETE',
+            'ERROR_MISSING_CHI_MATRICES',
+            'ERROR_INCOMPATIBLE_FFT_GRID',
         ]:
             if exit_status in logs['error']:
                 return self.exit_codes.get(exit_status)

@@ -31,7 +31,7 @@ def parse_raw_output(stdout):
         detect_important_message(logs, line)
 
         # A calculation that will only perturb a single atom will only print one line
-        match = re.search(r'.*The grid of q-points.*\s+([0-9])+\s+q-points.*', line)
+        match = re.search(r'.*The grid of q-points.*\s+([0-9]+)+\s+q-points.*', line)
         if match:
             parsed_data['number_of_qpoints'] = int(match.group(1))
 
@@ -84,6 +84,8 @@ def detect_important_message(logs, line):
             'Maximum CPU time exceeded': 'ERROR_OUT_OF_WALLTIME',
             'reading inputhp namelist': 'ERROR_INVALID_NAMELIST',
             'problems computing cholesky': 'ERROR_COMPUTING_CHOLESKY',
+            'Reconstruction problem: some chi were not found': 'ERROR_MISSING_CHI_MATRICES',
+            'incompatible FFT grid': 'ERROR_INCOMPATIBLE_FFT_GRID',
             REG_ERROR_CONVERGENCE_NOT_REACHED: 'ERROR_CONVERGENCE_NOT_REACHED',
             ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
         },
