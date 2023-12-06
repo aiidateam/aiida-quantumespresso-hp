@@ -182,6 +182,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         spec.exit_code(405, 'ERROR_NON_INTEGER_TOT_MAGNETIZATION',
             message='The scf PwBaseWorkChain sub process in iteration {iteration}'\
                     'returned a non integer total magnetization (threshold exceeded).')
+
+        spec.exit_code(601, 'ERROR_NO_CONVERGENCE_AT_LAST_ITERATION',
+            message='The Hubbard parameters did not converge at the last iteration #{iteration}')
         # yapf: enable
 
     @classmethod
@@ -664,8 +667,13 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
     def run_results(self):
         """Attach the final converged Hubbard U parameters and the corresponding structure."""
-        self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
         self.out('hubbard_structure', self.ctx.current_hubbard_structure)
+
+        if self.ctx.is_converged:
+            self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
+        else:
+            self.report(f'Hubbard parameters did not converged at the last iteration #{self.ctx.iteration}.')
+            return self.exit_codes.ERROR_NO_CONVERGENCE_AT_LAST_ITERATION.format(iteration=self.ctx.iteration)
 
     def should_clean_workdir(self):
         """Whether to clean the work directories at each iteration."""
