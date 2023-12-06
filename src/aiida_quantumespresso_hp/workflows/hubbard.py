@@ -44,6 +44,12 @@ def get_separated_parameters(
     return onsites, intersites
 
 
+def validate_positive(value, _):
+    """Validate that the value is positive."""
+    if value.value < 0:
+        return 'the value must be positive.'
+
+
 def validate_inputs(inputs, _):
     """Validate the entire inputs."""
     parameters = AttributeDict(inputs).scf.pw.parameters.get_dict()
@@ -100,79 +106,40 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
     @classmethod
     def define(cls, spec):
         """Define the specifications of the process."""
+        # yapf: disable
         super().define(spec)
-
-        spec.input('hubbard_structure', valid_type=HubbardStructureData)
-        spec.input(
-            'tolerance_onsite',
-            valid_type=orm.Float,
-            default=lambda: orm.Float(0.1),
-            help=(
-                'Tolerance value for self-consistent calculation of Hubbard U. '
-                'In case of DFT+U+V calculation, it refers to the diagonal elements (i.e. on-site).'
-            )
-        )
-        spec.input(
-            'tolerance_intersite',
-            valid_type=orm.Float,
-            default=lambda: orm.Float(0.01),
-            help=(
-                'Tolerance value for self-consistent DFT+U+V calculation. '
-                'It refers to the only off-diagonal elements V.'
-            )
-        )
-        spec.input(
-            'skip_first_relax',
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            help='If True, skip the first relaxation'
-        )
-        spec.input(
-            'relax_frequency',
-            valid_type=orm.Int,
-            required=False,
-            help='Integer value referring to the number of iterations to wait before performing the `relax` step.'
-        )
-        spec.expose_inputs(
-            PwRelaxWorkChain,
-            namespace='relax',
-            exclude=(
-                'clean_workdir',
-                'structure',
-            ),
-            namespace_options={
-                'required': False,
-                'populate_defaults': False,
-                'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'
-            }
-        )
-        spec.expose_inputs(PwBaseWorkChain, namespace='scf', exclude=(
-            'clean_workdir',
-            'pw.structure',
-        ))
-        spec.expose_inputs(
-            HpWorkChain,
-            namespace='hubbard',
-            exclude=(
-                'clean_workdir',
-                'hp.parent_scf',
-                'hp.parent_hp',
-                'hp.hubbard_structure',
-            )
-        )
-        spec.input('max_iterations', valid_type=orm.Int, default=lambda: orm.Int(10))
-        spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(False))
-        spec.input(
-            'clean_workdir',
-            valid_type=orm.Bool,
-            default=lambda: orm.Bool(True),
-            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.'
-        )
+        spec.input('hubbard_structure', valid_type=HubbardStructureData,
+            help=('The HubbardStructureData containing the initialized parameters for triggering '
+                  'the Hubbard atoms which the `hp.x` code will perturbe.'))
+        spec.input('tolerance_onsite', valid_type=orm.Float, default=lambda: orm.Float(0.1),
+            help=('Tolerance value for self-consistent calculation of Hubbard U. '
+                  'In case of DFT+U+V calculation, it refers to the diagonal elements (i.e. on-site).'))
+        spec.input('tolerance_intersite', valid_type=orm.Float, default=lambda: orm.Float(0.01),
+            help=('Tolerance value for self-consistent DFT+U+V calculation. '
+                  'It refers to the only off-diagonal elements V.'))
+        spec.input('skip_relax_iterations', valid_type=orm.Int, required=False, validator=validate_positive,
+            help=('The number of iterations for skipping the `relax` '
+                  'step without performing check on parameters convergence.'))
+        spec.input('relax_frequency', valid_type=orm.Int, required=False, validator=validate_positive,
+            help='Integer value referring to the number of iterations to wait before performing the `relax` step.')
+        spec.expose_inputs(PwRelaxWorkChain, namespace='relax',
+            exclude=('clean_workdir', 'structure', 'base_final_scf'),
+            namespace_options={'required': False, 'populate_defaults': False,
+                'help': 'Inputs for the `PwRelaxWorkChain` that, when defined, will iteratively relax the structure.'})
+        spec.expose_inputs(PwBaseWorkChain, namespace='scf',
+            exclude=('clean_workdir','pw.structure'))
+        spec.expose_inputs(HpWorkChain, namespace='hubbard',
+            exclude=('clean_workdir', 'hp.parent_scf', 'hp.parent_hp', 'hp.hubbard_structure'))
+        spec.input('max_iterations', valid_type=orm.Int, default=lambda: orm.Int(10),
+            help='Maximum number of iterations of the (relax-)scf-hp cycle.')
+        spec.input('meta_convergence', valid_type=orm.Bool, default=lambda: orm.Bool(False),
+            help='Whether performing the self-consistent cycle. If False, it will stop at the first iteration.')
+        spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(True),
+            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
 
         spec.inputs.validator = validate_inputs
         spec.inputs['hubbard']['hp'].validator = None
 
-        # yapf: disable
         spec.outline(
             cls.setup,
             while_(cls.should_run_iteration)(
@@ -194,45 +161,28 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 ),
                 if_(cls.should_clean_workdir)(
                     cls.clean_iteration,
-                )
+                ),
             ),
             cls.run_results,
         )
-        # yapf: enable
 
-        spec.output(
-            'hubbard_structure',
-            valid_type=HubbardStructureData,
-            required=False,
-            help='The Hubbard structure containing the structure and associated Hubbard parameters.'
-        )
+        spec.output('hubbard_structure', valid_type=HubbardStructureData, required=False,
+            help='The Hubbard structure containing the structure and associated Hubbard parameters.')
 
-        spec.exit_code(
-            330,
-            'ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL',
-            message='Failed to determine the correct pseudo potential after the structure changed its kind names.'
-        )
-        spec.exit_code(
-            401, 'ERROR_SUB_PROCESS_FAILED_RECON', message='The reconnaissance PwBaseWorkChain sub process failed'
-        )
-        spec.exit_code(
-            402,
-            'ERROR_SUB_PROCESS_FAILED_RELAX',
-            message='The PwRelaxWorkChain sub process failed in iteration {iteration}'
-        )
-        spec.exit_code(
-            403,
-            'ERROR_SUB_PROCESS_FAILED_SCF',
-            message='The scf PwBaseWorkChain sub process failed in iteration {iteration}'
-        )
-        spec.exit_code(
-            404, 'ERROR_SUB_PROCESS_FAILED_HP', message='The HpWorkChain sub process failed in iteration {iteration}'
-        )
-        spec.exit_code(
-            405, 'ERROR_NON_INTEGER_TOT_MAGNETIZATION',
+        spec.exit_code(330, 'ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL',
+            message='Failed to determine the correct pseudo potential after the structure changed its kind names.')
+        spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RECON',
+            message='The reconnaissance PwBaseWorkChain sub process failed')
+        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_RELAX',
+            message='The PwRelaxWorkChain sub process failed in iteration {iteration}')
+        spec.exit_code(403, 'ERROR_SUB_PROCESS_FAILED_SCF',
+            message='The scf PwBaseWorkChain sub process failed in iteration {iteration}')
+        spec.exit_code(404, 'ERROR_SUB_PROCESS_FAILED_HP',
+            message='The HpWorkChain sub process failed in iteration {iteration}')
+        spec.exit_code(405, 'ERROR_NON_INTEGER_TOT_MAGNETIZATION',
             message='The scf PwBaseWorkChain sub process in iteration {iteration}'\
-                    'returned a non integer total magnetization (threshold exceeded).'
-        )
+                    'returned a non integer total magnetization (threshold exceeded).')
+        # yapf: enable
 
     @classmethod
     def get_protocol_filepath(cls):
@@ -296,12 +246,13 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         if 'relax_frequency' in inputs:
             builder.relax_frequency = orm.Int(inputs['relax_frequency'])
+        if 'skip_relax_iterations' in inputs:
+            builder.skip_relax_iterations = orm.Int(inputs['skip_relax_iterations'])
 
         builder.hubbard_structure = hubbard_structure
         builder.relax = relax
         builder.scf = scf
         builder.hubbard = hubbard
-        builder.skip_first_relax = orm.Bool(inputs['skip_first_relax'])
         builder.tolerance_onsite = orm.Float(inputs['tolerance_onsite'])
         builder.tolerance_intersite = orm.Float(inputs['tolerance_intersite'])
         builder.max_iterations = orm.Int(inputs['max_iterations'])
@@ -319,7 +270,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.ctx.is_insulator = None
         self.ctx.is_magnetic = False
         self.ctx.iteration = 0
-        self.ctx.skip_first_relax = self.inputs.skip_first_relax.value
+        self.ctx.skip_relax_iterations = 0
+        if 'skip_relax_iterations' in self.inputs:
+            self.ctx.skip_relax_iterations = self.inputs.skip_relax_iterations.value
         self.ctx.relax_frequency = 1
         if 'relax_frequency' in self.inputs:
             self.ctx.relax_frequency = self.inputs.relax_frequency.value
@@ -349,23 +302,35 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         if 'relax' not in self.inputs:
             return False
 
-        if self.ctx.skip_first_relax:
-            self.ctx.skip_first_relax = False  # only the first one will be skipped
-            self.report('`skip_first_relax` is set to `True`. Skipping first relaxation.')
+        if self.ctx.iteration <= self.ctx.skip_relax_iterations:
+            self.report((
+                f'`skip_relax_iterations` is set to {self.ctx.skip_relax_iterations}. '
+                f'Skipping relaxation for iteration {self.ctx.iteration}.'
+            ))
             return False
 
         if self.ctx.iteration % self.ctx.relax_frequency != 0:
             self.report((
                 f'`relax_frequency` is set to {self.ctx.relax_frequency}. '
-                f'Skipping relaxation for iteration {self.ctx.iteration }.'
+                f'Skipping relaxation for iteration {self.ctx.iteration}.'
             ))
             return False
 
-        return 'relax' in self.inputs
+        return True
 
     def should_check_convergence(self):
         """Return whether to check the convergence of Hubbard parameters."""
-        return self.inputs.meta_convergence.value
+        if not self.inputs.meta_convergence.value:
+            return False
+
+        if self.ctx.iteration <= self.ctx.skip_relax_iterations:
+            self.report((
+                f'`skip_relax_iterations` is set to {self.ctx.skip_relax_iterations}. '
+                f'Skipping convergence check for iteration {self.ctx.iteration}.'
+            ))
+            return False
+
+        return True
 
     def should_run_iteration(self):
         """Return whether a new process should be run."""
@@ -608,10 +573,11 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
             self.report(f'hp.x in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_HP.format(iteration=self.ctx.iteration)
 
-        if not self.inputs.meta_convergence:
+        if not self.should_check_convergence():
             self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
-            self.report('meta convergence is switched off, so not checking convergence of Hubbard parameters.')
-            self.ctx.is_converged = True
+            if not self.inputs.meta_convergence:
+                self.report('meta convergence is switched off, so not checking convergence of Hubbard parameters.')
+                self.ctx.is_converged = True
 
     def check_convergence(self):
         """Check the convergence of the Hubbard parameters."""

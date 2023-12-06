@@ -195,6 +195,7 @@ class HpCalculation(CalcJob):
             message='The code failed to reconstruct the full chi matrix as some chi matrices were missing')
         spec.exit_code(495, 'ERROR_INCOMPATIBLE_FFT_GRID',
             message='The code failed due to incompatibility between the FFT grid and the parallelization options.')
+        # yapf: enable
 
     @classproperty
     def filename_output_hubbard_chi(cls):  # pylint: disable=no-self-argument
@@ -312,7 +313,7 @@ class HpCalculation(CalcJob):
         folder_src = os.path.join(parent_scf.get_remote_path(), dirname)
         return [(parent_scf.computer.uuid, folder_src, dirfinal)]
 
-    def get_local_copy_list(self) -> tuple[list,list]:
+    def get_local_copy_list(self) -> tuple[list, list]:
         """Return the `local_copy_list`.
 
         :returns: tuple,list of resource copy instructions
@@ -335,7 +336,7 @@ class HpCalculation(CalcJob):
 
         :returns: a dictionary with input namelists and their flags
         """
-        result = _uppercase_dict(self.inputs.parameters.get_dict() , dict_name='parameters')
+        result = _uppercase_dict(self.inputs.parameters.get_dict(), dict_name='parameters')
         result = {key: _lowercase_dict(value, dict_name=key) for key, value in result.items()}
 
         mesh, _ = self.inputs.qpoints.get_kpoints_mesh()
