@@ -257,6 +257,8 @@ def test_radial_analysis(
 
     We want to make sure `rmax` is in `hp.parameters`.
     """
+    from aiida.orm import load_node
+
     inputs = generate_inputs_hubbard()
     inputs['radial_analysis'] = Dict({})  # no need to specify inputs, it will use the defaults
     process = generate_workchain_hubbard(inputs=inputs)
@@ -265,8 +267,9 @@ def test_radial_analysis(
     process.ctx.workchains_scf = [generate_scf_workchain_node(remote_folder=True)]
     process.run_hp()
 
-    # parameters = process.ctx['workchains_hp'][-1].inputs['hp']['parameters'].get_dict()
-    # assert 'rmax' in parameters
+    node = load_node(process.ctx['workchains_hp'][-1].pk)
+    parameters = node.inputs['hp']['parameters'].get_dict()
+    assert 'rmax' in parameters['INPUTHP']
 
 
 @pytest.mark.usefixtures('aiida_profile')

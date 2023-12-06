@@ -6,7 +6,7 @@ default_inputs:
     tolerance_intersite: 0.01
     radial_analysis:
         radius_max: 10.0 # in Angstrom
-        thr: 0.01
+        thr: 0.1
         nn_finder: 'crystal'
     scf:
         kpoints_distance: 0.4
