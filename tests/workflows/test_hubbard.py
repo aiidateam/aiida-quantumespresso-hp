@@ -396,7 +396,7 @@ def test_not_converged_check_convergence(
     result = process.run_results()
     assert 'hubbard_structure' in process.outputs
     assert process.outputs['hubbard_structure'] == process.ctx.workchains_hp[-1].outputs['hubbard_structure']
-    assert result == WorkChain.exit_codes.ERROR_NO_CONVERGENCE_AT_LAST_ITERATION.format(iteration=process.ctx.iteration)
+    assert result == WorkChain.exit_codes.ERROR_CONVERGENCE_NOT_REACHED.format(iteration=process.ctx.iteration)
 
 
 @pytest.mark.usefixtures('aiida_profile')
