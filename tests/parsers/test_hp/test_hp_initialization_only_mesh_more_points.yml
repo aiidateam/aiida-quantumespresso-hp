@@ -1,0 +1,4 @@
+parameters:
+  hubbard_sites:
+    '13': O
+  number_of_qpoints: 18

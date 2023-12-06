@@ -140,6 +140,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         spec.inputs.validator = validate_inputs
         spec.inputs['hubbard']['hp'].validator = None
 
+        # yapf: disable
         spec.outline(
             cls.setup,
             while_(cls.should_run_iteration)(
@@ -159,9 +160,13 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 if_(cls.should_check_convergence)(
                     cls.check_convergence,
                 ),
+                if_(cls.should_clean_workdir)(
+                    cls.clean_iteration,
+                ),
             ),
             cls.run_results,
         )
+        # yapf: enable
 
         spec.output('hubbard_structure', valid_type=HubbardStructureData, required=False,
             help='The Hubbard structure containing the structure and associated Hubbard parameters.')
@@ -578,6 +583,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
     def check_convergence(self):
         """Check the convergence of the Hubbard parameters."""
+        from aiida_quantumespresso.utils.hubbard import is_intersite_hubbard
+
         workchain = self.ctx.workchains_hp[-1]
 
         # We store in memory the parameters before relabelling to make the comparison easier.
@@ -594,15 +601,17 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         # We check if new types were created, in which case we relabel the `HubbardStructureData`
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
 
-        for site in workchain.outputs.hubbard.dict.sites:
-            if not site['type'] == site['new_type']:
-                self.report('new types have been detected: relabeling the structure and starting new iteration.')
-                result = structure_relabel_kinds(
-                    self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
-                )
-                self.ctx.current_hubbard_structure = result['hubbard_structure']
-                if self.ctx.current_magnetic_moments is not None:
-                    self.ctx.current_magnetic_moments = result['starting_magnetization']
+        if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
+            for site in workchain.outputs.hubbard.dict.sites:
+                if not site['type'] == site['new_type']:
+                    self.report('new types have been detected: relabeling the structure and starting new iteration.')
+                    result = structure_relabel_kinds(
+                        self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
+                    )
+                    self.ctx.current_hubbard_structure = result['hubbard_structure']
+                    if self.ctx.current_magnetic_moments is not None:
+                        self.ctx.current_magnetic_moments = result['starting_magnetization']
+                    break
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
@@ -642,14 +651,12 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
         self.out('hubbard_structure', self.ctx.current_hubbard_structure)
 
-    def on_terminated(self):
-        """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
-        super().on_terminated()
+    def should_clean_workdir(self):
+        """Whether to clean the work directories at each iteration."""
+        return self.inputs.clean_workdir.value
 
-        if self.inputs.clean_workdir.value is False:
-            self.report('remote folders will not be cleaned')
-            return
-
+    def clean_iteration(self):
+        """Clean all work directiories of the current iteration."""
         cleaned_calcs = []
 
         for called_descendant in self.node.called_descendants:

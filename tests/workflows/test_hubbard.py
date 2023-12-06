@@ -379,8 +379,6 @@ def test_not_converged_check_convergence(
 
     process.setup()
 
-    # Mocking current (i.e. "old") and "new" HubbardStructureData,
-    # containing different Hubbard parameters
     process.ctx.current_hubbard_structure = generate_hubbard_structure()
     process.ctx.workchains_hp = [generate_hp_workchain_node(u_value=5.0)]
 
@@ -404,19 +402,26 @@ def test_relabel_check_convergence(
 
     process.setup()
 
-    # Mocking current (i.e. "old") and "new" HubbardStructureData,
-    # containing different Hubbard parameters
-    process.ctx.current_hubbard_structure = generate_hubbard_structure()
-    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
-
+    current_hubbard_structure = generate_hubbard_structure(u_value=1, only_u=True)
+    process.ctx.current_hubbard_structure = current_hubbard_structure
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100, only_u=True)]
     process.check_convergence()
     assert not process.ctx.is_converged
+    assert process.ctx.current_hubbard_structure.get_kind_names() != current_hubbard_structure.get_kind_names()
 
-    process.ctx.current_hubbard_structure = generate_hubbard_structure(u_value=99.99)
-    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
-
+    current_hubbard_structure = generate_hubbard_structure(u_value=99.99, only_u=True)
+    process.ctx.current_hubbard_structure = current_hubbard_structure
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100, only_u=True)]
     process.check_convergence()
     assert process.ctx.is_converged
+    assert process.ctx.current_hubbard_structure.get_kind_names() != current_hubbard_structure.get_kind_names()
+
+    current_hubbard_structure = generate_hubbard_structure(u_value=99.99)
+    process.ctx.current_hubbard_structure = current_hubbard_structure
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
+    process.check_convergence()
+    assert process.ctx.is_converged
+    assert process.ctx.current_hubbard_structure.get_kind_names() == current_hubbard_structure.get_kind_names()
 
 
 @pytest.mark.usefixtures('aiida_profile')
