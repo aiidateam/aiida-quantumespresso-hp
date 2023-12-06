@@ -140,7 +140,6 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         spec.inputs.validator = validate_inputs
         spec.inputs['hubbard']['hp'].validator = None
 
-        # yapf: disable
         spec.outline(
             cls.setup,
             while_(cls.should_run_iteration)(
@@ -166,7 +165,6 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
             ),
             cls.run_results,
         )
-        # yapf: enable
 
         spec.output('hubbard_structure', valid_type=HubbardStructureData, required=False,
             help='The Hubbard structure containing the structure and associated Hubbard parameters.')
