@@ -10,7 +10,10 @@ hubbard:
         withmpi: true
     parameters:
       INPUTHP:
+        alpha_mix(1): 0.4
         conv_thr_chi: 5.0e-06
+        niter_max: 200
+        nmix: 8
     settings:
       parent_folder_symlink: true
   parallelize_atoms: true
@@ -30,6 +33,7 @@ relax:
           max_wallclock_seconds: 43200
           resources:
             num_machines: 1
+            num_mpiprocs_per_machine: 1
           withmpi: true
       parameters:
         CELL:
@@ -69,6 +73,7 @@ scf:
         max_wallclock_seconds: 43200
         resources:
           num_machines: 1
+          num_mpiprocs_per_machine: 1
         withmpi: true
     parameters:
       CONTROL:
