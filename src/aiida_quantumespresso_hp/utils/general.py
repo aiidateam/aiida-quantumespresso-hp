@@ -2,6 +2,8 @@
 """General utilies."""
 from __future__ import annotations
 
+from typing import List
+
 
 def set_tot_magnetization(input_parameters: dict, tot_magnetization: float) -> bool:
     """Set the total magnetization based on its value and the input parameters.
@@ -37,3 +39,22 @@ def is_perturb_only_atom(parameters: dict) -> int | None:
                 break
 
     return match
+
+
+def distribute_base_wcs(n_atoms: int, n_total: int) -> List[int]:
+    """Distribute the number of q-point base workchains to be launched over the number of atoms.
+
+    :param n_atoms: The number of atoms.
+    :param n_total: The number of base workchains to be launched.
+    :return: The number of base workchains to be launched for each atom.
+    """
+    quotient = n_total // n_atoms
+    remainder = n_total % n_atoms
+    n_distributed = [quotient] * n_atoms
+
+    for i in range(remainder):
+        n_distributed[i] += 1
+
+    n_distributed = [x for x in n_distributed if x != 0]
+
+    return n_distributed

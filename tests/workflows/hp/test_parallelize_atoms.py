@@ -69,7 +69,8 @@ def test_run_atoms(generate_workchain_atoms, generate_hp_workchain_node):
     """Test `HpParallelizeAtomsWorkChain.run_atoms`."""
     process = generate_workchain_atoms()
     process.ctx.initialization = generate_hp_workchain_node()
-
+    output_params = process.ctx.initialization.outputs.parameters.get_dict()
+    process.ctx.hubbard_sites = list(output_params['hubbard_sites'].items())
     process.run_atoms()
 
     assert 'atom_1' in process.ctx
@@ -81,7 +82,8 @@ def test_run_atoms_with_qpoints(generate_workchain_atoms, generate_hp_workchain_
     """Test `HpParallelizeAtomsWorkChain.run_atoms` with q point parallelization."""
     process = generate_workchain_atoms()
     process.ctx.initialization = generate_hp_workchain_node()
-
+    output_params = process.ctx.initialization.outputs.parameters.get_dict()
+    process.ctx.hubbard_sites = list(output_params['hubbard_sites'].items())
     process.run_atoms()
 
     # Don't know how to test something like the following

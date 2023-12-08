@@ -31,3 +31,15 @@ def test_is_perturb_only_atom():
 
     parameters = {'perturb_only_atom(1)': False}
     assert is_perturb_only_atom(parameters) is None
+
+
+def test_distribute_base_wcs():
+    """Test the `distribute_base_wcs` function."""
+    from aiida_quantumespresso_hp.utils.general import distribute_base_wcs
+
+    assert distribute_base_wcs(1, 1) == [1]
+    assert distribute_base_wcs(1, 2) == [2]
+    assert distribute_base_wcs(2, 1) == [1]
+    assert distribute_base_wcs(2, 2) == [1, 1]
+    assert distribute_base_wcs(2, 3) == [2, 1]
+    assert distribute_base_wcs(7, 5) == [1] * 5

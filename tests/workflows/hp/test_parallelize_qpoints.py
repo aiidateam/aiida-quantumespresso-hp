@@ -73,6 +73,7 @@ def test_run_qpoints(generate_workchain_qpoints, generate_hp_workchain_node):
     """Test `HpParallelizeQpointsWorkChain.run_qpoints`."""
     process = generate_workchain_qpoints()
     process.ctx.initialization = generate_hp_workchain_node()
+    process.ctx.qpoints = list(range(process.ctx.initialization.outputs.parameters.dict.number_of_qpoints))
 
     process.run_qpoints()
     # to keep consistency with QE we start from 1

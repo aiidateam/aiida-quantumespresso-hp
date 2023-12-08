@@ -30,6 +30,7 @@ relax:
           max_wallclock_seconds: 43200
           resources:
             num_machines: 1
+            num_mpiprocs_per_machine: 1
           withmpi: true
       parameters:
         CELL:
@@ -69,6 +70,7 @@ scf:
         max_wallclock_seconds: 43200
         resources:
           num_machines: 1
+          num_mpiprocs_per_machine: 1
         withmpi: true
     parameters:
       CONTROL:
