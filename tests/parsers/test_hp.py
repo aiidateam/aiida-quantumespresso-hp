@@ -256,8 +256,9 @@ def test_hp_failed_invalid_namelist(aiida_localhost, generate_calc_job_node, gen
 @pytest.mark.parametrize(('name', 'exit_status'), (
     ('failed_no_hubbard_parameters', HpCalculation.exit_codes.ERROR_OUTPUT_HUBBARD_MISSING.status),
     ('failed_no_hubbard_chi', HpCalculation.exit_codes.ERROR_OUTPUT_HUBBARD_CHI_MISSING.status),
-    ('failed_out_of_walltime', HpCalculation.exit_codes.ERROR_OUT_OF_WALLTIME.status),
     ('failed_stdout_incomplete', HpCalculation.exit_codes.ERROR_OUTPUT_STDOUT_INCOMPLETE.status),
+    ('failed_fermi_shift', HpCalculation.exit_codes.ERROR_FERMI_SHIFT.status),
+    ('failed_out_of_walltime', HpCalculation.exit_codes.ERROR_OUT_OF_WALLTIME.status),
     ('failed_computing_cholesky', HpCalculation.exit_codes.ERROR_COMPUTING_CHOLESKY.status),
     ('failed_missing_chi_matrices', HpCalculation.exit_codes.ERROR_MISSING_CHI_MATRICES.status),
     ('failed_incompatible_fft_grid', HpCalculation.exit_codes.ERROR_INCOMPATIBLE_FFT_GRID.status),
