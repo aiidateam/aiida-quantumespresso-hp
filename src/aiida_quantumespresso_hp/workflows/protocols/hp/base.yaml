@@ -11,6 +11,9 @@ default_inputs:
         parameters:
             INPUTHP:
                 conv_thr_chi: 5.e-6
+                niter_max: 200
+                nmix: 8
+                alpha_mix(1): 0.4
         qpoints:
             - 2
             - 2

@@ -210,10 +210,10 @@ class HpBaseWorkChain(BaseRestartWorkChain, ProtocolMixin):
 
     @process_handler(priority=410, exit_codes=HpCalculation.exit_codes.ERROR_CONVERGENCE_NOT_REACHED)
     def handle_convergence_not_reached(self, _):
-        """Handle `ERROR_CONVERGENCE_NOT_REACHED`: decrease `alpha_mix`, increase `niter_max`, and restart.
+        """Handle `ERROR_CONVERGENCE_NOT_REACHED`: decrease `alpha_mix` and restart.
 
         Since `hp.x` does not support restarting from incomplete calculations, the entire calculation will have to be
-        restarted from scratch. By increasing the `niter_max` and decreasing `alpha_mix` there is a chance that the next
+        restarted from scratch. By decreasing `alpha_mix` there is a chance that the next
         run will converge. If these keys are present in the input parameters, they will be scaled by a default factor,
         otherwise, a hardcoded default value will be set that is lower/higher than that of the code's default.
         """
@@ -231,13 +231,6 @@ class HpBaseWorkChain(BaseRestartWorkChain, ProtocolMixin):
             parameter = 'alpha_mix(1)'
             parameters[parameter] = 0.20
             changes.append(f'set `{parameter}` to {parameters[parameter]}')
-
-        if 'niter_max' in parameters:
-            parameters['niter_max'] *= self.defaults.delta_factor_niter_max
-        else:
-            parameters['niter_max'] = 200
-
-        changes.append(f"changed `niter_max` to {parameters['niter_max']}")
 
         if changes:
             self.report(f"convergence not reached: {', '.join(changes)}")

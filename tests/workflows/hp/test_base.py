@@ -96,11 +96,9 @@ def test_handle_unrecoverable_failure(generate_workchain_hp):
 @pytest.mark.parametrize(
     ('inputs', 'expected'),
     (
-        ({}, {'alpha_mix(1)': 0.2, 'niter_max': 200}),
-        ({'niter_max': 5}, {'alpha_mix(1)': 0.2, 'niter_max': 10}),
-        ({'alpha_mix(5)': 0.5}, {'alpha_mix(5)': 0.25, 'niter_max': 200}),
-        ({'alpha_mix(5)': 0.5, 'alpha_mix(10)': 0.4}, {'alpha_mix(5)': 0.25, 'alpha_mix(10)': 0.2, 'niter_max': 200}),
-        ({'niter_max': 1, 'alpha_mix(2)': 0.3}, {'niter_max': 2, 'alpha_mix(2)': 0.15}),
+        ({}, {'alpha_mix(1)': 0.2}),
+        ({'alpha_mix(5)': 0.5}, {'alpha_mix(5)': 0.25}),
+        ({'alpha_mix(5)': 0.5, 'alpha_mix(10)': 0.4}, {'alpha_mix(5)': 0.25, 'alpha_mix(10)': 0.2}),
     ),
 )  # yapf: disable
 def test_handle_convergence_not_reached(generate_workchain_hp, generate_inputs_hp, inputs, expected):
