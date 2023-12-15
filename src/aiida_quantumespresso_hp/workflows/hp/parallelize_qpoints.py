@@ -2,7 +2,7 @@
 """Work chain to launch a Quantum Espresso hp.x calculation parallelizing over the Hubbard atoms."""
 from aiida import orm
 from aiida.common import AttributeDict
-from aiida.engine import WorkChain
+from aiida.engine import WorkChain, while_
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
 from aiida_quantumespresso_hp.utils.general import is_perturb_only_atom
@@ -29,12 +29,15 @@ class HpParallelizeQpointsWorkChain(WorkChain):
         # yapf: disable
         super().define(spec)
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization', 'clean_workdir'))
+        spec.input('max_concurrent_base_workchains', valid_type=orm.Int, required=False)
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
             help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.outline(
             cls.run_init,
             cls.inspect_init,
-            cls.run_qpoints,
+            while_(cls.should_run_qpoints)(
+                cls.run_qpoints,
+            ),
             cls.inspect_qpoints,
             cls.run_final,
             cls.results
@@ -75,14 +78,18 @@ class HpParallelizeQpointsWorkChain(WorkChain):
             self.report(f'initialization work chain {workchain} failed with status {workchain.exit_status}, aborting.')
             return self.exit_codes.ERROR_INITIALIZATION_WORKCHAIN_FAILED
 
+        self.ctx.qpoints = list(range(workchain.outputs.parameters.dict.number_of_qpoints))
+
+    def should_run_qpoints(self):
+        """Return whether there are more q points to run."""
+        return len(self.ctx.qpoints) > 0
+
     def run_qpoints(self):
         """Run a separate `HpBaseWorkChain` for each of the q points."""
-        workchain = self.ctx.initialization
+        n_base_parallel = self.inputs.max_concurrent_base_workchains.value if 'max_concurrent_base_workchains' in self.inputs else len(self.ctx.qpoints)
 
-        number_of_qpoints = workchain.outputs.parameters.dict.number_of_qpoints
-
-        for qpoint_index in range(number_of_qpoints):
-
+        for _ in self.ctx.qpoints[:n_base_parallel]:
+            qpoint_index = self.ctx.qpoints.pop(0)
             key = f'qpoint_{qpoint_index + 1}' # to keep consistency with QE
             inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
             inputs.clean_workdir = self.inputs.clean_workdir

@@ -2,8 +2,10 @@
 """Work chain to launch a Quantum Espresso hp.x calculation parallelizing over the Hubbard atoms."""
 from aiida import orm
 from aiida.common import AttributeDict
-from aiida.engine import WorkChain
+from aiida.engine import WorkChain, while_
 from aiida.plugins import CalculationFactory, WorkflowFactory
+
+from aiida_quantumespresso_hp.utils.general import distribute_base_workchains
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
@@ -21,12 +23,15 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         super().define(spec)
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization', 'clean_workdir'))
         spec.input('parallelize_qpoints', valid_type=orm.Bool, default=lambda: orm.Bool(False))
+        spec.input('max_concurrent_base_workchains', valid_type=orm.Int, required=False)
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
             help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.outline(
             cls.run_init,
             cls.inspect_init,
-            cls.run_atoms,
+            while_(cls.should_run_atoms)(
+                cls.run_atoms,
+            ),
             cls.inspect_atoms,
             cls.run_final,
             cls.inspect_final,
@@ -66,18 +71,26 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             self.report(f'initialization work chain {workchain} failed with status {workchain.exit_status}, aborting.')
             return self.exit_codes.ERROR_INITIALIZATION_WORKCHAIN_FAILED
 
+        output_params = workchain.outputs.parameters.get_dict()
+        self.ctx.hubbard_sites = list(output_params['hubbard_sites'].items())
+
+    def should_run_atoms(self):
+        """Return whether there are more atoms to run."""
+        return len(self.ctx.hubbard_sites) > 0
+
     def run_atoms(self):
         """Run a separate `HpBaseWorkChain` for each of the defined Hubbard atoms."""
-        workchain = self.ctx.initialization
-
-        output_params = workchain.outputs.parameters.get_dict()
-        hubbard_sites = output_params['hubbard_sites']
-
         parallelize_qpoints = self.inputs.parallelize_qpoints.value
         workflow = HpParallelizeQpointsWorkChain if parallelize_qpoints else HpBaseWorkChain
 
-        for site_index, site_kind in hubbard_sites.items():
+        max_concurrent_base_workchains_sites = [-1] * len(self.ctx.hubbard_sites)
+        if 'max_concurrent_base_workchains' in self.inputs:
+            max_concurrent_base_workchains_sites = distribute_base_workchains(
+                len(self.ctx.hubbard_sites), self.inputs.max_concurrent_base_workchains.value
+                )
 
+        for max_concurrent_base_workchains_site in max_concurrent_base_workchains_sites:
+            site_index, site_kind = self.ctx.hubbard_sites.pop(0)
             do_only_key = f'perturb_only_atom({site_index})'
             key = f'atom_{site_index}'
 
@@ -85,9 +98,10 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             inputs.clean_workdir = self.inputs.clean_workdir
             inputs.hp.parameters = inputs.hp.parameters.get_dict()
             inputs.hp.parameters['INPUTHP'][do_only_key] = True
-            inputs.hp.parameters = orm.Dict(dict=inputs.hp.parameters)
+            inputs.hp.parameters = orm.Dict(inputs.hp.parameters)
             inputs.metadata.call_link_label = key
-
+            if parallelize_qpoints and max_concurrent_base_workchains_site != -1:
+                inputs.max_concurrent_base_workchains = orm.Int(max_concurrent_base_workchains_site)
             node = self.submit(workflow, **inputs)
             self.to_context(**{key: node})
             name = workflow.__name__

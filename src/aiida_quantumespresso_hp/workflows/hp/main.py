@@ -48,6 +48,7 @@ class HpWorkChain(WorkChain, ProtocolMixin):
             'for any non-periodic directions.')
         spec.input('parallelize_atoms', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.input('parallelize_qpoints', valid_type=orm.Bool, default=lambda: orm.Bool(False))
+        spec.input('max_concurrent_base_workchains', valid_type=orm.Int, required=False)
         spec.outline(
             cls.validate_qpoints,
             if_(cls.should_parallelize_atoms)(
@@ -106,6 +107,8 @@ class HpWorkChain(WorkChain, ProtocolMixin):
             data['parallelize_atoms'] = orm.Bool(inputs['parallelize_atoms'])
         if 'parallelize_qpoints' in inputs:
             data['parallelize_qpoints'] = orm.Bool(inputs['parallelize_qpoints'])
+        if 'max_concurrent_base_workchains' in inputs:
+            data['max_concurrent_base_workchains'] = orm.Int(inputs['max_concurrent_base_workchains'])
 
         builder = cls.get_builder()
         builder._data = data  # pylint: disable=protected-access
@@ -163,6 +166,8 @@ class HpWorkChain(WorkChain, ProtocolMixin):
         inputs.clean_workdir = self.inputs.clean_workdir
         inputs.parallelize_qpoints = self.inputs.parallelize_qpoints
         inputs.hp.qpoints = self.ctx.qpoints
+        if 'max_concurrent_base_workchains' in self.inputs:
+            inputs.max_concurrent_base_workchains = self.inputs.max_concurrent_base_workchains
         running = self.submit(HpParallelizeAtomsWorkChain, **inputs)
         self.report(f'running in parallel, launching HpParallelizeAtomsWorkChain<{running.pk}>')
         return ToContext(workchain=running)
