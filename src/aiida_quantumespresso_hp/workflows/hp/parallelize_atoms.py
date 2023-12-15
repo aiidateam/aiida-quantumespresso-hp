@@ -5,7 +5,7 @@ from aiida.common import AttributeDict
 from aiida.engine import WorkChain, while_
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
-from aiida_quantumespresso_hp.utils.general import distribute_base_wcs
+from aiida_quantumespresso_hp.utils.general import distribute_base_workchains
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')
@@ -83,14 +83,13 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         parallelize_qpoints = self.inputs.parallelize_qpoints.value
         workflow = HpParallelizeQpointsWorkChain if parallelize_qpoints else HpBaseWorkChain
 
-        n_base_parallel = [-1] * len(self.ctx.hubbard_sites)
+        max_concurrent_base_workchains_sites = [-1] * len(self.ctx.hubbard_sites)
         if 'max_concurrent_base_workchains' in self.inputs:
-            n_base_parallel = distribute_base_wcs(
+            max_concurrent_base_workchains_sites = distribute_base_workchains(
                 len(self.ctx.hubbard_sites), self.inputs.max_concurrent_base_workchains.value
                 )
 
-        self.report(f'{n_base_parallel}')
-        for n_q in n_base_parallel:
+        for max_concurrent_base_workchains_site in max_concurrent_base_workchains_sites:
             site_index, site_kind = self.ctx.hubbard_sites.pop(0)
             do_only_key = f'perturb_only_atom({site_index})'
             key = f'atom_{site_index}'
@@ -99,10 +98,10 @@ class HpParallelizeAtomsWorkChain(WorkChain):
             inputs.clean_workdir = self.inputs.clean_workdir
             inputs.hp.parameters = inputs.hp.parameters.get_dict()
             inputs.hp.parameters['INPUTHP'][do_only_key] = True
-            inputs.hp.parameters = orm.Dict(dict=inputs.hp.parameters)
+            inputs.hp.parameters = orm.Dict(inputs.hp.parameters)
             inputs.metadata.call_link_label = key
-            if parallelize_qpoints and n_q != -1:
-                inputs.max_concurrent_base_workchains = orm.Int(n_q)
+            if parallelize_qpoints and max_concurrent_base_workchains_site != -1:
+                inputs.max_concurrent_base_workchains = orm.Int(max_concurrent_base_workchains_site)
             node = self.submit(workflow, **inputs)
             self.to_context(**{key: node})
             name = workflow.__name__

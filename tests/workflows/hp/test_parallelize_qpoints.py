@@ -11,15 +11,19 @@ from aiida_quantumespresso_hp.workflows.hp.parallelize_qpoints import HpParallel
 def generate_workchain_qpoints(generate_workchain, generate_inputs_hp, generate_hubbard_structure):
     """Generate an instance of a `HpParallelizeQpointsWorkChain`."""
 
-    def _generate_workchain_qpoints(inputs=None):
+    def _generate_workchain_qpoints(hp_inputs=None, max_concurrent_base_workchains=None):
+        from aiida.orm import Int
         entry_point = 'quantumespresso.hp.parallelize_qpoints'
 
-        if inputs is None:
-            inputs = {'perturb_only_atom(1)': True}
+        if hp_inputs is None:
+            hp_inputs = {'perturb_only_atom(1)': True}
 
-        inputs = generate_inputs_hp(inputs=inputs)
-        inputs['hubbard_structure'] = generate_hubbard_structure()
-        process = generate_workchain(entry_point, {'hp': inputs})
+        hp_inputs = generate_inputs_hp(inputs=hp_inputs)
+        hp_inputs['hubbard_structure'] = generate_hubbard_structure()
+        inputs = {'hp': hp_inputs}
+        if max_concurrent_base_workchains is not None:
+            inputs['max_concurrent_base_workchains'] = Int(max_concurrent_base_workchains)
+        process = generate_workchain(entry_point, inputs)
 
         return process
 
@@ -56,7 +60,7 @@ def test_validate_inputs_invalid_parameters(generate_workchain_qpoints):
     """Test `HpParallelizeQpointsWorkChain.validate_inputs`."""
     match = r'The parameters in `hp.parameters` do not specify the required key `INPUTHP.pertub_only_atom`'
     with pytest.raises(ValueError, match=match):
-        generate_workchain_qpoints(inputs={})
+        generate_workchain_qpoints(hp_inputs={})
 
 
 @pytest.mark.usefixtures('aiida_profile')
@@ -79,6 +83,28 @@ def test_run_qpoints(generate_workchain_qpoints, generate_hp_workchain_node):
     # to keep consistency with QE we start from 1
     assert 'qpoint_1' in process.ctx
     assert 'qpoint_2' in process.ctx
+
+
+@pytest.mark.usefixtures('aiida_profile')
+def test_run_qpoints_max_concurrent(generate_workchain_qpoints, generate_hp_workchain_node):
+    """Test `HpParallelizeQpointsWorkChain.run_qpoints`.
+
+    The number of concurrent `BaseWorkChains` is limited to `1`.
+    """
+    process = generate_workchain_qpoints(max_concurrent_base_workchains=1)
+    process.ctx.initialization = generate_hp_workchain_node()
+    process.ctx.qpoints = list(range(process.ctx.initialization.outputs.parameters.dict.number_of_qpoints))
+
+    assert process.should_run_qpoints()
+    process.run_qpoints()
+    assert 'qpoint_1' in process.ctx
+    assert 'qpoint_2' not in process.ctx
+
+    assert process.should_run_qpoints()
+    process.run_qpoints()
+    assert 'qpoint_1' in process.ctx
+    assert 'qpoint_2' in process.ctx
+    assert not process.should_run_qpoints()
 
 
 @pytest.mark.usefixtures('aiida_profile')

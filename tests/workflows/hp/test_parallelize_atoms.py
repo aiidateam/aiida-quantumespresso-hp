@@ -11,13 +11,16 @@ from aiida_quantumespresso_hp.workflows.hp.parallelize_atoms import HpParalleliz
 def generate_workchain_atoms(generate_workchain, generate_inputs_hp, generate_hubbard_structure):
     """Generate an instance of a `HpParallelizeAtomsWorkChain`."""
 
-    def _generate_workchain_atoms(inputs=None, parallelize_qpoints=False):
-        from aiida.orm import Bool
+    def _generate_workchain_atoms(hp_inputs=None, parallelize_qpoints=False, max_concurrent_base_workchains=None):
+        from aiida.orm import Bool, Int
         entry_point = 'quantumespresso.hp.parallelize_atoms'
-        inputs = generate_inputs_hp(inputs=inputs)
-        inputs['hubbard_structure'] = generate_hubbard_structure()
-        inputs['parallelize_qpoints'] = Bool(parallelize_qpoints)
-        process = generate_workchain(entry_point, {'hp': inputs})
+        hp_inputs = generate_inputs_hp(inputs=hp_inputs)
+        hp_inputs['hubbard_structure'] = generate_hubbard_structure()
+        hp_inputs['parallelize_qpoints'] = Bool(parallelize_qpoints)
+        inputs = {'hp': hp_inputs}
+        if max_concurrent_base_workchains is not None:
+            inputs['max_concurrent_base_workchains'] = Int(max_concurrent_base_workchains)
+        process = generate_workchain(entry_point, inputs)
 
         return process
 
@@ -75,6 +78,29 @@ def test_run_atoms(generate_workchain_atoms, generate_hp_workchain_node):
 
     assert 'atom_1' in process.ctx
     assert 'atom_2' in process.ctx
+
+
+@pytest.mark.usefixtures('aiida_profile')
+def test_run_atoms_max_concurrent(generate_workchain_atoms, generate_hp_workchain_node):
+    """Test `HpParallelizeAtomsWorkChain.run_atoms`.
+
+    The number of concurrent `BaseWorkChains` is limited to `1`.
+    """
+    process = generate_workchain_atoms(max_concurrent_base_workchains=1)
+    process.ctx.initialization = generate_hp_workchain_node()
+    output_params = process.ctx.initialization.outputs.parameters.get_dict()
+    process.ctx.hubbard_sites = list(output_params['hubbard_sites'].items())
+
+    assert process.should_run_atoms()
+    process.run_atoms()
+    assert 'atom_1' in process.ctx
+    assert 'atom_2' not in process.ctx
+    assert process.should_run_atoms()
+    process.run_atoms()
+    assert 'atom_1' in process.ctx
+    assert 'atom_2' in process.ctx
+
+    assert not process.should_run_atoms()
 
 
 @pytest.mark.usefixtures('aiida_profile')
