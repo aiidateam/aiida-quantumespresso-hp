@@ -1,0 +1,13 @@
+&INPUTHP
+  conv_thr_chi =   1.0000000000d-06
+  determine_q_mesh_only = .true.
+  find_atpert = 3
+  iverbosity = 2
+  max_seconds =   3.4200000000d+03
+  nq1 = 4
+  nq2 = 4
+  nq3 = 4
+  outdir = 'out'
+  perturb_only_atom(13) = .true.
+  prefix = 'aiida'
+/
