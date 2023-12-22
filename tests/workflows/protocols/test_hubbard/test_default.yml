@@ -24,6 +24,10 @@ max_iterations: 10
 meta_convergence: true
 radial_analysis:
   nn_finder: crystal
+  nn_inputs:
+    distance_cutoffs: null
+    porous_adjustment: false
+    x_diff_weight: 0
   radius_max: 10.0
   thr: 0.01
 relax:

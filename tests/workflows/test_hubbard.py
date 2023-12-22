@@ -2,7 +2,7 @@
 # pylint: disable=no-member,redefined-outer-name
 """Tests for the `SelfConsistentHubbardWorkChain` class."""
 from aiida.common import AttributeDict
-from aiida.orm import Dict
+from aiida.orm import Bool, Dict, Int, load_node
 from plumpy import ProcessState
 import pytest
 
@@ -119,8 +119,6 @@ def test_validate_inputs_invalid_inputs(generate_workchain_hubbard, generate_inp
 @pytest.mark.usefixtures('aiida_profile')
 def test_validate_invalid_positve_input(generate_workchain_hubbard, generate_inputs_hubbard, parameters):
     """Test `SelfConsistentHubbardWorkChain` for invalid positive inputs."""
-    from aiida.orm import Int
-
     inputs = AttributeDict(generate_inputs_hubbard())
     inputs.update({parameters: Int(-1)})
 
@@ -178,8 +176,6 @@ def test_magnetic_setup(generate_workchain_hubbard, generate_inputs_hubbard):
 @pytest.mark.usefixtures('aiida_profile')
 def test_skip_relax_iterations(generate_workchain_hubbard, generate_inputs_hubbard, generate_hp_workchain_node):
     """Test `SelfConsistentHubbardWorkChain` when skipping the first relax iterations."""
-    from aiida.orm import Bool, Int
-
     inputs = generate_inputs_hubbard()
     inputs['skip_relax_iterations'] = Int(1)
     inputs['meta_convergence'] = Bool(True)
@@ -230,8 +226,6 @@ def test_skip_relax_iterations(generate_workchain_hubbard, generate_inputs_hubba
 @pytest.mark.usefixtures('aiida_profile')
 def test_relax_frequency(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain` when `relax_frequency` is different from 1."""
-    from aiida.orm import Int
-
     inputs = generate_inputs_hubbard()
     inputs['relax_frequency'] = Int(3)
     process = generate_workchain_hubbard(inputs=inputs)
@@ -257,8 +251,6 @@ def test_radial_analysis(
 
     We want to make sure `rmax` is in `hp.parameters`.
     """
-    from aiida.orm import load_node
-
     inputs = generate_inputs_hubbard()
     inputs['radial_analysis'] = Dict({})  # no need to specify inputs, it will use the defaults
     process = generate_workchain_hubbard(inputs=inputs)
@@ -275,7 +267,6 @@ def test_radial_analysis(
 @pytest.mark.usefixtures('aiida_profile')
 def test_should_check_convergence(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.should_check_convergence`."""
-    from aiida.orm import Bool
     inputs = generate_inputs_hubbard()
     inputs['meta_convergence'] = Bool(True)
     process = generate_workchain_hubbard(inputs=inputs)
@@ -292,12 +283,12 @@ def test_outline_without_metaconvergence(
 
     We want to make sure the `outputs.hubbard_structure` is the last computed.
     """
-    from aiida.orm import Bool
     inputs = generate_inputs_hubbard()
     inputs['meta_convergence'] = Bool(False)
     process = generate_workchain_hubbard(inputs=inputs)
 
     process.setup()
+    process.update_iteration()
 
     process.ctx.workchains_hp = [generate_hp_workchain_node()]
     assert process.inspect_hp() is None
@@ -313,12 +304,12 @@ def test_outline(
     generate_workchain_hubbard, generate_inputs_hubbard, generate_scf_workchain_node, generate_hp_workchain_node
 ):
     """Test `SelfConsistentHubbardWorkChain` outline."""
-    from aiida.orm import Bool
     inputs = generate_inputs_hubbard()
     inputs['meta_convergence'] = Bool(True)
     process = generate_workchain_hubbard(inputs=inputs)
 
     process.setup()
+    process.update_iteration()
 
     process.run_relax()
     # assert 'workchains_relax' in process.ctx
@@ -347,6 +338,7 @@ def test_outline(
 
     process.ctx.workchains_hp = [generate_hp_workchain_node()]
     assert process.inspect_hp() is None
+    assert process.should_check_convergence()
     process.check_convergence()
     assert process.ctx.is_converged
 
@@ -358,9 +350,7 @@ def test_outline(
 @pytest.mark.usefixtures('aiida_profile')
 def test_should_run_relax(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain.should_run_relax` method."""
-    from aiida.orm import Bool
     inputs = generate_inputs_hubbard()
-    inputs['meta_convergence'] = Bool(True)
     inputs.pop('relax')
     process = generate_workchain_hubbard(inputs=inputs)
 
@@ -378,6 +368,7 @@ def test_converged_check_convergence(
     process = generate_workchain_hubbard(inputs=inputs)
 
     process.setup()
+    process.update_iteration()
 
     # Mocking current (i.e. "old") and "new" HubbardStructureData,
     # containing different Hubbard parameters
@@ -433,11 +424,13 @@ def test_relabel_check_convergence(
     process = generate_workchain_hubbard(inputs=inputs)
 
     process.setup()
+    process.update_iteration()
 
     current_hubbard_structure = generate_hubbard_structure(u_value=1, only_u=True)
     process.ctx.current_hubbard_structure = current_hubbard_structure
     process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100, only_u=True)]
     process.check_convergence()
+    assert process.should_check_convergence()
     assert not process.ctx.is_converged
     assert process.ctx.current_hubbard_structure.get_kind_names() != current_hubbard_structure.get_kind_names()
 
@@ -445,6 +438,7 @@ def test_relabel_check_convergence(
     process.ctx.current_hubbard_structure = current_hubbard_structure
     process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100, only_u=True)]
     process.check_convergence()
+    assert process.should_check_convergence()
     assert process.ctx.is_converged
     assert process.ctx.current_hubbard_structure.get_kind_names() != current_hubbard_structure.get_kind_names()
 
@@ -452,6 +446,7 @@ def test_relabel_check_convergence(
     process.ctx.current_hubbard_structure = current_hubbard_structure
     process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=100)]
     process.check_convergence()
+    assert process.should_check_convergence()
     assert process.ctx.is_converged
     assert process.ctx.current_hubbard_structure.get_kind_names() == current_hubbard_structure.get_kind_names()
 

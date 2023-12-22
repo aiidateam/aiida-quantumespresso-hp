@@ -5,9 +5,13 @@ default_inputs:
     tolerance_onsite: 0.1
     tolerance_intersite: 0.01
     radial_analysis:
-        radius_max: 10.0 # in Angstrom
-        thr: 0.1
         nn_finder: 'crystal'
+        nn_inputs:
+            distance_cutoffs: null # in Angstrom
+            x_diff_weight: 0
+            porous_adjustment: False
+        radius_max: 10.0 # in Angstrom
+        thr: 0.01 # in Angstrom
     scf:
         kpoints_distance: 0.4
 

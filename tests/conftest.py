@@ -494,6 +494,8 @@ def generate_inputs_hubbard(generate_inputs_pw, generate_inputs_hp, generate_hub
 
     def _generate_inputs_hubbard(hubbard_structure=None):
         """Generate default inputs for a `SelfConsistentHubbardWorkChain."""
+        from aiida.orm import Bool
+
         hubbard_structure = hubbard_structure or generate_hubbard_structure()
         inputs_pw = generate_inputs_pw(structure=hubbard_structure)
         inputs_relax = generate_inputs_pw(structure=hubbard_structure)
@@ -508,6 +510,7 @@ def generate_inputs_hubbard(generate_inputs_pw, generate_inputs_hp, generate_hub
         inputs_hp.pop('parent_scf')
 
         inputs = {
+            'meta_convergence': Bool(True),
             'hubbard_structure': hubbard_structure,
             'relax': {
                 'base': {
