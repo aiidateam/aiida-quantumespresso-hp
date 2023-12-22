@@ -87,7 +87,8 @@ def detect_important_message(logs, line):
             'Reconstruction problem: some chi were not found': 'ERROR_MISSING_CHI_MATRICES',
             'incompatible FFT grid': 'ERROR_INCOMPATIBLE_FFT_GRID',
             REG_ERROR_CONVERGENCE_NOT_REACHED: 'ERROR_CONVERGENCE_NOT_REACHED',
-            ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS'
+            ERROR_POSITIONS: 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
+            'WARNING: The Fermi energy shift is zero or too big!': 'ERROR_FERMI_SHIFT',
         },
         'warning': {
             'Warning:': None,

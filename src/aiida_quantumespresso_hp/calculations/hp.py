@@ -183,6 +183,9 @@ class HpCalculation(CalcJob):
             message='One of the required perturbation inputs files was not found.')
         spec.exit_code(365, 'ERROR_INCORRECT_ORDER_ATOMIC_POSITIONS',
             message='The atomic positions were not sorted with Hubbard sites first.')
+        spec.exit_code(366, 'ERROR_FERMI_SHIFT',
+            message=('The code failed due to Fermi shift, probably due to low energy cutoff '
+                'or due to an incorrect treatment of an insulating state (i.e. no smearing shoudl be used).'))
 
         # Significant errors but calculation can be used to restart
         spec.exit_code(400, 'ERROR_OUT_OF_WALLTIME',

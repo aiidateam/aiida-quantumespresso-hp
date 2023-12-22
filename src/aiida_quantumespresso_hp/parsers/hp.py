@@ -135,6 +135,7 @@ class HpParser(Parser):
             'ERROR_COMPUTING_CHOLESKY',
             'ERROR_MISSING_CHI_MATRICES',
             'ERROR_INCOMPATIBLE_FFT_GRID',
+            'ERROR_FERMI_SHIFT',
         ]:
             if exit_status in logs['error']:
                 return self.exit_codes.get(exit_status)
