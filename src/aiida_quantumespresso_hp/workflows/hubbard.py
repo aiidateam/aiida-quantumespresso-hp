@@ -421,11 +421,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         return results
 
-    def relabel_onsite_hubbard(self, workchain):
+    def relabel_hubbard_structure(self, workchain) -> None:
         """Relabel the Hubbard structure if new types have been detected."""
         from aiida_quantumespresso.utils.hubbard import is_intersite_hubbard
-
-        relabeling_message = ''
 
         if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
             for site in workchain.outputs.hubbard.dict.sites:
@@ -436,12 +434,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                     self.ctx.current_hubbard_structure = result['hubbard_structure']
                     if self.ctx.current_magnetic_moments is not None:
                         self.ctx.current_magnetic_moments = result['starting_magnetization']
-                    relabeling_message = 'new types have been detected: relabeling the structure.'
-                    break
-
-        if relabeling_message and self.inputs.meta_convergence:
-            relabeling_message = relabeling_message[:-1] + ' and starting new iteration.'
-        return relabeling_message
+                    self.report('new types have been detected: relabeling the structure.')
+                    return
 
     def run_relax(self):
         """Run the PwRelaxWorkChain to run a relax PwCalculation."""
@@ -600,14 +594,11 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         if not self.should_check_convergence():
             self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
-            relabeling_message = self.relabel_onsite_hubbard(workchain)
+            self.relabel_hubbard_structure(workchain)
 
             if not self.inputs.meta_convergence:
                 self.report('meta convergence is switched off, so not checking convergence of Hubbard parameters.')
                 self.ctx.is_converged = True
-
-            if relabeling_message:
-                self.report(relabeling_message)
 
     def check_convergence(self):
         """Check the convergence of the Hubbard parameters."""
@@ -626,9 +617,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         # We check if new types were created, in which case we relabel the `HubbardStructureData`
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
-        relabeling_message = self.relabel_onsite_hubbard(workchain)
-        if relabeling_message:
-            self.report(relabeling_message)
+        self.relabel_hubbard_structure(workchain)
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
