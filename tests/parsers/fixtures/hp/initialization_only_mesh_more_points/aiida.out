@@ -167,7 +167,7 @@
      Changing the type of the perturbed atom back to its original type...
 
 
-     The grid of q-points ( 4, 4, 4)  ( 18 q-points ) :
+     The grid of q-points ( 4, 4, 4)  (18 q-points ) :
        N       xq(1)         xq(2)         xq(3)       wq
        1   0.000000000   0.000000000   0.000000000   0.015625000
        2   0.000000000   0.216131358  -0.211002628   0.062500000
