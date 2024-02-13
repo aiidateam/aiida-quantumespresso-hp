@@ -31,13 +31,13 @@ def parse_raw_output(stdout):
         detect_important_message(logs, line)
 
         # A calculation that will only perturb a single atom will only print one line
-        match = re.search(r'.*The grid of q-points.*\s+([0-9]+)+\s+q-points.*', line)
+        match = re.search(r'.*The grid of q-points.*?(\d+)+\s+q-points.*', line)
         if match:
             parsed_data['number_of_qpoints'] = int(match.group(1))
 
         # Determine the atomic sites that will be perturbed, or that the calculation expects
         # to have been calculated when post-processing the final matrices
-        match = re.search(r'.*List of\s+([0-9]+)\s+atoms which will be perturbed.*', line)
+        match = re.search(r'.*List of.*?(\d+)\s+atoms which will be perturbed.*', line)
         if match:
             hubbard_sites = {}
             number_of_perturbed_atoms = int(match.group(1))
