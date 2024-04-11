@@ -24,6 +24,10 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         spec.expose_inputs(HpBaseWorkChain, exclude=('only_initialization', 'clean_workdir'))
         spec.input('parallelize_qpoints', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.input('max_concurrent_base_workchains', valid_type=orm.Int, required=False)
+        spec.input(
+            'init_walltime', valid_type=int, default=3600, non_db=True,
+            help='The walltime of the initialization `HpBaseWorkChain` in seconds (default: 3600).'
+            )
         spec.input('clean_workdir', valid_type=orm.Bool, default=lambda: orm.Bool(False),
             help='If `True`, work directories of all called calculation will be cleaned at the end of execution.')
         spec.outline(
@@ -56,7 +60,7 @@ class HpParallelizeAtomsWorkChain(WorkChain):
         inputs = AttributeDict(self.exposed_inputs(HpBaseWorkChain))
         inputs.only_initialization = orm.Bool(True)
         inputs.clean_workdir = self.inputs.clean_workdir
-        inputs.hp.metadata.options.max_wallclock_seconds = 3600 # 1 hour is more than enough
+        inputs.hp.metadata.options.max_wallclock_seconds = self.inputs.init_walltime
         inputs.metadata.call_link_label = 'initialization'
 
         node = self.submit(HpBaseWorkChain, **inputs)
