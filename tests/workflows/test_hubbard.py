@@ -228,6 +228,41 @@ def test_skip_relax_iterations(generate_workchain_hubbard, generate_inputs_hubba
 
 
 @pytest.mark.usefixtures('aiida_profile')
+def test_skip_relax_iterations_relabeling(
+    generate_workchain_hubbard, generate_inputs_hubbard, generate_hp_workchain_node, generate_hubbard_structure
+):
+    """Test `SelfConsistentHubbardWorkChain` when skipping the first relax iterations and relabeling is needed."""
+    from aiida.orm import Bool, Int
+
+    inputs = generate_inputs_hubbard()
+    inputs['skip_relax_iterations'] = Int(1)
+    inputs['meta_convergence'] = Bool(True)
+    process = generate_workchain_hubbard(inputs=inputs)
+    process.setup()
+
+    current_hubbard_structure = generate_hubbard_structure(u_value=1, only_u=True)
+    process.current_hubbard_structure = current_hubbard_structure
+    # 1
+    process.update_iteration()
+    assert process.ctx.skip_relax_iterations == 1
+    assert process.ctx.iteration == 1
+    assert not process.should_run_relax()
+    assert not process.should_check_convergence()
+    process.ctx.workchains_hp = [generate_hp_workchain_node(relabel=True, u_value=1, only_u=True)]
+    process.inspect_hp()
+    assert process.ctx.current_hubbard_structure.get_kind_names(
+    ) != process.ctx.workchains_hp[-1].outputs.hubbard_structure.get_kind_names()
+    # 2
+    process.update_iteration()
+    assert process.should_run_relax()
+    assert process.should_check_convergence()
+    # 3
+    process.update_iteration()
+    assert process.should_run_relax()
+    assert process.should_check_convergence()
+
+
+@pytest.mark.usefixtures('aiida_profile')
 def test_relax_frequency(generate_workchain_hubbard, generate_inputs_hubbard):
     """Test `SelfConsistentHubbardWorkChain` when `relax_frequency` is different from 1."""
     from aiida.orm import Int

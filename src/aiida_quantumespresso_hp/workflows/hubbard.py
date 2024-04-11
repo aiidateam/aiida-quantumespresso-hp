@@ -421,6 +421,22 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         return results
 
+    def relabel_hubbard_structure(self, workchain) -> None:
+        """Relabel the Hubbard structure if new types have been detected."""
+        from aiida_quantumespresso.utils.hubbard import is_intersite_hubbard
+
+        if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
+            for site in workchain.outputs.hubbard.dict.sites:
+                if not site['type'] == site['new_type']:
+                    result = structure_relabel_kinds(
+                        self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
+                    )
+                    self.ctx.current_hubbard_structure = result['hubbard_structure']
+                    if self.ctx.current_magnetic_moments is not None:
+                        self.ctx.current_magnetic_moments = result['starting_magnetization']
+                    self.report('new types have been detected: relabeling the structure.')
+                    return
+
     def run_relax(self):
         """Run the PwRelaxWorkChain to run a relax PwCalculation."""
         inputs = self.get_inputs(PwRelaxWorkChain, 'relax')
@@ -578,14 +594,14 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         if not self.should_check_convergence():
             self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
+            self.relabel_hubbard_structure(workchain)
+
             if not self.inputs.meta_convergence:
                 self.report('meta convergence is switched off, so not checking convergence of Hubbard parameters.')
                 self.ctx.is_converged = True
 
     def check_convergence(self):
         """Check the convergence of the Hubbard parameters."""
-        from aiida_quantumespresso.utils.hubbard import is_intersite_hubbard
-
         workchain = self.ctx.workchains_hp[-1]
 
         # We store in memory the parameters before relabelling to make the comparison easier.
@@ -601,18 +617,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         # We check if new types were created, in which case we relabel the `HubbardStructureData`
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
-
-        if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
-            for site in workchain.outputs.hubbard.dict.sites:
-                if not site['type'] == site['new_type']:
-                    self.report('new types have been detected: relabeling the structure and starting new iteration.')
-                    result = structure_relabel_kinds(
-                        self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
-                    )
-                    self.ctx.current_hubbard_structure = result['hubbard_structure']
-                    if self.ctx.current_magnetic_moments is not None:
-                        self.ctx.current_magnetic_moments = result['starting_magnetization']
-                    break
+        self.relabel_hubbard_structure(workchain)
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
