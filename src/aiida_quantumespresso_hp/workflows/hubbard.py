@@ -173,6 +173,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         spec.exit_code(330, 'ERROR_FAILED_TO_DETERMINE_PSEUDO_POTENTIAL',
             message='Failed to determine the correct pseudo potential after the structure changed its kind names.')
+        spec.exit_code(340, 'ERROR_RELABELLING_KINDS',
+            message='Failed to determine the kind names during the relabelling.')
+
         spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_RECON',
             message='The reconnaissance PwBaseWorkChain sub process failed')
         spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_RELAX',
@@ -431,9 +434,13 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         if not is_intersite_hubbard(workchain.outputs.hubbard_structure.hubbard):
             for site in workchain.outputs.hubbard.dict.sites:
                 if not site['type'] == site['new_type']:
-                    result = structure_relabel_kinds(
-                        self.ctx.current_hubbard_structure, workchain.outputs.hubbard, self.ctx.current_magnetic_moments
-                    )
+                    try:
+                        result = structure_relabel_kinds(
+                            self.ctx.current_hubbard_structure, workchain.outputs.hubbard,
+                            self.ctx.current_magnetic_moments
+                        )
+                    except ValueError:
+                        return self.exit_codes.ERROR_RELABELLING_KINDS
                     self.ctx.current_hubbard_structure = result['hubbard_structure']
                     if self.ctx.current_magnetic_moments is not None:
                         self.ctx.current_magnetic_moments = result['starting_magnetization']
