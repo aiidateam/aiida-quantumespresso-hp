@@ -158,10 +158,12 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 ),
                 cls.run_hp,
                 cls.inspect_hp,
-                cls.check_convergence,
+                if_(cls.should_check_convergence)(
+                    cls.check_convergence,
+                ),
                 if_(cls.should_clean_workdir)(
                     cls.clean_iteration,
-                )
+                ),
             ),
             cls.run_results,
         )
@@ -414,7 +416,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         for kind in self.ctx.current_hubbard_structure.kinds:
             for key, pseudo in pseudos.items():
                 symbol = re.sub(r'\d', '', key)
-                if re.match(fr'{kind.symbol}[0-9]*', symbol):
+                if re.match(fr'{kind.symbol}*.', symbol):
                     results[kind.name] = pseudo
                     break
             else:
@@ -634,8 +636,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
         self.relabel_hubbard_structure(workchain)
 
-        if not self.should_check_convergence():
-            return
+        # if not self.should_check_convergence():
+        #     return
 
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
