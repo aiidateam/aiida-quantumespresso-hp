@@ -661,7 +661,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         new = np.array(new_onsites, dtype='object')
         diff = np.abs(old[:, 4] - new[:, 4])
 
-        if (diff > self.inputs.tolerance_onsite).all():
+        if (diff > self.inputs.tolerance_onsite).any():
             check_onsites = False
             self.report(f'Hubbard onsites parameters are not converged. Max difference is {diff.max()}.')
 
@@ -671,7 +671,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
             new = np.array(new_intersites, dtype='object')
             diff = np.abs(old[:, 4] - new[:, 4])
 
-            if (diff > self.inputs.tolerance_intersite).all():
+            if (diff > self.inputs.tolerance_intersite).any():
                 check_onsites = False
                 self.report(f'Hubbard intersites parameters are not converged. Max difference is {diff.max()}.')
 
