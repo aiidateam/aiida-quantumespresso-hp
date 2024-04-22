@@ -377,7 +377,7 @@ def generate_structure():
 def generate_hubbard_structure(generate_structure):
     """Return a `HubbardStructureData` representing bulk silicon."""
 
-    def _generate_hubbard_structure(only_u=False, u_value=1e-5, v_value=1e-5):
+    def _generate_hubbard_structure(only_u=False, u_value=1e-5, v_value=1e-5, u_o_value=1e-5):
         """Return a `StructureData` representing bulk silicon."""
         from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
@@ -386,8 +386,10 @@ def generate_hubbard_structure(generate_structure):
 
         if only_u:
             hubbard_structure.initialize_onsites_hubbard('Co', '3d', u_value)
+            hubbard_structure.initialize_onsites_hubbard('O', '2p', u_o_value)
         else:
             hubbard_structure.initialize_onsites_hubbard('Co', '3d', u_value)
+            hubbard_structure.initialize_onsites_hubbard('O', '2p', u_o_value)
             hubbard_structure.initialize_intersites_hubbard('Co', '3d', 'O', '2p', v_value)
 
         return hubbard_structure
