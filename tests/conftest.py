@@ -391,6 +391,7 @@ def generate_hubbard_structure(generate_structure):
             hubbard_structure.initialize_onsites_hubbard('Co', '3d', u_value)
             hubbard_structure.initialize_onsites_hubbard('O', '2p', u_o_value)
             hubbard_structure.initialize_intersites_hubbard('Co', '3d', 'O', '2p', v_value)
+            hubbard_structure.initialize_intersites_hubbard('O', '2p', 'Co', '3d', u_o_value)
 
         return hubbard_structure
 
