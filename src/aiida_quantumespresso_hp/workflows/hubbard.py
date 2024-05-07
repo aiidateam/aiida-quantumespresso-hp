@@ -419,7 +419,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         for kind in self.ctx.current_hubbard_structure.kinds:
             for key, pseudo in pseudos.items():
                 symbol = re.sub(r'\d', '', key)
-                if re.match(fr'{kind.symbol}*.', symbol):
+                if re.match(fr'{kind.symbol}[0-9]*', symbol):
                     results[kind.name] = pseudo
                     break
             else:
@@ -562,12 +562,25 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         bands = workchain.outputs.output_band
         parameters = workchain.outputs.output_parameters.get_dict()
-        # number_electrons = parameters['number_of_electrons']
-        # is_insulator, _ = find_bandgap(bands, number_electrons=number_electrons)
-        fermi_energy = parameters['fermi_energy']
-        is_insulator, _ = find_bandgap(bands, fermi_energy=fermi_energy)
 
-        if is_insulator:
+        fermi_energy = parameters['fermi_energy']
+        number_electrons = parameters['number_of_electrons']
+
+        # Due to uncertainty in the prediction of the fermi energy, we try
+        # both options of this function. If one of the two give an insulating
+        # state as a result, we then set fixed occupation as it is likely that
+        # hp.x would crash otherwise.
+        is_insulator_1, _ = find_bandgap(bands, fermi_energy=fermi_energy)
+
+        # I am not sure, but I think for some materials, e.g. having anti-ferromagnetic
+        # ordering, the following function would crash for some reason, possibly due
+        # to the format of the BandsData. To double check if actually needed.
+        try:
+            is_insulator_2, _ = find_bandgap(bands, number_electrons=number_electrons)
+        except:  # pylint: disable=bare-except
+            is_insulator_2 = False
+
+        if is_insulator_1 or is_insulator_2:
             self.report('after relaxation, system is determined to be an insulator')
             self.ctx.is_insulator = True
         else:

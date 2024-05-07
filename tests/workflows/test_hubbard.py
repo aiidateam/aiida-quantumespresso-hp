@@ -36,10 +36,14 @@ def generate_scf_workchain_node(generate_hubbard_structure, generate_calc_job_no
         node.set_process_state(ProcessState.FINISHED)
         node.set_exit_status(exit_status)
 
-        parameters = Dict(dict={
-            'number_of_bands': 1,
-            'total_magnetization': 1,
-        }).store()
+        parameters = Dict(
+            dict={
+                'number_of_bands': 1,
+                'number_of_electrons': 1,
+                'fermi_energy': 0,
+                'total_magnetization': 1,
+            }
+        ).store()
         parameters.base.links.add_incoming(node, link_type=LinkType.RETURN, link_label='output_parameters')
 
         if relax:
@@ -228,8 +232,6 @@ def test_skip_relax_iterations_relabeling(
     generate_workchain_hubbard, generate_inputs_hubbard, generate_hp_workchain_node, generate_hubbard_structure
 ):
     """Test `SelfConsistentHubbardWorkChain` when skipping the first relax iterations and relabeling is needed."""
-    from aiida.orm import Bool, Int
-
     inputs = generate_inputs_hubbard()
     inputs['skip_relax_iterations'] = Int(1)
     inputs['meta_convergence'] = Bool(True)
