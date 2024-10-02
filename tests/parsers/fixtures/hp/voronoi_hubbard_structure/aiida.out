@@ -1,0 +1,323 @@
+
+     Program HP v.7.2 starts on 20May2024 at 22: 5:43 
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+         "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Parallel version (MPI), running on    32 processors
+
+     MPI processes distributed on     1 nodes
+     R & G space division:  proc/nbgrp/npool/nimage =      32
+     507506 MiB available memory on the printing compute node when the environment starts
+ 
+
+     =---------------------------------------------------------------------------=
+
+           Calculation of Hubbard parameters using the HP code based on DFPT      
+
+               Please cite the following papers when using this program:          
+
+                 - HP code : Comput. Phys. Commun. 279, 108455 (2022).            
+
+                 - Theory  : Phys. Rev. B 98,  085127 (2018) and                  
+
+                             Phys. Rev. B 103, 045141 (2021).                     
+
+     =-----------------------------------------------------------------------------=
+
+     Reading xml data from directory:
+
+     out/aiida.save/
+
+     IMPORTANT: XC functional enforced from input :
+     Exchange-correlation= PBESOL
+                           (   1   4  10   8   0   0   0)
+     Any further DFT definition will be discarded
+     Please, verify this is what you really want
+
+ 
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
+     Min          88      29      8                 3117      599      96
+     Max          89      30      9                 3122      601      99
+     Sum        2839     955    283                99845    19195    3143
+ 
+     Using Pencil Decomposition
+ 
+
+     Check: negative core charge=   -0.000013
+
+     negative rho (up, down):  0.000E+00 6.244E-05
+     Reading collected, re-writing distributed wavefunctions
+ 
+
+     bravais-lattice index     =             0
+     lattice parameter (alat)  =        7.2691 (a.u.)
+     unit-cell volume          =      271.6022 (a.u.)^3
+     number of atoms/cell      =             3
+     number of atomic types    =             3
+     kinetic-energy cut-off    =         65.00 (Ry)
+     charge density cut-off    =        780.00 (Ry)
+     conv. thresh. for NSCF    =       1.0E-11
+     conv. thresh. for chi     =       1.0E-06
+     Input Hubbard parameters (in eV):
+       V (  1,   1)  =   4.5000
+       V (  1,   9)  =   0.0000
+       V (  1,  15)  =   0.0000
+       V (  1,  18)  =   0.0000
+       V (  1,  33)  =   0.0000
+       V (  1,  36)  =   0.0000
+       V (  1,  42)  =   0.0000
+       V (  2,   2)  =   5.5000
+       V (  2,   3)  =   0.0000
+       V (  2,  45)  =   0.0000
+       V (  2,  51)  =   0.0000
+       V (  2,  69)  =   0.0000
+       V (  3,   2)  =   0.0000
+       V (  3,   3)  =   0.0000
+       V (  3,  17)  =   0.0000
+       V (  3,  35)  =   0.0000
+       V (  3,  41)  =   0.0000
+       V (  3,  43)  =   0.0000
+       V (  3,  49)  =   0.0000
+       V (  3,  52)  =   0.0000
+       V (  3,  67)  =   0.0000
+       V (  3,  70)  =   0.0000
+       V (  3,  76)  =   0.0000
+
+     celldm(1) =  7.26914  celldm(2) =  0.00000  celldm(3) =  0.00000
+     celldm(4) =  0.00000  celldm(5) =  0.00000  celldm(6) =  0.00000
+
+     crystal axes: (cart. coord. in units of alat)
+               a(1) = (  0.0000  0.7071  0.7071 )  
+               a(2) = (  0.7071  0.0000  0.7071 )  
+               a(3) = (  0.7071  0.7071  0.0000 )  
+
+     reciprocal axes: (cart. coord. in units 2 pi/alat)
+               b(1) = ( -0.7071  0.7071  0.7071 )  
+               b(2) = (  0.7071 -0.7071  0.7071 )  
+               b(3) = (  0.7071  0.7071 -0.7071 )  
+
+     Atoms inside the unit cell (Cartesian axes):
+     site n.  atom      mass           positions (alat units)
+        1      Mn     54.9380   tau(  1) = (  0.00000  0.00000  0.00000  )
+        2      Co     58.9332   tau(  2) = (  1.06066  1.06066  1.06066  )
+        3      S      32.0650   tau(  3) = (  0.70711  0.70711  0.70711  )
+
+     List of  3 atoms which will be perturbed (one at a time):
+
+        1      Mn     54.9380   tau( 1) = (  0.00000  0.00000  0.00000  )
+        2      Co     58.9332   tau( 2) = (  1.06066  1.06066  1.06066  )
+        3      S      32.0650   tau( 3) = (  0.70711  0.70711  0.70711  )
+ 
+     =====================================================================
+
+                          PERTURBED ATOM #    1
+
+     site n.  atom      mass           positions (alat units)
+        1      Mn     54.9380   tau( 1) = (  0.00000  0.00000  0.00000  )
+ 
+     =====================================================================
+
+     The perturbed atom has a type which is unique!
+
+
+     The grid of q-points ( 3, 3, 3)  (  4 q-points ) :
+       N       xq(1)         xq(2)         xq(3)       wq
+       1   0.000000000   0.000000000   0.000000000   0.037037037
+       2   0.235702260   0.235702260  -0.235702260   0.296296296
+       3   0.471404521  -0.000000000   0.000000000   0.222222222
+       4  -0.000000000  -0.471404521   0.471404521   0.444444444
+
+
+     =-------------------------------------------------------------=
+
+     Calculation for q #   1 = (   0.0000000   0.0000000   0.0000000 )
+
+     =-------------------------------------------------------------=
+
+                   WRITING LINEAR-RESPONSE SUMMARY:
+
+# ...
+# Many lines of code deleted
+# ...
+
+      =--------------------------------------------=
+             CONVERGENCE HAS BEEN REACHED
+      =--------------------------------------------=
+
+     Computing the sum over q of the response occupation matrices...
+
+     q #   1 =  0.000000000   0.000000000   0.000000000
+ 
+     Number of q in the star =    1
+     List of q in the star:
+          1   0.000000000   0.000000000   0.000000000
+
+     q #   2 =  0.235702260   0.235702260  -0.235702260
+ 
+     Number of q in the star =    4
+     List of q in the star:
+          1   0.235702260   0.235702260  -0.235702260
+          2  -0.235702260  -0.235702260  -0.235702260
+          3  -0.235702260   0.235702260   0.235702260
+          4   0.235702260  -0.235702260   0.235702260
+     In addition there is the -q list: 
+          1  -0.235702260  -0.235702260   0.235702260
+          2   0.235702260   0.235702260   0.235702260
+          3   0.235702260  -0.235702260  -0.235702260
+          4  -0.235702260   0.235702260  -0.235702260
+
+     q #   3 =  0.471404521  -0.000000000   0.000000000
+ 
+     Number of q in the star =    6
+     List of q in the star:
+          1   0.471404521  -0.000000000   0.000000000
+          2  -0.000000000   0.471404521   0.000000000
+          3  -0.471404521   0.000000000  -0.000000000
+          4   0.000000000  -0.000000000   0.471404521
+          5   0.000000000  -0.471404521  -0.000000000
+          6  -0.000000000   0.000000000  -0.471404521
+
+     q #   4 = -0.000000000  -0.471404521   0.471404521
+ 
+     Number of q in the star =   12
+     List of q in the star:
+          1   0.000000000  -0.471404521   0.471404521
+          2  -0.000000000   0.471404521  -0.471404521
+          3  -0.471404521   0.000000000   0.471404521
+          4   0.000000000   0.471404521   0.471404521
+          5   0.471404521  -0.471404521   0.000000000
+          6   0.471404521  -0.000000000  -0.471404521
+          7   0.471404521  -0.000000000   0.471404521
+          8  -0.471404521   0.000000000  -0.471404521
+          9  -0.000000000  -0.471404521  -0.471404521
+         10  -0.471404521  -0.471404521  -0.000000000
+         11  -0.471404521   0.471404521  -0.000000000
+         12   0.471404521   0.471404521   0.000000000
+
+     Post-processing calculation of Hubbard parameters ...
+
+ 
+     PRINTING TIMING FROM PWSCF ROUTINES: 
+ 
+     init_run     :      2.30s CPU      2.40s WALL (       9 calls)
+     electrons    :    264.09s CPU    271.26s WALL (       9 calls)
+
+     Called by init_run:
+     wfcinit      :      1.25s CPU      1.29s WALL (       9 calls)
+     wfcinit:atom :      0.09s CPU      0.10s WALL (    3084 calls)
+     wfcinit:wfcr :     14.80s CPU     15.36s WALL (    3084 calls)
+     potinit      :      0.15s CPU      0.16s WALL (       9 calls)
+     hinit0       :      0.53s CPU      0.56s WALL (       9 calls)
+
+     Called by electrons:
+     c_bands      :    264.04s CPU    271.21s WALL (       9 calls)
+     v_of_rho     :      0.16s CPU      0.17s WALL (      12 calls)
+     v_h          :      0.01s CPU      0.01s WALL (      12 calls)
+     v_xc         :      0.15s CPU      0.16s WALL (      12 calls)
+     newd         :      0.23s CPU      0.26s WALL (      12 calls)
+
+     Called by c_bands:
+     init_us_2    :      1.36s CPU      1.45s WALL (   40224 calls)
+     init_us_2:cp :      1.31s CPU      1.40s WALL (   40224 calls)
+     cegterg      :    248.04s CPU    254.61s WALL (    3216 calls)
+
+     Called by sum_band:
+
+     Called by *egterg:
+     cdiaghg      :    128.75s CPU    130.69s WALL (   47508 calls)
+     cegterg:over :     19.47s CPU     20.38s WALL (   44424 calls)
+     cegterg:upda :      8.60s CPU      8.68s WALL (   44424 calls)
+     cegterg:last :      5.51s CPU      5.55s WALL (   11382 calls)
+     cdiaghg:chol :      6.52s CPU      6.76s WALL (   47508 calls)
+     cdiaghg:inve :      1.29s CPU      1.34s WALL (   47508 calls)
+     cdiaghg:para :      9.47s CPU      9.69s WALL (   95016 calls)
+     h_psi        :   1066.62s CPU   1114.68s WALL (  951981 calls)
+     s_psi        :     23.45s CPU     24.50s WALL ( 1888644 calls)
+     g_psi        :      0.25s CPU      0.25s WALL (   44424 calls)
+
+     Called by h_psi:
+     h_psi:calbec :     38.49s CPU     40.30s WALL (  951981 calls)
+     vloc_psi     :    894.15s CPU    934.45s WALL (  951981 calls)
+     add_vuspsi   :     13.68s CPU     14.36s WALL (  951981 calls)
+     vhpsi        :    114.61s CPU    119.71s WALL (  951981 calls)
+
+     General routines
+     calbec       :     98.10s CPU    102.70s WALL ( 2871501 calls)
+     fft          :      1.71s CPU      1.77s WALL (    6285 calls)
+     ffts         :      0.22s CPU      0.22s WALL (    2704 calls)
+     fftw         :    876.21s CPU    917.20s WALL (24358006 calls)
+     interpolate  :      0.27s CPU      0.29s WALL (     844 calls)
+     davcio       :      7.39s CPU      8.55s WALL ( 1186711 calls)
+ 
+     Parallel routines
+     fft_scatt_xy :     90.01s CPU     94.29s WALL (24366995 calls)
+     fft_scatt_yz :    579.47s CPU    607.09s WALL (24366995 calls)
+
+     Hubbard U routines
+     alloc_neigh  :      0.00s CPU      0.00s WALL (       3 calls)
+     vhpsi        :    114.61s CPU    119.71s WALL (  951981 calls)
+ 
+     init_vloc    :      0.12s CPU      0.12s WALL (      12 calls)
+     init_us_1    :      0.41s CPU      0.47s WALL (      12 calls)
+     newd         :      0.23s CPU      0.26s WALL (      12 calls)
+     add_vuspsi   :     13.68s CPU     14.36s WALL (  951981 calls)
+ 
+     PRINTING TIMING FROM HP ROUTINES: 
+ 
+     hp_setup_q   :      0.61s CPU      0.68s WALL (      12 calls)
+     hp_init_q    :      1.45s CPU      1.54s WALL (      12 calls)
+     hp_solve_lin :   1284.03s CPU   1344.51s WALL (      12 calls)
+     hp_dvpsi_per :      0.07s CPU      0.12s WALL (    1638 calls)
+     hp_dnsq      :      2.79s CPU      3.48s WALL (     199 calls)
+     hp_symdnsq   :      0.01s CPU      0.02s WALL (     199 calls)
+     hp_dnstot_su :      0.00s CPU      0.00s WALL (       3 calls)
+     hp_rotate_dn :      0.00s CPU      0.00s WALL (     114 calls)
+     hp_calc_chi  :      0.00s CPU      0.00s WALL (       3 calls)
+     hp_postproc  :      0.01s CPU      0.01s WALL (       1 calls)
+     ef_shift     :      0.03s CPU      0.03s WALL (      34 calls)
+     hp_run_nscf  :    280.95s CPU    289.29s WALL (       9 calls)
+     hp_postproc  :      0.01s CPU      0.01s WALL (       1 calls)
+     hp_psymdvscf :     13.17s CPU     13.94s WALL (     199 calls)
+ 
+     PRINTING TIMING FROM LR MODULE: 
+ 
+     sth_kernel   :   1254.93s CPU   1313.03s WALL (     199 calls)
+     apply_dpot_b :     42.48s CPU     45.56s WALL (   27504 calls)
+     ortho        :      5.11s CPU      5.36s WALL (   29142 calls)
+     cgsolve      :   1150.99s CPU   1202.38s WALL (   29142 calls)
+     ch_psi       :   1078.33s CPU   1126.88s WALL (  901257 calls)
+     incdrhoscf   :     48.08s CPU     50.93s WALL (   29142 calls)
+                                        0.00s GPU  (   29142 calls)
+     localdos     :      0.23s CPU      0.23s WALL (       3 calls)
+     dv_of_drho   :      2.15s CPU      2.20s WALL (     199 calls)
+     mix_pot      :      0.80s CPU      1.53s WALL (     199 calls)
+     setup_dgc    :      0.47s CPU      0.52s WALL (      12 calls)
+     setup_dmuxc  :      0.13s CPU      0.14s WALL (      12 calls)
+     setup_nbnd_o :      0.00s CPU      0.00s WALL (      12 calls)
+     lr_orthoUwfc :      1.30s CPU      1.37s WALL (      12 calls)
+     cft_wave     :     40.45s CPU     43.37s WALL ( 1067748 calls)
+ 
+     USPP ROUTINES: 
+ 
+     newdq        :      4.38s CPU      4.40s WALL (     199 calls)
+     adddvscf     :      2.94s CPU      3.10s WALL (   27504 calls)
+     addusdbec    :      2.10s CPU      2.20s WALL (   29142 calls)
+     addusldos    :      0.05s CPU      0.05s WALL (       3 calls)
+ 
+     HP           :  26m 8.62s CPU  27m17.87s WALL
+
+ 
+   This run was terminated on:  22:33: 0  20May2024            
+
+=------------------------------------------------------------------------------=
+   JOB DONE.
+=------------------------------------------------------------------------------=

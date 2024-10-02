@@ -5,7 +5,7 @@ import os
 from aiida import orm
 from aiida.common import exceptions
 from aiida.parsers import Parser
-import numpy
+import numpy as np
 
 from aiida_quantumespresso_hp.calculations.hp import HpCalculation
 
@@ -114,8 +114,8 @@ class HpParser(Parser):
             parsed_data, logs = parse_raw_output(stdout)
         except Exception:  # pylint: disable=broad-except
             return self.exit_codes.ERROR_OUTPUT_STDOUT_PARSE
-        else:
-            self.out('parameters', orm.Dict(parsed_data))
+
+        self.out('parameters', orm.Dict(parsed_data))
 
         # If the stdout was incomplete, most likely the job was interrupted before it could cleanly finish, so the
         # output files are most likely corrupt and cannot be restarted from
@@ -202,17 +202,38 @@ class HpParser(Parser):
 
         :return: optional exit code in case of an error
         """
+        from aiida_quantumespresso.common.hubbard import Hubbard
         from aiida_quantumespresso.utils.hubbard import HubbardUtils
         filename = HpCalculation.filename_output_hubbard_dat
 
         filepath = os.path.join(folder_path, filename)
 
         hubbard_structure = self.node.inputs.hubbard_structure.clone()
+
+        intersites = None
+        if 'settings' in self.node.inputs:
+            if 'radial_analysis' in self.node.inputs.settings.get_dict():
+                kwargs = self.node.inputs.settings.dict.radial_analysis
+                intersites = HubbardUtils(hubbard_structure).get_intersites_list(**kwargs)
+
         hubbard_structure.clear_hubbard_parameters()
         hubbard_utils = HubbardUtils(hubbard_structure)
         hubbard_utils.parse_hubbard_dat(filepath=filepath)
 
-        self.out('hubbard_structure', hubbard_utils.hubbard_structure)
+        if intersites is None:
+            self.out('hubbard_structure', hubbard_utils.hubbard_structure)
+        else:
+            hubbard_list = np.array(hubbard_utils.hubbard_structure.hubbard.to_list(), dtype='object')
+            parsed_intersites = hubbard_list[:, [0, 2, 5]].tolist()
+            selected_indices = []
+
+            for i, intersite in enumerate(parsed_intersites):
+                if intersite in intersites:
+                    selected_indices.append(i)
+
+            hubbard = Hubbard.from_list(hubbard_list[selected_indices])
+            hubbard_structure.hubbard = hubbard
+            self.out('hubbard_structure', hubbard_structure)
 
     def get_hubbard_structure(self):
         """Set in output an ``HubbardStructureData`` with standard Hubbard U formulation."""
@@ -264,7 +285,7 @@ class HpParser(Parser):
         for matrix_name in ('chi0', 'chi'):
             matrix_block = blocks[matrix_name]
             matrix_data = data[matrix_block[0]:matrix_block[1]]
-            matrix = numpy.array(self.parse_hubbard_matrix(matrix_data))
+            matrix = np.array(self.parse_hubbard_matrix(matrix_data))
             result[matrix_name] = matrix
 
         return result
@@ -377,4 +398,4 @@ class HpParser(Parser):
         if row:
             matrix.append(row)
 
-        return numpy.array(matrix)
+        return np.array(matrix)

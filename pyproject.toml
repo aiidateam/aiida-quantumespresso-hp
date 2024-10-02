@@ -27,7 +27,7 @@ keywords = ['aiida', 'workflows']
 requires-python = '>=3.8'
 dependencies = [
     'aiida-core~=2.2',
-    'aiida-quantumespresso~=4.3',
+    'aiida-quantumespresso@git+https://github.com/bastonero/aiida-quantumespresso.git@feat/voronoi',
 ]
 
 [project.urls]

@@ -298,7 +298,10 @@ def test_radial_analysis(
 
     node = load_node(process.ctx['workchains_hp'][-1].pk)
     parameters = node.inputs['hp']['parameters'].get_dict()
-    assert 'rmax' in parameters['INPUTHP']
+    settings = node.inputs['hp']['settings'].get_dict()
+
+    assert 'num_neigh' in parameters['INPUTHP']
+    assert 'radial_analysis' in settings
 
 
 @pytest.mark.usefixtures('aiida_profile')
