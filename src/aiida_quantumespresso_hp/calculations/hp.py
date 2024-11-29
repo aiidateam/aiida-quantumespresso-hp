@@ -211,17 +211,17 @@ class HpCalculation(CalcJob):
         return f'{cls.prefix}.Hubbard_parameters.dat'
 
     @classproperty
-    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
         """Return the relative input filename for Hubbard parameters, for QuantumESPRESSO version below 7.1."""
         return 'parameters.in'
 
     @classproperty
-    def filename_output_hubbard_dat(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+    def filename_output_hubbard_dat(cls):  # pylint: disable=no-self-argument,invalid-name
         """Return the relative input filename for generalised Hubbard parameters, for QuantumESPRESSO v.7.2 onwards."""
         return 'HUBBARD.dat'
 
     @classproperty
-    def dirname_output(cls):  # pylint: disable=no-self-argument, no-self-use
+    def dirname_output(cls):  # pylint: disable=no-self-argument
         """Return the relative directory name that contains raw output data."""
         return 'out'
 
@@ -314,7 +314,10 @@ class HpCalculation(CalcJob):
             dirname = self.dirname_output
             dirfinal = '.'
         folder_src = os.path.join(parent_scf.get_remote_path(), dirname)
-        return [(parent_scf.computer.uuid, folder_src, dirfinal)]
+        return [
+            (parent_scf.computer.uuid, folder_src, dirfinal),
+            (parent_scf.computer.uuid, 'state.h5', '.'),
+        ]
 
     def get_local_copy_list(self) -> tuple[list, list]:
         """Return the `local_copy_list`.

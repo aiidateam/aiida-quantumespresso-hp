@@ -14,7 +14,8 @@ import numpy as np
 
 from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
 from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
-from aiida_quantumespresso_hp.utils.general import set_tot_magnetization
+
+# from aiida_quantumespresso_hp.utils.general import set_tot_magnetization
 
 HubbardStructureData = DataFactory('quantumespresso.hubbard_structure')
 
@@ -124,6 +125,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
             help='If specified, it performs a nearest neighbour analysis and feed the radius to hp.x')
         spec.input('relax_frequency', valid_type=orm.Int, required=False, validator=validate_positive,
             help='Integer value referring to the number of iterations to wait before performing the `relax` step.')
+        spec.input('vanilla_qe_code', valid_type=orm.Code, required=False)
+        spec.input('vanilla_qe_settings', valid_type=orm.Dict,
+                   default=lambda: orm.Dict({'cmdline':['-use_qe_scf','-npool','8']}))
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax',
             exclude=('clean_workdir', 'structure', 'base_final_scf'),
             namespace_options={'required': False, 'populate_defaults': False,
@@ -144,6 +148,10 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         spec.outline(
             cls.setup,
+            if_(cls.should_run_vanilla_qe)(
+              cls.run_vanilla_qe,
+              cls.inspect_vanilla_qe,
+            ),
             while_(cls.should_run_iteration)(
                 cls.update_iteration,
                 if_(cls.should_run_relax)(
@@ -152,10 +160,6 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 ),
                 cls.run_scf_smearing,
                 cls.recon_scf,
-                if_(cls.is_insulator)(
-                    cls.run_scf_fixed,
-                    cls.inspect_scf,
-                ),
                 cls.run_hp,
                 cls.inspect_hp,
                 if_(cls.should_check_convergence)(
@@ -210,6 +214,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         overrides=None,
         options_pw=None,
         options_hp=None,
+        vanilla_qe_code=None,
         **kwargs
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol.
@@ -268,6 +273,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
         builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
 
+        if vanilla_qe_code is not None:
+            builder.vanilla_qe_code = orm.load_code(vanilla_qe_code)
+
         return builder
 
     def setup(self):
@@ -305,6 +313,10 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
             self.report('system is treated to be magnetic because `nspin != 1` in `scf.pw.parameters` input.')
             self.ctx.is_magnetic = True
             self.ctx.current_magnetic_moments = orm.Dict(magnetic_moments)
+
+    def should_run_vanilla_qe(self):
+        """Return whether should run a first SCF using vanilla QE."""
+        return 'vanilla_qe_code' in self.inputs
 
     def should_run_relax(self):
         """Return whether a relax calculation needs to be run, which is true if `relax` is specified in inputs."""
@@ -450,6 +462,10 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
     def run_relax(self):
         """Run the PwRelaxWorkChain to run a relax PwCalculation."""
         inputs = self.get_inputs(PwRelaxWorkChain, 'relax')
+
+        if inputs.base.pw.parameters.get('restart_mode', 'from_scratch') == 'restart' & 'workchains_scf' in self.ctx:
+            inputs.base.pw.parent_folder = self.ctx.workchains_scf[-1].outputs.remote_folder
+
         inputs.clean_workdir = self.inputs.clean_workdir
         inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_relax'
 
@@ -479,9 +495,16 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         parameters['SYSTEM']['occupations'] = 'smearing'
         parameters['SYSTEM']['smearing'] = parameters['SYSTEM'].get('smearing', self.defaults.smearing_method)
         parameters['SYSTEM']['degauss'] = parameters['SYSTEM'].get('degauss', self.defaults.smearing_degauss)
+        parameters['ELECTRONS'].pop('starting_ns_eigenvalue', None)
         parameters['ELECTRONS']['conv_thr'] = parameters['ELECTRONS'].get(
             'conv_thr', self.defaults.conv_thr_preconverge
         )
+
+        if 'scf_vanilla_qe' in self.ctx and self.ctx.iteration == 1:
+            parent_folder = self.ctx.scf_vanilla_qe.outputs.remote_folder
+            parameters['CONTROL']['restart_mode'] = 'restart'
+            inputs.pw.parent_folder = parent_folder
+
         inputs.pw.parameters = orm.Dict(parameters)
         inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_smearing'
 
@@ -490,66 +513,30 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.report(f'launching PwBaseWorkChain<{running.pk}> with smeared occupations')
         return ToContext(workchains_scf=append_(running))
 
-    def run_scf_fixed(self):
-        """Run an scf `PwBaseWorkChain` with fixed occupations on top of the previous calculation.
-
-        The nunmber of bands and total magnetization (if magnetic) are set according to those of the
-        previous calculation that was run with smeared occupations.
+    def run_vanilla_qe(self):
+        """Run a vanilla QE `PwBaseWorkChain`.
 
         .. note: this will be run only if the material has been recognised as insulating.
         """
-        previous_workchain = self.ctx.workchains_scf[-1]
-        previous_parameters = previous_workchain.outputs.output_parameters
-
         inputs = self.get_inputs(PwBaseWorkChain, 'scf')
-
-        nbnd = previous_parameters.get_dict()['number_of_bands']
-        conv_thr = inputs.pw.parameters['ELECTRONS'].get('conv_thr', self.defaults.conv_thr_strictfinal)
-
-        inputs.pw.parameters['CONTROL'].update({
-            'calculation': 'scf',
-            'restart_mode': 'from_scratch',  # important
-        })
-        inputs.pw.parameters['SYSTEM'].update({
-            'nbnd': nbnd,
-            'occupations': 'fixed',
-        })
-        inputs.pw.parameters['ELECTRONS'].update({
-            'conv_thr': conv_thr,
-            'startingpot': 'file',
-            'startingwfc': 'file',
-        })
-
-        for key in ['degauss', 'smearing', 'starting_magnetization']:
-            inputs.pw.parameters['SYSTEM'].pop(key, None)
-
-        # If magnetic, set the total magnetization and raises an error if is non (not close enough) integer.
-        if self.ctx.is_magnetic:
-            total_magnetization = previous_parameters.get_dict()['total_magnetization']
-            if not set_tot_magnetization(inputs.pw.parameters, total_magnetization):
-                return self.exit_codes.ERROR_NON_INTEGER_TOT_MAGNETIZATION.format(iteration=self.ctx.iteration)
-
-        inputs.pw.parent_folder = previous_workchain.outputs.remote_folder
-        inputs.pw.parameters = orm.Dict(inputs.pw.parameters)
-
-        if self.ctx.is_magnetic:
-            inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed_magnetic'
-            report_append = 'bands and total magnetization'
-        else:
-            inputs.metadata.call_link_label = f'iteration_{self.ctx.iteration:02d}_scf_fixed'
-            report_append = ''
+        inputs.pw.code = self.inputs.vanilla_qe_code
+        inputs.pw.settings = self.inputs.vanilla_qe_settings
+        parameters = inputs.pw.parameters.get_dict()
+        parameters.pop('DIRECT_MINIMIZATION', None)
+        inputs.pw.parameters = orm.Dict(parameters)
+        inputs.metadata.call_link_label = 'scf_vanilla_qe'
 
         running = self.submit(PwBaseWorkChain, **inputs)
-        self.report(f'launching PwBaseWorkChain<{running.pk}> with fixed occupations' + report_append)
+        self.report(f'launching PwBaseWorkChain<{running.pk}> with vanilla QE')
 
-        return ToContext(workchains_scf=append_(running))
+        return ToContext(scf_vanilla_qe=running)
 
-    def inspect_scf(self):
-        """Verify that the scf PwBaseWorkChain finished successfully."""
-        workchain = self.ctx.workchains_scf[-1]
+    def inspect_vanilla_qe(self):
+        """Verify that the vanilla QE SCF PwBaseWorkChain finished successfully."""
+        workchain = self.ctx.scf_vanilla_qe
 
         if not workchain.is_finished_ok:
-            self.report(f'scf in iteration {self.ctx.iteration} failed with exit status {workchain.exit_status}')
+            self.report(f'VANILLA scf failed with exit status {workchain.exit_status}')
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_SCF.format(iteration=self.ctx.iteration)
 
     def recon_scf(self):
@@ -593,12 +580,14 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         inputs = AttributeDict(self.exposed_inputs(HpWorkChain, namespace='hubbard'))
 
+        parameters = inputs.hp.parameters.get_dict()
+        parameters['INPUTHP']['lmet'] = not self.ctx.is_insulator
+
         if 'radial_analysis' in self.inputs:
             kwargs = self.inputs.radial_analysis.get_dict()
             hubbard_utils = HubbardUtils(self.ctx.current_hubbard_structure)
             num_neigh = hubbard_utils.get_max_number_of_neighbours(**kwargs)
 
-            parameters = inputs.hp.parameters.get_dict()
             parameters['INPUTHP']['num_neigh'] = num_neigh
 
             settings = {'radial_analysis': self.inputs.radial_analysis.get_dict()}
@@ -606,8 +595,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
                 settings = inputs.hp.settings.get_dict()
                 settings['radial_analysis'] = self.inputs.radial_analysis.get_dict()
 
-            inputs.hp.parameters = orm.Dict(parameters)
             inputs.hp.settings = orm.Dict(settings)
+
+        inputs.hp.parameters = orm.Dict(parameters)
 
         inputs.clean_workdir = self.inputs.clean_workdir
         inputs.hp.parent_scf = workchain.outputs.remote_folder
