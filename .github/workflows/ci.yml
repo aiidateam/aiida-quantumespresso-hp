@@ -84,6 +84,10 @@ jobs:
                 matrix:
                     python-version: ['3.9']
 
+            defaults:
+                run:
+                    shell: bash -l {0}
+
             services:
                 postgres:
                     image: postgres:12
@@ -115,9 +119,10 @@ jobs:
                 with:
                     python-version: ${{ matrix.python-version }}
                     channels: conda-forge
+                    auto-activate-base: true
 
             -   name: Set up Quantum ESPRESSO
-                run: conda install -y qe
+                run: conda install -y qe pip
 
             -   name: Install Python dependencies
                 run: pip install -e .[tests]
