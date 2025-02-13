@@ -123,10 +123,15 @@ disable = [
 ]
 
 [tool.pytest.ini_options]
+# Configuration for [pytest](https://docs.pytest.org)
+python_files = "test_*.py example_*.py"
 filterwarnings = [
-    'ignore:Creating AiiDA configuration folder.*:UserWarning'
+    "ignore::DeprecationWarning:aiida:",
+    "ignore:Creating AiiDA configuration folder:",
+    "ignore::DeprecationWarning:plumpy:",
+    "ignore::DeprecationWarning:yaml:",
 ]
-testpaths = 'tests'
+# testpaths = 'tests'
 
 [tool.yapf]
 align_closing_bracket_with_visual_indent = true
