@@ -5,5 +5,3 @@ default_calc_job_plugin: quantumespresso.pw
 computer: localhost
 prepend_text: 'export OMP_NUM_THREADS=1'
 append_text: ' '
-
-

@@ -100,7 +100,7 @@ jobs:
                     -   5672:5672
 
             steps:
-            -   uses: actions/checkout@v2
+            -   uses: actions/checkout@v4
 
             -   name: Cache Python dependencies
                 uses: actions/cache@v1
@@ -111,10 +111,10 @@ jobs:
                         pip-${{ matrix.python-version }}-tests
 
             -   name: Setup Conda
-                uses: s-weigand/setup-conda@v1
+                uses: conda-incubator/setup-miniconda@v3
                 with:
                     python-version: ${{ matrix.python-version }}
-                    conda-channels: conda-forge
+                    channels: conda-forge
 
             -   name: Set up Quantum ESPRESSO
                 run: conda install -y qe

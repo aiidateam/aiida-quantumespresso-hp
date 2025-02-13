@@ -1,12 +1,12 @@
 #!/usr/bin/env runaiida
 # -*- coding: utf-8 -*-
+"""Test actual run of self-consistent Hubbard workchain."""
 from aiida import load_profile
 from aiida.engine import run
 from aiida.orm import StructureData, load_code
-from ase.build import bulk
-
-from aiida_quantumespresso.common.types import SpinType, RelaxType, ElectronicType
+from aiida_quantumespresso.common.types import ElectronicType, SpinType  # RelaxType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
+
 from aiida_quantumespresso_hp.workflows.hubbard import SelfConsistentHubbardWorkChain
 
 load_profile()
@@ -24,11 +24,11 @@ def test_self_consistent_hubbard():
         structure.append_atom(position=position, symbols=symbol)
 
     hubbard_structure = HubbardStructureData.from_structure(structure)
-    hubbard_structure.initialize_onsites_hubbard('Co','3d',5.0)
+    hubbard_structure.initialize_onsites_hubbard('Co', '3d', 5.0)
 
     pw_code = load_code('pw@localhost')
     hp_code = load_code('hp@localhost')
-    
+
     kwargs = {
         'electronic_type': ElectronicType.INSULATOR,
         # 'relax_type': RelaxType.POSITIONS, # uncomment this to relax positions only, and related lines below
@@ -65,16 +65,15 @@ def test_self_consistent_hubbard():
         },
         **kwargs
     )
-    builder.pop('relax') # comment this to also relax
+    builder.pop('relax')  # comment this to also relax
 
-    results, node = run.get_node(builder)
+    _, node = run.get_node(builder)
     assert node.is_finished_ok, f'{node} failed: [{node.exit_status}] {node.exit_message}'
-    
+
     u_sc = node.outputs.hubbard_structure.hubbard.parameters[0].value
-    u_ref = 8.1 # eV
-    assert abs(u_sc-u_ref) < 0.5
+    u_ref = 8.1  # eV
+    assert abs(u_sc - u_ref) < 0.5
 
 
 if __name__ == '__main__':
-    """Run script."""
     test_self_consistent_hubbard()

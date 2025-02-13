@@ -211,17 +211,17 @@ class HpCalculation(CalcJob):
         return f'{cls.prefix}.Hubbard_parameters.dat'
 
     @classproperty
-    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+    def filename_input_hubbard_parameters(cls):  # pylint: disable=no-self-argument,invalid-name
         """Return the relative input filename for Hubbard parameters, for QuantumESPRESSO version below 7.1."""
         return 'parameters.in'
 
     @classproperty
-    def filename_output_hubbard_dat(cls):  # pylint: disable=no-self-argument,invalid-name, no-self-use
+    def filename_output_hubbard_dat(cls):  # pylint: disable=no-self-argument,invalid-name
         """Return the relative input filename for generalised Hubbard parameters, for QuantumESPRESSO v.7.2 onwards."""
         return 'HUBBARD.dat'
 
     @classproperty
-    def dirname_output(cls):  # pylint: disable=no-self-argument, no-self-use
+    def dirname_output(cls):  # pylint: disable=no-self-argument
         """Return the relative directory name that contains raw output data."""
         return 'out'
 

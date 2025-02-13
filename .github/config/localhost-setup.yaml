@@ -10,4 +10,3 @@ mpirun_command: ' '
 mpiprocs_per_machine: 1
 prepend_text: ' '
 append_text: ' '
-
