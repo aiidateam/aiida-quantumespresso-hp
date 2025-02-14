@@ -7,7 +7,7 @@ from aiida.common import exceptions
 from aiida.parsers import Parser
 import numpy as np
 
-from aiida_quantumespresso_hp.calculations.hp import HpCalculation
+from aiida_hubbard.calculations.hp import HpCalculation
 
 
 class HpParser(Parser):

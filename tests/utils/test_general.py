@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Tests for the :mod:`aiida_quantumespresso_hp.utils.general` module."""
+"""Tests for the :mod:`aiida_hubbard.utils.general` module."""
 
 
 def test_set_tot_magnetization():
     """Test the `set_tot_magnetization` function."""
-    from aiida_quantumespresso_hp.utils.general import set_tot_magnetization
+    from aiida_hubbard.utils.general import set_tot_magnetization
 
     parameters = {'SYSTEM': {}}
 
@@ -18,7 +18,7 @@ def test_set_tot_magnetization():
 
 def test_is_perturb_only_atom():
     """Test the `is_perturb_only_atom` function."""
-    from aiida_quantumespresso_hp.utils.general import is_perturb_only_atom
+    from aiida_hubbard.utils.general import is_perturb_only_atom
 
     parameters = {}
     assert is_perturb_only_atom(parameters) is None
@@ -35,7 +35,7 @@ def test_is_perturb_only_atom():
 
 def test_distribute_base_wcs():
     """Test the `distribute_base_wcs` function."""
-    from aiida_quantumespresso_hp.utils.general import distribute_base_workchains
+    from aiida_hubbard.utils.general import distribute_base_workchains
 
     assert distribute_base_workchains(1, 1) == [1]
     assert distribute_base_workchains(1, 2) == [2]

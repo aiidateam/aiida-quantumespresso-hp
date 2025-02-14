@@ -3,7 +3,7 @@ requires = ['flit_core>=3.4,<4']
 build-backend = 'flit_core.buildapi'
 
 [project]
-name = 'aiida-quantumespresso-hp'
+name = 'aiida-hubbard'
 dynamic = ['description', 'version']
 authors = [
     {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'},
@@ -30,9 +30,9 @@ dependencies = [
 ]
 
 [project.urls]
-Home = 'https://github.com/aiidateam/aiida-quantumespresso-hp'
-Source = 'https://github.com/aiidateam/aiida-quantumespresso-hp'
-Documentation = 'https://aiida-quantumespresso-hp.readthedocs.io'
+Home = 'https://github.com/aiidateam/aiida-hubbard'
+Source = 'https://github.com/aiidateam/aiida-hubbard'
+Documentation = 'https://aiida-hubbard.readthedocs.io'
 
 [project.optional-dependencies]
 docs = [
@@ -59,23 +59,23 @@ tests = [
 ]
 
 [project.scripts]
-aiida-quantumespresso-hp = 'aiida_quantumespresso_hp.cli:cmd_root'
+aiida-hubbard = 'aiida_hubbard.cli:cmd_root'
 
 [project.entry-points.'aiida.calculations']
-'quantumespresso.hp' = 'aiida_quantumespresso_hp.calculations.hp:HpCalculation'
+'quantumespresso.hp' = 'aiida_hubbard.calculations.hp:HpCalculation'
 
 [project.entry-points.'aiida.parsers']
-'quantumespresso.hp' = 'aiida_quantumespresso_hp.parsers.hp:HpParser'
+'quantumespresso.hp' = 'aiida_hubbard.parsers.hp:HpParser'
 
 [project.entry-points.'aiida.workflows']
-'quantumespresso.hp.main' = 'aiida_quantumespresso_hp.workflows.hp.main:HpWorkChain'
-'quantumespresso.hp.parallelize_atoms' = 'aiida_quantumespresso_hp.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain'
-'quantumespresso.hp.parallelize_qpoints' = 'aiida_quantumespresso_hp.workflows.hp.parallelize_qpoints:HpParallelizeQpointsWorkChain'
-'quantumespresso.hp.base' = 'aiida_quantumespresso_hp.workflows.hp.base:HpBaseWorkChain'
-'quantumespresso.hp.hubbard' = 'aiida_quantumespresso_hp.workflows.hubbard:SelfConsistentHubbardWorkChain'
+'quantumespresso.hp.main' = 'aiida_hubbard.workflows.hp.main:HpWorkChain'
+'quantumespresso.hp.parallelize_atoms' = 'aiida_hubbard.workflows.hp.parallelize_atoms:HpParallelizeAtomsWorkChain'
+'quantumespresso.hp.parallelize_qpoints' = 'aiida_hubbard.workflows.hp.parallelize_qpoints:HpParallelizeQpointsWorkChain'
+'quantumespresso.hp.base' = 'aiida_hubbard.workflows.hp.base:HpBaseWorkChain'
+'quantumespresso.hp.hubbard' = 'aiida_hubbard.workflows.hubbard:SelfConsistentHubbardWorkChain'
 
 [tool.flit.module]
-name = 'aiida_quantumespresso_hp'
+name = 'aiida_hubbard'
 
 [tool.flit.sdist]
 exclude = [

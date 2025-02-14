@@ -12,7 +12,7 @@ myst:
 
 ## Requirements
 
-To work with `aiida-quantumespresso-hp`, you should have:
+To work with `aiida-hubbard`, you should have:
 
 - installed `aiida-core`
 - configured an AiiDA profile.
@@ -31,7 +31,7 @@ The Python package can be installed from the Python Package index [PyPI](https:/
 The recommended method of installation is to use the Python package manager `pip`:
 
 ```console
-$ pip install aiida-quantumespresso-hp
+$ pip install aiida-hubbard
 ```
 
 This will install the latest stable version that was released to PyPI.
@@ -41,8 +41,8 @@ This will install the latest stable version that was released to PyPI.
 To install the package from source, first clone the repository and then install using `pip`:
 
 ```console
-$ git clone https://github.com/aiidateam/aiida-quantumespresso-hp
-$ pip install -e aiida-quantumespresso-hp
+$ git clone https://github.com/aiidateam/aiida-hubbard
+$ pip install -e aiida-hubbard
 ```
 
 The ``-e`` flag will install the package in editable mode, meaning that changes to the source code will be automatically picked up.
@@ -60,19 +60,19 @@ To enable tab-completion for the command line interface, execute the following s
 
 :::{tab-item} bash
 ```console
-$ eval "$(_AIIDA_QUANTUMESPRESSO_HP_COMPLETE=bash_source aiida-quantumespresso-hp)"
+$ eval "$(_aiida_hubbard_COMPLETE=bash_source aiida-hubbard)"
 ```
 :::
 
 :::{tab-item} zsh
 ```console
-$ eval "$(_AIIDA_QUANTUMESPRESSO_COMPLETE=zsh_source aiida-quantumespresso-hp)"
+$ eval "$(_AIIDA_QUANTUMESPRESSO_COMPLETE=zsh_source aiida-hubbard)"
 ```
 :::
 
 :::{tab-item} fish
 ```console
-$ eval (env _AIIDA_QUANTUMESPRESSO_COMPLETE=fish_source aiida-quantumespresso-hp)
+$ eval (env _AIIDA_QUANTUMESPRESSO_COMPLETE=fish_source aiida-hubbard)
 ```
 :::
 
@@ -196,7 +196,7 @@ For more detailed information, please refer to the documentation [on setting up 
 
 The `pw.x` and `hp.x` codes used in this plugin require pseudo potentials.
 The simplest way of installing these is through the `aiida-pseudo` plugin package.
-This should come as a dependency of `aiida-quantumespresso-hp` and should already be installed.
+This should come as a dependency of `aiida-hubbard` and should already be installed.
 If this is not the case, it can be installed using:
 
 ```console

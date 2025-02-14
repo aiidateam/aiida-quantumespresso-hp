@@ -11,5 +11,5 @@ Moreover, it could be useful to understand the
 mechanism used in AiiDA for workflows, which guarantees a __modular design__.
 This means that the workflows can use the inputs of other workflows or calculations, and specify them under a new namespace.
 
-This is the case for many workflows in this package. For example, the {class}`~aiida_quantumespresso_hp.workflows.hubbard.SelfConsistentHubbardWorkChain` makes use of three WorkChains, the `PwBaseWorkChain` for the scf calculation (namespace used is `scf`),
+This is the case for many workflows in this package. For example, the {class}`~aiida_hubbard.workflows.hubbard.SelfConsistentHubbardWorkChain` makes use of three WorkChains, the `PwBaseWorkChain` for the scf calculation (namespace used is `scf`),
 the `PwRelaxWorkChain` for the (vc)relaxation part (namespace used is `relax`), and finally the `HpWorkChain` (namespace used is `hubbard`).

@@ -5,7 +5,7 @@ from aiida.common import AttributeDict
 from aiida.engine import WorkChain, while_
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
-from aiida_quantumespresso_hp.utils.general import distribute_base_workchains
+from aiida_hubbard.utils.general import distribute_base_workchains
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HpCalculation = CalculationFactory('quantumespresso.hp')

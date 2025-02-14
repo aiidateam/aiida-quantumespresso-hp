@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Tests for the :mod:`aiida_quantumespresso_hp.utils.validation` module."""
+"""Tests for the :mod:`aiida_hubbard.utils.validation` module."""
 from aiida import orm
 import pytest
 
-from aiida_quantumespresso_hp.utils.validation import validate_parent_calculation
+from aiida_hubbard.utils.validation import validate_parent_calculation
 
 
 def test_validate_parent_calculation():

@@ -6,12 +6,10 @@ from aiida.cmdline.params import options, types
 import click
 
 
-@click.group(
-    'aiida-quantumespresso-hp', cls=VerdiCommandGroup, context_settings={'help_option_names': ['-h', '--help']}
-)
+@click.group('aiida-hubbard', cls=VerdiCommandGroup, context_settings={'help_option_names': ['-h', '--help']})
 @options.PROFILE(type=types.ProfileParamType(load_profile=True))
 def cmd_root(profile):  # pylint: disable=unused-argument
-    """CLI for the `aiida-quantumespresso-hp` plugin."""
+    """CLI for the `aiida-hubbard` plugin."""
 
 
 from .calculations import cmd_calculation

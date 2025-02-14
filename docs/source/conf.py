@@ -17,7 +17,7 @@ import time
 
 from aiida.manage.configuration import Profile, load_profile
 
-import aiida_quantumespresso_hp
+import aiida_hubbard
 
 load_profile(Profile('docs', {'process_control': {}, 'storage': {}}))
 
@@ -27,7 +27,7 @@ load_profile(Profile('docs', {'process_control': {}, 'storage': {}}))
 
 # -- Project information -----------------------------------------------------
 
-project = 'aiida-quantumespresso-hp'
+project = 'aiida-hubbard'
 copyright = ( # pylint: disable=redefined-builtin, line-too-long
     f"""2022-{time.localtime().tm_year}, UNIVERSITY OF BREMEN, Germany,"""
     """and ECOLE POLYTECHNIQUE FEDERALE DE LAUSANNE (Theory and Simulation of"""
@@ -36,9 +36,9 @@ copyright = ( # pylint: disable=redefined-builtin, line-too-long
 ) # pylint: disable=redefined-builtin, line-too-long
 
 # The full version, including alpha/beta/rc tags.
-release = aiida_quantumespresso_hp.__version__
+release = aiida_hubbard.__version__
 # The short X.Y version.
-version = '.'.join(aiida_quantumespresso_hp.__version__.split('.')[:2])
+version = '.'.join(aiida_hubbard.__version__.split('.')[:2])
 
 # -- General configuration ------------------------------------------------
 
@@ -100,7 +100,7 @@ filepath_docs = pathlib.Path(__file__).parent.parent
 filepath_src = filepath_docs.parent / 'src'
 autoapi_type = 'python'
 autoapi_dirs = [filepath_src]
-autoapi_ignore = [filepath_src / 'aiida_quantumespresso_hp' / '*cli*']
+autoapi_ignore = [filepath_src / 'aiida_hubbard' / '*cli*']
 autoapi_root = str(filepath_docs / 'source' / 'reference' / 'api')
 autoapi_keep_files = True
 autoapi_add_toctree_entry = False
@@ -131,14 +131,14 @@ exclude_patterns = []
 
 html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
-    'github_url': 'https://github.com/aiidateam/aiida-quantumespresso-hp',
+    'github_url': 'https://github.com/aiidateam/aiida-hubbard',
     'twitter_url': 'https://twitter.com/aiidateam',
     'use_edit_page_button': True,
 }
 html_static_path = ['_static']
 html_context = {
     'github_user': 'aiidateam',
-    'github_repo': 'aiida-quantumespresso-hp',
+    'github_repo': 'aiida-hubbard',
     'github_version': 'main',
     'doc_path': 'docs/source',
     'default_mode': 'light',
@@ -153,7 +153,7 @@ html_css_files = ['aiida-custom.css', 'aiida-qe-custom.css']
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://aiida-quantumespresso-hp.readthedocs.io'
+html_use_opensearch = 'http://aiida-hubbard.readthedocs.io'
 
 # Language to be used for generating the HTML full-text search index.
 # Sphinx supports the following languages:
@@ -162,7 +162,7 @@ html_use_opensearch = 'http://aiida-quantumespresso-hp.readthedocs.io'
 html_search_language = 'en'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'aiida-quantumespresso-hpdoc'
+htmlhelp_basename = 'aiida-hubbarddoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 

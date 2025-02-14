@@ -7,7 +7,7 @@ import subprocess
 import click
 import pytest
 
-from aiida_quantumespresso_hp.cli import cmd_root
+from aiida_hubbard.cli import cmd_root
 
 
 def recurse_commands(command: click.Command, parents: list[str] = None):

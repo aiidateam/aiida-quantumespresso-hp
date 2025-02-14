@@ -4,5 +4,5 @@
 
 ```{eval-rst}
 .. aiida-workchain:: HpWorkChain
-    :module: aiida_quantumespresso_hp.workflows.hp.main
+    :module: aiida_hubbard.workflows.hp.main
 ```

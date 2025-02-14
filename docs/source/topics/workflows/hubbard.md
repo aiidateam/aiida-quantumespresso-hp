@@ -4,5 +4,5 @@
 
 ```{eval-rst}
 .. aiida-workchain:: SelfConsistentHubbardWorkChain
-    :module: aiida_quantumespresso_hp.workflows.hubbard
+    :module: aiida_hubbard.workflows.hubbard
 ```

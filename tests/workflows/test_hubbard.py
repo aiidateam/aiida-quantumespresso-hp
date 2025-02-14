@@ -430,7 +430,7 @@ def test_not_converged_check_convergence(
     generate_workchain_hubbard, generate_hp_workchain_node, generate_inputs_hubbard, generate_hubbard_structure
 ):
     """Test when `SelfConsistentHubbardWorkChain.check_convergence` is not at convergence."""
-    from aiida_quantumespresso_hp.workflows.hubbard import SelfConsistentHubbardWorkChain as WorkChain
+    from aiida_hubbard.workflows.hubbard import SelfConsistentHubbardWorkChain as WorkChain
 
     inputs = generate_inputs_hubbard()
     process = generate_workchain_hubbard(inputs=inputs)
@@ -494,7 +494,7 @@ def test_relabel_check_convergence(
 @pytest.mark.usefixtures('aiida_profile')
 def test_inspect_hp(generate_workchain_hubbard, generate_inputs_hubbard, generate_hp_workchain_node):
     """Test `SelfConsistentHubbardWorkChain.inspect_hp`."""
-    from aiida_quantumespresso_hp.workflows.hubbard import SelfConsistentHubbardWorkChain as WorkChain
+    from aiida_hubbard.workflows.hubbard import SelfConsistentHubbardWorkChain as WorkChain
     inputs = generate_inputs_hubbard()
     process = generate_workchain_hubbard(inputs=inputs)
     process.setup()
