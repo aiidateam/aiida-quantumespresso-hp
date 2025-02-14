@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Test the :py:meth:`~aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds` calcfunction."""
+"""Test the :py:meth:`~aiida_hubbard.calculations.functions.structure_relabel_kinds` calcfunction."""
 from aiida.orm import Dict
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
-from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
+from aiida_hubbard.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
 
 
 def test_structure_relabel(generate_structure):

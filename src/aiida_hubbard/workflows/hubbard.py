@@ -12,9 +12,9 @@ from aiida_quantumespresso.utils.hubbard import HubbardUtils
 from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
 import numpy as np
 
-from aiida_quantumespresso_hp.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
-from aiida_quantumespresso_hp.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
-from aiida_quantumespresso_hp.utils.general import set_tot_magnetization
+from aiida_hubbard.calculations.functions.structure_relabel_kinds import structure_relabel_kinds
+from aiida_hubbard.calculations.functions.structure_reorder_kinds import structure_reorder_kinds
+from aiida_hubbard.utils.general import set_tot_magnetization
 
 HubbardStructureData = DataFactory('quantumespresso.hubbard_structure')
 

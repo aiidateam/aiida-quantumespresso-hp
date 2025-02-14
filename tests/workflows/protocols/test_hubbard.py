@@ -3,7 +3,7 @@
 from aiida.engine import ProcessBuilder
 import pytest
 
-from aiida_quantumespresso_hp.workflows.hubbard import SelfConsistentHubbardWorkChain
+from aiida_hubbard.workflows.hubbard import SelfConsistentHubbardWorkChain
 
 
 def test_get_available_protocols():

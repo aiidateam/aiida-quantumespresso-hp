@@ -4,7 +4,7 @@
 from plumpy import ProcessState
 import pytest
 
-from aiida_quantumespresso_hp.workflows.hp.main import HpWorkChain
+from aiida_hubbard.workflows.hp.main import HpWorkChain
 
 
 @pytest.fixture

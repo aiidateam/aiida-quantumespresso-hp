@@ -4,7 +4,7 @@
 from plumpy import ProcessState
 import pytest
 
-from aiida_quantumespresso_hp.workflows.hp.parallelize_atoms import HpParallelizeAtomsWorkChain
+from aiida_hubbard.workflows.hp.parallelize_atoms import HpParallelizeAtomsWorkChain
 
 
 @pytest.fixture

@@ -6,8 +6,8 @@ from aiida.engine import ProcessHandlerReport
 from plumpy import ProcessState
 import pytest
 
-from aiida_quantumespresso_hp.calculations.hp import HpCalculation
-from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
+from aiida_hubbard.calculations.hp import HpCalculation
+from aiida_hubbard.workflows.hp.base import HpBaseWorkChain
 
 
 @pytest.fixture

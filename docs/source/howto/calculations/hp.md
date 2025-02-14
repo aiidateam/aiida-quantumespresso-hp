@@ -16,7 +16,7 @@ for which the self-interaction error is relevant.
 
 |                     |                                                               |
 |---------------------|---------------------------------------------------------------|
-| Plugin class        | {py:class}`~aiida_quantumespresso_hp.calculations.hp.HpCalculation`  |
+| Plugin class        | {py:class}`~aiida_hubbard.calculations.hp.HpCalculation`  |
 | Plugin entry point  | ``quantumespresso.hp``                                        |
 
 :::{hint}

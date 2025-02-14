@@ -3,7 +3,7 @@ myst:
   substitutions:
     README.md of the repository: '`README.md` of the repository'
     aiida-core documentation: '`aiida-core` documentation'
-    aiida-quantumespresso-hp: '`aiida-quantumespresso-hp`'
+    aiida-hubbard: '`aiida-hubbard`'
     mapex: '[MAPEX](https://www.uni-bremen.de/en/mapex)'
     ubremen_exc: '[U Bremen Excellence Chair](https://www.uni-bremen.de/u-bremen-excellence-chairs)'
     esg: "[Excellence Strategy of Germany\u2019s federal and state governments](https://www.dfg.de/en/research_funding/excellence_strategy/index.html)"
@@ -43,7 +43,7 @@ reference/index
 
 An AiiDA plugin package for the calculation of Hubbard parameters using the [Quantum ESPRESSO](http://www.quantumespresso.org) software suite. Compute onsites and intersites Hubbard parameters self-consistently and in automated fashion through state-of-the-art DFPT implementation with automatic data provenance provided by AiiDA.
 
-**aiida-quantumespresso-hp version:** {{ release }}
+**aiida-hubbard version:** {{ release }}
 
 :::
 
@@ -139,7 +139,7 @@ Detailed reference guides on the application programming and command line interf
 
 +++
 
-```{button-ref} reference/api/aiida_quantumespresso_hp/index
+```{button-ref} reference/api/aiida_hubbard/index
 :ref-type: doc
 :click-parent:
 :expand:
@@ -190,7 +190,7 @@ We acknowledge support from:
 [aiida]: http://aiida.net
 [aiida quantum espresso tutorial]: https://aiida-tutorials.readthedocs.io/en/tutorial-qe-short/
 [aiida-core documentation]: https://aiida.readthedocs.io/projects/aiida-core/en/latest/intro/get_started.html
-[aiida-quantumespresso-hp]: https://github.com/aiidateam/aiida-quantumespresso-hp
+[aiida-hubbard]: https://github.com/aiidateam/aiida-hubbard
 [aiidalab demo cluster]: https://aiidalab-demo.materialscloud.org/
 [quantum espresso]: http://www.quantumespresso.org
 [quantum mobile]: https://quantum-mobile.readthedocs.io/en/latest/index.html

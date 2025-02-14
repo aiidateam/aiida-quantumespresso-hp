@@ -5,7 +5,7 @@ from aiida import orm
 from aiida.common import AttributeDict
 import pytest
 
-from aiida_quantumespresso_hp.calculations.hp import HpCalculation
+from aiida_hubbard.calculations.hp import HpCalculation
 
 
 @pytest.fixture

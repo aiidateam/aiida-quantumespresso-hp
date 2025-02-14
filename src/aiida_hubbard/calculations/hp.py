@@ -11,7 +11,7 @@ from aiida.plugins import CalculationFactory, DataFactory
 from aiida_quantumespresso.calculations import CalcJob, _lowercase_dict, _uppercase_dict
 from aiida_quantumespresso.utils.convert import convert_input_to_namelist_entry
 
-from aiida_quantumespresso_hp.utils.general import is_perturb_only_atom
+from aiida_hubbard.utils.general import is_perturb_only_atom
 
 PwCalculation = CalculationFactory('quantumespresso.pw')
 HubbardStructureData = DataFactory('quantumespresso.hubbard_structure')

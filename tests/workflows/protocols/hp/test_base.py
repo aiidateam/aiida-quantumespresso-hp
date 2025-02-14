@@ -2,7 +2,7 @@
 """Tests for the ``HpBaseWorkChain.get_builder_from_protocol`` method."""
 from aiida.engine import ProcessBuilder
 
-from aiida_quantumespresso_hp.workflows.hp.base import HpBaseWorkChain
+from aiida_hubbard.workflows.hp.base import HpBaseWorkChain
 
 
 def test_get_available_protocols():

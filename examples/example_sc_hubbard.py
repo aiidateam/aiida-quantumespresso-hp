@@ -7,7 +7,7 @@ from aiida.orm import StructureData, load_code
 from aiida_quantumespresso.common.types import ElectronicType, SpinType  # RelaxType
 from aiida_quantumespresso.data.hubbard_structure import HubbardStructureData
 
-from aiida_quantumespresso_hp.workflows.hubbard import SelfConsistentHubbardWorkChain
+from aiida_hubbard.workflows.hubbard import SelfConsistentHubbardWorkChain
 
 load_profile()
 

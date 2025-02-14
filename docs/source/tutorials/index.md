@@ -10,7 +10,7 @@ Before you get started, make sure that you have:
 - installed the SSSP pseudopotential family ([see instructions](installation-setup-pseudopotentials))
 :::
 
-In this section you will find some tutorials that you will guide you through how to use the aiida-quantumespresso-hp plugin, from **zero** to **hero**! We strongly recommend to start from the first one and work your way up with the other ones.
+In this section you will find some tutorials that you will guide you through how to use the aiida-hubbard plugin, from **zero** to **hero**! We strongly recommend to start from the first one and work your way up with the other ones.
 
 Go to one of the tutorials!
 
