@@ -59,7 +59,7 @@ def test_self_consistent_hubbard():
             },
             'hubbard':{
                 'parallelize_atoms': True,
-                'parallelize_qpoints': False,
+                'parallelize_qpoints': True,
                 'qpoints_distance': 100.0, # so high that it gives 1x1x1
             },
         },

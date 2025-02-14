@@ -82,7 +82,7 @@ jobs:
 
             strategy:
                 matrix:
-                    python-version: ['3.9']
+                    python-version: ['3.9', '3.11']
 
             defaults:
                 run:
