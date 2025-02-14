@@ -1,0 +1,179 @@
+hubbard:
+  sites:
+  - index: 0
+    kind: Mn
+    manifold: 3d
+    new_kind: Mn
+    new_type: 2
+    spin: 1
+    type: 2
+    value: 5.3443
+  - index: 1
+    kind: Co
+    manifold: 3d
+    new_kind: Co
+    new_type: 1
+    spin: 1
+    type: 1
+    value: 6.6772
+  - index: 2
+    kind: S
+    manifold: 3p
+    new_kind: S
+    new_type: 3
+    spin: 0
+    type: 3
+    value: 3.1641
+hubbard_chi:
+  array|chi:
+  - 1
+  - 1
+  array|chi0:
+  - 1
+  - 1
+hubbard_data:
+  formulation: dudarev
+  parameters:
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 0
+    neighbour_manifold: 3d
+    translation:
+    - 0
+    - 0
+    - 0
+    value: 5.3443
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - 0
+    - -1
+    value: 0.0256
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - -1
+    - 0
+    value: 0.0256
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - -1
+    - 0
+    - 0
+    value: 0.0256
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - -1
+    - -1
+    value: 0.0256
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - -1
+    - 0
+    - -1
+    value: 0.0256
+  - atom_index: 0
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - -1
+    - -1
+    - 0
+    value: 0.0256
+  - atom_index: 1
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 1
+    neighbour_manifold: 3d
+    translation:
+    - 0
+    - 0
+    - 0
+    value: 6.6772
+  - atom_index: 1
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - 0
+    - 1
+    value: 0.1165
+  - atom_index: 1
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 1
+    - 0
+    - 0
+    value: 0.1165
+  - atom_index: 1
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - 1
+    - 0
+    value: 0.1165
+  - atom_index: 1
+    atom_manifold: 3d
+    hubbard_type: V
+    neighbour_index: 2
+    neighbour_manifold: 3p
+    translation:
+    - 0
+    - 0
+    - 0
+    value: 0.1165
+  projectors: ortho-atomic
+hubbard_matrices:
+  array|chi:
+  - 81
+  - 81
+  array|chi0:
+  - 81
+  - 81
+  array|chi0_inv:
+  - 81
+  - 81
+  array|chi_inv:
+  - 81
+  - 81
+  array|hubbard:
+  - 81
+  - 81
+parameters:
+  hubbard_sites:
+    '1': Mn
+    '2': Co
+    '3': S
+  number_of_qpoints: 4

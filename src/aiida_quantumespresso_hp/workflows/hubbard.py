@@ -120,6 +120,8 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         spec.input('skip_relax_iterations', valid_type=orm.Int, required=False, validator=validate_positive,
             help=('The number of iterations for skipping the `relax` '
                   'step without performing check on parameters convergence.'))
+        spec.input('radial_analysis', valid_type=orm.Dict, required=False,
+            help='If specified, it performs a nearest neighbour analysis and feed the radius to hp.x')
         spec.input('relax_frequency', valid_type=orm.Int, required=False, validator=validate_positive,
             help='Integer value referring to the number of iterations to wait before performing the `relax` step.')
         spec.expose_inputs(PwRelaxWorkChain, namespace='relax',
@@ -261,6 +263,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         builder.hubbard = hubbard
         builder.tolerance_onsite = orm.Float(inputs['tolerance_onsite'])
         builder.tolerance_intersite = orm.Float(inputs['tolerance_intersite'])
+        builder.radial_analysis = orm.Dict(inputs['radial_analysis'])
         builder.max_iterations = orm.Int(inputs['max_iterations'])
         builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
         builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
@@ -559,12 +562,25 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
 
         bands = workchain.outputs.output_band
         parameters = workchain.outputs.output_parameters.get_dict()
-        # number_electrons = parameters['number_of_electrons']
-        # is_insulator, _ = find_bandgap(bands, number_electrons=number_electrons)
-        fermi_energy = parameters['fermi_energy']
-        is_insulator, _ = find_bandgap(bands, fermi_energy=fermi_energy)
 
-        if is_insulator:
+        fermi_energy = parameters['fermi_energy']
+        number_electrons = parameters['number_of_electrons']
+
+        # Due to uncertainty in the prediction of the fermi energy, we try
+        # both options of this function. If one of the two give an insulating
+        # state as a result, we then set fixed occupation as it is likely that
+        # hp.x would crash otherwise.
+        is_insulator_1, _ = find_bandgap(bands, fermi_energy=fermi_energy)
+
+        # I am not sure, but I think for some materials, e.g. having anti-ferromagnetic
+        # ordering, the following function would crash for some reason, possibly due
+        # to the format of the BandsData. To double check if actually needed.
+        try:
+            is_insulator_2, _ = find_bandgap(bands, number_electrons=number_electrons)
+        except:  # pylint: disable=bare-except
+            is_insulator_2 = False
+
+        if is_insulator_1 or is_insulator_2:
             self.report('after relaxation, system is determined to be an insulator')
             self.ctx.is_insulator = True
         else:
@@ -576,6 +592,23 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         workchain = self.ctx.workchains_scf[-1]
 
         inputs = AttributeDict(self.exposed_inputs(HpWorkChain, namespace='hubbard'))
+
+        if 'radial_analysis' in self.inputs:
+            kwargs = self.inputs.radial_analysis.get_dict()
+            hubbard_utils = HubbardUtils(self.ctx.current_hubbard_structure)
+            num_neigh = hubbard_utils.get_max_number_of_neighbours(**kwargs)
+
+            parameters = inputs.hp.parameters.get_dict()
+            parameters['INPUTHP']['num_neigh'] = num_neigh
+
+            settings = {'radial_analysis': self.inputs.radial_analysis.get_dict()}
+            if 'settings' in inputs.hp:
+                settings = inputs.hp.settings.get_dict()
+                settings['radial_analysis'] = self.inputs.radial_analysis.get_dict()
+
+            inputs.hp.parameters = orm.Dict(parameters)
+            inputs.hp.settings = orm.Dict(settings)
+
         inputs.clean_workdir = self.inputs.clean_workdir
         inputs.hp.parent_scf = workchain.outputs.remote_folder
         inputs.hp.hubbard_structure = self.ctx.current_hubbard_structure
@@ -584,7 +617,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         running = self.submit(HpWorkChain, **inputs)
 
         self.report(f'launching HpWorkChain<{running.pk}> iteration #{self.ctx.iteration}')
-        return ToContext(workchains_hp=append_(running))
+        self.to_context(**{'workchains_hp': append_(running)})
 
     def inspect_hp(self):
         """Analyze the last completed HpWorkChain.
@@ -626,6 +659,9 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         self.ctx.current_hubbard_structure = workchain.outputs.hubbard_structure
         self.relabel_hubbard_structure(workchain)
 
+        # if not self.should_check_convergence():
+        #     return
+
         if not len(ref_params) == len(new_params):
             self.report('The new and old Hubbard parameters have different lenghts. Assuming to be at the first cycle.')
             return
@@ -666,7 +702,7 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
         if self.ctx.is_converged:
             self.report(f'Hubbard parameters self-consistently converged in {self.ctx.iteration} iterations')
         else:
-            self.report(f'Hubbard parameters did not converge at the last iteration #{self.ctx.iteration}.')
+            self.report(f'Hubbard parameters did not converged at the last iteration #{self.ctx.iteration}.')
             return self.exit_codes.ERROR_CONVERGENCE_NOT_REACHED.format(iteration=self.ctx.iteration)
 
     def should_clean_workdir(self):

@@ -1,0 +1,24 @@
+# Copy this data in the pw.x input file for DFT+Hubbard calculations
+HUBBARD	{ortho-atomic}
+V    Mn-3d     Mn-3d    1   1    5.3443
+V    Mn-3d     Co-3d    1   14   0.4967
+V    Mn-3d     Co-3d    1   8    0.4967
+V    Mn-3d     Co-3d    1   5    0.4967
+V    Mn-3d     Co-3d    1   32   0.4967
+V    Mn-3d     S-3p     1   42   0.0256
+V    Mn-3d     S-3p     1   36   0.0256
+V    Mn-3d     S-3p     1   18   0.0256
+V    Mn-3d     S-3p     1   33   0.0256
+V    Mn-3d     S-3p     1   15   0.0256
+V    Mn-3d     S-3p     1   9    0.0256
+V    Co-3d     Co-3d    2   2    6.6772
+V    Co-3d     Mn-3d    2   79   0.4967
+V    Co-3d     S-3p     2   45   0.1165
+V    Co-3d     S-3p     2   69   0.1165
+V    Co-3d     S-3p     2   51   0.1165
+V    Co-3d     Mn-3d    2   76   0.4967
+V    Co-3d     Mn-3d    2   70   0.4967
+V    Co-3d     Mn-3d    2   52   0.4967
+V    Co-3d     S-3p     2   3    0.1165
+V    Co-3d     Co-3d    2   17   0.0948
+V    Co-3d     Co-3d    2   44   0.0948

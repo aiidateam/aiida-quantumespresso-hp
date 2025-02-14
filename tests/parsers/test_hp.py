@@ -40,6 +40,50 @@ def generate_inputs_mesh_only():
     return AttributeDict({'parameters': orm.Dict(parameters)})
 
 
+@pytest.fixture
+def generate_inputs_voronoi(filepath_tests):
+    """Return inputs that the parser will expect when nearest-neighbours analysis is active."""
+
+    def _generate_inputs_voronoi(all_neihbours=False):
+        """Return inputs that the parser will expect when nearest-neighbours analysis is active."""
+        import os
+
+        from aiida_quantumespresso.utils.hubbard import initialize_hubbard_parameters
+        from ase.io import read
+        path = os.path.join(filepath_tests, 'fixtures', 'structures', 'MnCoS.cif')
+        atoms = read(path)
+        pairs = {
+            'Mn': ['3d', 5.0, 1e-8, {
+                'S': '3p'
+            }],
+            'Co': ['3d', 5.0, 1e-8, {
+                'S': '3p'
+            }],
+        }
+        if all_neihbours:
+            pairs = {
+                'Mn': ['3d', 5.0, 1e-8, {
+                    'S': '3p',
+                    'Co': '3d'
+                }],
+                'Co': ['3d', 5.0, 1e-8, {
+                    'S': '3p',
+                    'Mn': '3d'
+                }],
+            }
+        structure = orm.StructureData(ase=atoms)
+        hubbard_structure = initialize_hubbard_parameters(structure=structure, pairs=pairs)
+        parameters = {'INPUTHP': {'num_neigh': 10}}
+        settings = {'radial_analysis': {}}
+        return AttributeDict({
+            'parameters': orm.Dict(parameters),
+            'settings': orm.Dict(settings),
+            'hubbard_structure': hubbard_structure,
+        })
+
+    return _generate_inputs_voronoi
+
+
 def test_hp_default(
     aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_default, data_regression, tmpdir
 ):
@@ -90,6 +134,44 @@ def test_hp_default_hubbard_structure(
         aiida_localhost,
         test_name=name,
         inputs=generate_inputs_default(only_u=False),
+        attributes=attributes,
+        retrieve_temporary=(tmpdir, ['HUBBARD.dat'])
+    )
+    parser = generate_parser(entry_point_parser)
+    results, calcfunction = parser.parse_from_node(node, store_provenance=False, retrieved_temporary_folder=tmpdir)
+
+    assert calcfunction.is_finished, calcfunction.exception
+    assert calcfunction.is_finished_ok, calcfunction.exit_message
+    assert 'parameters' in results
+    assert 'hubbard' in results
+    assert 'hubbard_chi' in results
+    assert 'hubbard_structure' in results
+    assert 'hubbard_matrices' in results
+    data_regression.check({
+        'parameters': results['parameters'].get_dict(),
+        'hubbard': results['hubbard'].get_dict(),
+        'hubbard_chi': results['hubbard_chi'].base.attributes.all,
+        'hubbard_matrices': results['hubbard_matrices'].base.attributes.all,
+        'hubbard_data': results['hubbard_structure'].hubbard.dict(),
+    })
+
+
+@pytest.mark.parametrize('all_neihbours', (True, False))
+def test_hp_voronoi_hubbard_structure(
+    aiida_localhost, generate_calc_job_node, generate_parser, generate_inputs_voronoi, data_regression, tmpdir,
+    all_neihbours
+):
+    """Test a `hp.x` calculation with nearest-neihbour analysis."""
+    name = 'voronoi_hubbard_structure'
+    entry_point_calc_job = 'quantumespresso.hp'
+    entry_point_parser = 'quantumespresso.hp'
+
+    attributes = {'retrieve_temporary_list': ['HUBBARD.dat']}
+    node = generate_calc_job_node(
+        entry_point_calc_job,
+        aiida_localhost,
+        test_name=name,
+        inputs=generate_inputs_voronoi(all_neihbours),
         attributes=attributes,
         retrieve_temporary=(tmpdir, ['HUBBARD.dat'])
     )
