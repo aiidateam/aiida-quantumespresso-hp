@@ -1,0 +1,7 @@
+---
+label: hp
+description: Quantum ESPRESSO hp.x
+default_calc_job_plugin: quantumespresso.hp
+computer: localhost
+prepend_text: 'export OMP_NUM_THREADS=1'
+append_text: ' '

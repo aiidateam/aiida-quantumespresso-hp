@@ -26,8 +26,8 @@ classifiers = [
 keywords = ['aiida', 'workflows']
 requires-python = '>=3.8'
 dependencies = [
-    'aiida-core~=2.2',
-    'aiida-quantumespresso~=4.3',
+    'aiida-core>=2.2.2,<=2.5',
+    'aiida-quantumespresso>=4.8',
 ]
 
 [project.urls]
@@ -49,7 +49,7 @@ docs = [
 ]
 pre-commit = [
     'pre-commit~=2.17',
-    'pylint~=2.12.2',
+    'pylint~=2.15.10',
     'pylint-aiida~=0.1.1',
     'toml'
 ]
@@ -123,10 +123,15 @@ disable = [
 ]
 
 [tool.pytest.ini_options]
+# Configuration for [pytest](https://docs.pytest.org)
+python_files = "test_*.py example_*.py"
 filterwarnings = [
-    'ignore:Creating AiiDA configuration folder.*:UserWarning'
+    "ignore::DeprecationWarning:aiida:",
+    "ignore:Creating AiiDA configuration folder:",
+    "ignore::DeprecationWarning:plumpy:",
+    "ignore::DeprecationWarning:yaml:",
 ]
-testpaths = 'tests'
+# testpaths = 'tests'
 
 [tool.yapf]
 align_closing_bracket_with_visual_indent = true
