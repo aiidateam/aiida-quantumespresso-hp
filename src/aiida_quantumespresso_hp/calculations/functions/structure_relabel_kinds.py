@@ -64,7 +64,10 @@ def structure_relabel_kinds(
                 new_magnetization[kind_name] = old_magnetization[site['kind']]
 
         site = sites[index]
-        relabeled.append_atom(position=site.position, symbols=symbol, name=kind_name)
+        try:
+            relabeled.append_atom(position=site.position, symbols=symbol, name=kind_name)
+        except ValueError as exc:
+            raise ValueError('cannot distinguish kinds with the given Hubbard input configuration') from exc
 
     # Now add the non-Hubbard sites
     for site in sites[len(relabeled.sites):]:
