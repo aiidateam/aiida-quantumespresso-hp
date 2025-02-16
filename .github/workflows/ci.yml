@@ -69,12 +69,10 @@ jobs:
             run: sudo apt update && sudo apt install postgresql
 
         -   name: Install python dependencies
-            run: |
-                pip install --upgrade setuptools
-                pip install -e .[tests]
+            run: pip install -e .[tests]
 
         -   name: Run pytest
-            run: pytest -sv tests
+            run: pytest -sv --cov aiida_hubbard tests
 
         -   name: Upload to Codecov
             uses: codecov/codecov-action@v3
