@@ -72,13 +72,13 @@ jobs:
             run: pip install -e .[tests]
 
         -   name: Run pytest
-            run: pytest -sv --cov aiida_hubbard tests
+            run: pytest -sv --cov --cov-report=xml tests
 
         -   name: Upload to Codecov
-            uses: codecov/codecov-action@v3
+            uses: codecov/codecov-action@v5
             with:
                 token: ${{ secrets.CODECOV_TOKEN }}
-                # slug: aiidateam/aiida-hubbard
+                slug: aiidateam/aiida-hubbard
                 name: pytests-3.9
                 flags: pytests
                 fail_ci_if_error: true
