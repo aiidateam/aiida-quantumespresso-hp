@@ -180,7 +180,7 @@ def create_licoo_hubbard_structure():
     return hubbard_structure
 
 
-def load_sssp_pseudos(version='1.2', functional='PBEsol', protocol='efficiency'):
+def load_sssp_pseudos(version='1.3', functional='PBEsol', protocol='efficiency'):
     """Load the SSSP pseudopotentials."""
     config = SsspConfiguration(version, functional, protocol)
     label = SsspFamily.format_configuration_label(config)

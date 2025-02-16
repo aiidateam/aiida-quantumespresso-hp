@@ -112,13 +112,13 @@ builder = load_code('hp').get_builder()
 builder.parent_scf = parent_scf
 ```
 
-## How to run a calculation without symlinking
+## How to run a calculation with symlinking
 
 Specify `PARENT_FOLDER_SYMLINK: False` in the `settings` input:
 
 ```python
 builder = load_code('hp').get_builder()
-builder.settings = Dict({'PARENT_FOLDER_SYMLINK': False})
+builder.settings = Dict({'PARENT_FOLDER_SYMLINK': True})
 ```
 
 If this setting is specified, the plugin will NOT symlink the SCF folder.
@@ -146,7 +146,7 @@ To visualize them as Quantum ESPRESSO HUBBARD card:
 ```python
 In [3]: from aiida_quantumespresso.utils.hubbard import HubbardUtils
 
-In [4]: hubbard_card = HubbardUtils(node.outputs.hubbard_structure.hubbard).get_hubbard_card
+In [4]: hubbard_card = HubbardUtils(node.outputs.hubbard_structure.hubbard).get_hubbard_card()
 
 In [5]: print(hubbard_card)
 Out[5]:
