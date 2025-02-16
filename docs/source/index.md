@@ -11,43 +11,37 @@ myst:
 
 ```{toctree}
 :hidden: true
-:maxdepth: 2
 
 installation/index
 tutorials/index
+```
+
+```{toctree}
+:hidden: true
+:caption: How to Guides
+
 howto/index
+citeus
+```
+
+```{toctree}
+:hidden: true
+:caption: Topic guides
 topics/index
+```
+
+```{toctree}
+:hidden: true
+:caption: Reference
 reference/index
 ```
 
-::::{grid}
-:reverse:
-:gutter: 2 3 3 3
-:margin: 1 2 1 2
 
-:::{grid-item}
-:columns: 12 4 4 4
+# AiiDA Hubbard
 
-```{image} images/logo_aiida_quantumespresso.png
-:width: 200px
-:class: sd-m-auto
-```
-:::
-
-:::{grid-item}
-:columns: 12 8 8 8
-:child-align: justify
-:class: sd-fs-5
-
-# AiiDA Quantum ESPRESSO HP
-
-An AiiDA plugin package for the calculation of Hubbard parameters using the [Quantum ESPRESSO](http://www.quantumespresso.org) software suite. Compute onsites and intersites Hubbard parameters self-consistently and in automated fashion through state-of-the-art DFPT implementation with automatic data provenance provided by AiiDA.
+An AiiDA plugin package for the calculation of Hubbard parameters from first-principles using the [Quantum ESPRESSO](http://www.quantumespresso.org) and HP software suite. Compute onsites and intersites Hubbard parameters self-consistently and in automated fashion through state-of-the-art DFPT implementation, leveraging maximal parallel computation over atoms and monochromatic perturbations, along with data provenance provided by AiiDA.
 
 **aiida-hubbard version:** {{ release }}
-
-:::
-
-::::
 
 ______________________________________________________________________
 
@@ -92,78 +86,29 @@ Easy examples to take the first steps with the plugin package.
 To the tutorials
 ```
 :::
-
-:::{grid-item-card} {fa}`question-circle;mr-1` How-to guides
-:text-align: center
-:shadow: md
-
-Hands-on guides to achieve specific goals.
-
-+++
-
-```{button-ref} howto/index
-:ref-type: doc
-:click-parent:
-:expand:
-:color: primary
-:outline:
-
-To the how-to guides
-```
-:::
-
-:::{grid-item-card} {fa}`bookmark;mr-1` Topic guides
-:text-align: center
-:shadow: md
-
-Detailed background information on various concepts.
-
-+++
-
-```{button-ref} topics/index
-:ref-type: doc
-:click-parent:
-:expand:
-:color: primary
-:outline:
-
-To the topic guides
-```
-:::
-
-:::{grid-item-card} {fa}`cogs;mr-1` Reference guides
-:text-align: center
-:shadow: md
-
-Detailed reference guides on the application programming and command line interfaces.
-
-+++
-
-```{button-ref} reference/api/aiida_hubbard/index
-:ref-type: doc
-:click-parent:
-:expand:
-:color: primary
-:outline:
-
-To the reference guides
-```
-:::
 ::::
 
 # How to cite
 
-If you use this plugin for your research, please cite the following work:
+If you use this plugin for your research, please cite the following works:
 
-> Lorenzo Bastonero, Cristiano Malica, Marnik Bercx, Eric Macke, Iurii Timrov, Nicola Marzari, and Sebastiaan P. Huber, [*Automated self-consistent prediction of extended Hubbard parameters for Li-ion batteries*](https://media.giphy.com/media/zyclIRxMwlY40/giphy.gif), npj Comp. Mat., **?**, ? (2023)
+> Lorenzo Bastonero, Cristiano Malica, Eric Macke, Marnik Bercx, Sebastiaan Huber, Iurii Timrov, and Nicola Marzari, *Hubbard from first-principles made easy from automated and reproducible workflows* (2025)
 
-> Sebastiaan. P. Huber, Spyros Zoupanos, Martin Uhrin, Leopold Talirz, Leonid Kahle, Rico Häuselmann, Dominik Gresch, Tiziano Müller, Aliaksandr V. Yakutovich, Casper W. Andersen, Francisco F. Ramirez, Carl S. Adorf, Fernando Gargiulo, Snehal Kumbhar, Elsa Passaro, Conrad Johnston, Andrius Merkys, Andrea Cepellotti, Nicolas Mounet, Nicola Marzari, Boris Kozinsky, and Giovanni Pizzi, [*AiiDA 1.0, a scalable computational infrastructure for automated reproducible workflows and data provenance*](https://doi.org/10.1038/s41597-020-00638-4), Scientific Data **7**, 300 (2020)
+> Sebastiaan. P. Huber _et al._, [*AiiDA 1.0, a scalable computational infrastructure for automated reproducible workflows and data provenance*](https://doi.org/10.1038/s41597-020-00638-4), Scientific Data **7**, 300 (2020)
 
 > Martin Uhrin, Sebastiaan. P. Huber, Jusong Yu, Nicola Marzari, and Giovanni Pizzi, [*Workflows in AiiDA: Engineering a high-throughput, event-based engine for robust and modular computational workflows*](https://www.sciencedirect.com/science/article/pii/S0010465522001746), Computational Materials Science **187**, 110086 (2021)
 
-> Iurii Timrov, Nicola Marzari, and Matteo Cococcioni, [*HP - A code for the calculation of Hubbard parameters using density-functional perturbation theory*](https://doi.org/10.1016/j.commatsci.2020.110086), Computational Materials Science **187**, 110086 (2021)
+Please, also cite the relevant _Quantum ESPRESSO_ and _HP_ references.
 
-> Iurii Timrov, Nicola Marzari, and Matteo Cococcioni, [*Self-consistent Hubbard parameters from density-functional perturbation theory in the ultrasoft and projector-augmented wave formulations*](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.103.045141), Physical Reveview **B** **103**, 045141
+> Iurii Timrov, Nicola Marzari, and Matteo Cococcioni, [*HP – A code for the calculation of Hubbard parameters using density-functional perturbation theory*](https://www.sciencedirect.com/science/article/pii/S0010465522001746), Computer Physics Communication **279**, 108455 (2022)
+
+> Paolo Giannozzi _et al._, [*Advanced capabilities for materials modelling with Quantum ESPRESSO*](https://iopscience.iop.org/article/10.1088/1361-648X/aa8f79) J.Phys.:Condens.Matter **29**, 465901 (2017)
+
+> Paolo Giannozzi _et al._, [*QUANTUM ESPRESSO: a modular and open-source software project for quantum simulations of materials*](https://iopscience.iop.org/article/10.1088/0953-8984/21/39/395502) J. Phys. Condens. Matter **21**, 395502 (2009)
+
+For the GPU-enabled version of _Quantum ESPRESSO_:
+
+> Paolo Giannozzi _et al._, [*Quantum ESPRESSO toward the exascale*](https://pubs.aip.org/aip/jcp/article/152/15/154105/1058748/Quantum-ESPRESSO-toward-the-exascale), J. Chem. Phys. **152**, 154105 (2020)
 
 # Acknowledgements
 
