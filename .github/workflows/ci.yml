@@ -76,6 +76,15 @@ jobs:
         -   name: Run pytest
             run: pytest -sv tests
 
+        -   name: Upload to Codecov
+            uses: codecov/codecov-action@v3
+            with:
+                token: ${{ secrets.CODECOV_TOKEN }}
+                # slug: aiidateam/aiida-hubbard
+                name: pytests-3.9
+                flags: pytests
+                fail_ci_if_error: true
+
     integration:
 
             runs-on: ubuntu-latest
@@ -147,13 +156,3 @@ jobs:
 
             -   name: Run example scripts
                 run: pytest -sv examples
-
-            -   name: Upload to Codecov
-                if: matrix.python-version == 3.12
-                uses: codecov/codecov-action@v3
-                with:
-                    token: ${{ secrets.CODECOV_TOKEN }}
-                    slug: aiidateam/aiida-hubbard
-                    name: pytests-vibroscopy3.12
-                    flags: pytests
-                    fail_ci_if_error: true
