@@ -10,6 +10,7 @@ At the very least, make sure you have followed and understand the tutorial on [r
 ```{toctree}
 :maxdepth: 2
 
+analyze
 understand
 calculations/index
 workflows/index

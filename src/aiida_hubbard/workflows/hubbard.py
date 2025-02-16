@@ -75,21 +75,18 @@ class SelfConsistentHubbardWorkChain(WorkChain, ProtocolMixin):
     The procedure in each step of the convergence cycle is slightly different depending on the electronic and
     magnetic properties of the system. Each cycle will roughly consist of three steps:
 
-    * Relaxing the structure at the current Hubbard values (optional).
-    * One or two SCF calculations depending whether the system is metallic or insulating, respectively.
-    * A self-consistent calculation of the Hubbard parameters, restarted from the last SCF run.
+        * Relaxing the structure at the current Hubbard values (optional).
+        * One or two DFT calculations depending whether the system is metallic or insulating, respectively.
+        * A DFPT calculation of the Hubbard parameters, perturbing the ground-state of the last DFT run.
 
-    The possible options for the set of SCF calculations that have to be run in the second step look are:
+    The possible options for the set of DFT SCF calculations that have to be run in the second step look are:
 
-    * Metals:
-
-        - SCF with smearing.
-
-    * Insulators
-
-        - SCF with smearing.
-        - SCF with fixed occupations; if magnetic, total magnetization and number of bands
-            are fixed to the values found from the previous SCF calculation.
+        * Metals:
+            - SCF with smearing.
+        * Insulators
+            - SCF with smearing.
+            - SCF with fixed occupations; if magnetic, total magnetization and number of bands
+                are fixed to the values found from the previous SCF calculation.
 
     When convergence is achieved a node will be returned containing the final converged
     :class:`~aiida_quantumespresso.data.hubbard_structure.HubbardStructureData`.
