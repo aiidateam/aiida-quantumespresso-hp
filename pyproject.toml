@@ -58,7 +58,10 @@ pre-commit = [
 tests = [
     'pgtest~=1.3',
     'pytest~=6.0',
-    'pytest-regressions~=2.3'
+    'coverage[toml]',
+    'pytest-cov',
+    'pytest-regressions~=2.3',
+    'pytest-timeout',
 ]
 
 [project.scripts]
