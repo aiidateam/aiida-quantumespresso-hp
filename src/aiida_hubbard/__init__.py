@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
-"""AiiDA plugin for the HP module of Quantum ESPRESSO."""
-__version__ = '0.1.0'
+"""AiiDA plugin for the first-principles calculation of Hubbard parameters."""
+__version__ = '0.1.0a0'
