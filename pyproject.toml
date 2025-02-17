@@ -6,8 +6,8 @@ build-backend = 'flit_core.buildapi'
 name = 'aiida-hubbard'
 dynamic = ['description', 'version']
 authors = [
-    {name = 'Lorenzo Bastonero', email = 'lbastone@uni-bremen.de'}
-    {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'},
+    {name = 'Lorenzo Bastonero', email = 'lbastone@uni-bremen.de'},
+    {name = 'Sebastiaan P. Huber', email = 'mail@sphuber.net'}
 ]
 readme = 'README.md'
 license = {file = 'LICENSE.txt'}
