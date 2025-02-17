@@ -1,9 +1,16 @@
 # `aiida-hubbard`
 
-AiiDA plugin for the Hubbard module of Quantum ESPRESSO.
-The plugin requires HP v7.2 or above and is not compatible with older versions.
+AiiDA plugin for the first-principles calculation of Hubbard parameters.
 
-This is the official AiiDA plugin for the [HP](https://www.sciencedirect.com/science/article/pii/S0010465522001746) code of [Quantum ESPRESSO](https://www.quantum-espresso.org/).
+This is also the official AiiDA plugin for the [HP](https://www.sciencedirect.com/science/article/pii/S0010465522001746) code of [Quantum ESPRESSO](https://www.quantum-espresso.org/).
+
+|    | |
+|-----|----------------------------------------------------------------------------|
+|Latest release| [![PyPI version](https://badge.fury.io/py/aiida-hubbard.svg)](https://badge.fury.io/py/aiida-hubbard)[![PyPI pyversions](https://img.shields.io/pypi/pyversions/aiida-hubbard.svg)](https://pypi.python.org/pypi/aiida-hubbard) |
+|Getting help| [![Docs status](https://readthedocs.org/projects/aiida-hubbard/badge)](http://aiida-hubbard.readthedocs.io/) [![Discourse status](https://img.shields.io/discourse/status?server=https%3A%2F%2Faiida.discourse.group%2F)](https://aiida.discourse.group/)
+|Build status| [![Build Status](https://github.com/aiidateam/aiida-hubbard/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/aiidateam/aiida-hubbard/actions) [![Coverage Status](https://codecov.io/gh/aiidateam/aiida-hubbard/branch/master/graph/badge.svg)](https://codecov.io/gh/aiidateam/aiida-hubbard) |
+|Activity| [![PyPI-downloads](https://img.shields.io/pypi/dm/aiida-hubbard.svg?style=flat)](https://pypistats.org/packages/aiida-hubbard) [![Commit Activity](https://img.shields.io/github/commit-activity/m/aiidateam/aiida-hubbard.svg)](https://github.com/aiidateam/aiida-hubbard/pulse)
+|Community|  [![Discourse](https://img.shields.io/discourse/topics?server=https%3A%2F%2Faiida.discourse.group%2F&logo=discourse)](https://aiida.discourse.group/)
 
 ## Compatibility matrix
 
@@ -11,12 +18,12 @@ The matrix below assumes the user always install the latest patch release of the
 
 | Plugin | AiiDA | Python | Quantum ESPRESSO |
 |-|-|-|-|
-| `v0.1.0` | ![Compatibility for v4.0][AiiDA v4.0-pydantic2] |  [![PyPI pyversions](https://img.shields.io/pypi/pyversions/aiida-quantumespresso.svg)](https://pypi.python.org/pypi/aiida-quantumespresso) | ![Quantum ESPRESSO compatibility][QE v7.2-7.4] |
+| `v0.1.0` | ![Compatibility for v4.0][AiiDA v4.0-pydantic2] |  [![PyPI pyversions](https://img.shields.io/pypi/pyversions/aiida-hubbard.svg)](https://pypi.python.org/pypi/aiida-hubbard) | ![Quantum ESPRESSO compatibility][QE v7.2-7.4] |
 
 ## Installation
 To install using pip, simply execute:
 
-    pip install git+https://github.com/aiidateam/aiida-hubbard
+    pip install aiida-hubbard
 
 or when installing from source:
 
