@@ -134,8 +134,8 @@ html_theme_options = {
     'use_sidenotes': True,
     'logo': {
         'text': 'AiiDA Hubbard',
-        'image_light': 'images/logo_aiida_quantumespresso.png',
-        'image_dark': 'images/logo_aiida_quantumespresso.png',
+        'image_light': 'images/logo_aiida_hubbard.png',
+        'image_dark': 'images/logo_aiida_hubbard.png',
     }
 }
 html_static_path = ['_static']
