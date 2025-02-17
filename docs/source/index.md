@@ -39,9 +39,12 @@ reference/index
 
 # AiiDA Hubbard
 
-An AiiDA plugin package for the calculation of Hubbard parameters from first-principles using the [Quantum ESPRESSO](http://www.quantumespresso.org) and HP software suite. Compute onsites and intersites Hubbard parameters self-consistently and in automated fashion through state-of-the-art DFPT implementation, leveraging maximal parallel computation over atoms and monochromatic perturbations, along with data provenance provided by AiiDA.
+An AiiDA plugin package for the calculation of Hubbard parameters from first-principles using the [Quantum ESPRESSO](http://www.quantumespresso.org) and [HP](https://www.sciencedirect.com/science/article/pii/S0010465522001746) software suite. Compute onsites and intersites Hubbard parameters self-consistently and in automated fashion through state-of-the-art DFPT implementation, leveraging maximal parallel computation over atoms and monochromatic perturbations, along with data provenance provided by AiiDA.
 
-**aiida-hubbard version:** {{ release }}
+[![PyPI version](https://badge.fury.io/py/aiida-hubbard.svg)](https://badge.fury.io/py/aiida-hubbard)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/aiida-hubbard.svg)](https://pypi.python.org/pypi/aiida-hubbard)
+[![Build Status](https://github.com/aiidateam/aiida-hubbard/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/aiidateam/aiida-hubbard/actions)
+[![Docs status](https://readthedocs.org/projects/aiida-hubbard/badge)](http://aiida-hubbard.readthedocs.io/)
 
 ______________________________________________________________________
 
