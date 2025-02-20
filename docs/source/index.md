@@ -95,7 +95,7 @@ To the tutorials
 
 If you use this plugin for your research, please cite the following works:
 
-> Lorenzo Bastonero, Cristiano Malica, Eric Macke, Marnik Bercx, Sebastiaan Huber, Iurii Timrov, and Nicola Marzari, *Hubbard from first-principles made easy from automated and reproducible workflows* (2025)
+> Lorenzo Bastonero, Cristiano Malica, Eric Macke, Marnik Bercx, Sebastiaan Huber, Iurii Timrov, and Nicola Marzari, *Hubbard parameters from first-principles made easy from automated and reproducible workflows* (2025)
 
 > Sebastiaan. P. Huber _et al._, [*AiiDA 1.0, a scalable computational infrastructure for automated reproducible workflows and data provenance*](https://doi.org/10.1038/s41597-020-00638-4), Scientific Data **7**, 300 (2020)
 
